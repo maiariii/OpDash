@@ -1,0 +1,23 @@
+{
+    "name": "ops-tracker-root",
+    "version": "1.0.0",
+    "description": "Root config for Vercel deployment",
+    "scripts": {
+        "start": "node api/index.js",
+        "dev": "nodemon api/index.js",
+        "install-client": "cd client && npm install",
+        "build-client": "cd client && npm run build"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "date-fns": "^4.1.0",
+        "dotenv": "^16.4.7",
+        "express": "^4.21.2",
+        "jsonwebtoken": "^9.0.2",
+        "pg": "^8.13.1",
+        "uuid": "^9.0.1"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.9"
+    }
+}

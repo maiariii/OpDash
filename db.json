@@ -1,0 +1,245 @@
+{
+  "employees": [
+    {
+      "id": "f441d89f-3338-4fb2-9c30-1f9075ac3c24",
+      "mock_auth_id": "user1",
+      "email": "alice@deped.gov.ph",
+      "office": "Finance",
+      "position": "Financial Analyst",
+      "employment_status": "Plantilla"
+    },
+    {
+      "id": "f28dfd32-7d1e-489a-8a0c-19f427b84ec4",
+      "mock_auth_id": "user2",
+      "email": "bob@deped.gov.ph",
+      "office": "IT",
+      "position": "System Administrator",
+      "employment_status": "Plantilla"
+    },
+    {
+      "id": "3284ff0c-0707-4b84-9942-4e7b531f276d",
+      "mock_auth_id": "user3",
+      "email": "charlie@deped.gov.ph",
+      "office": "HR",
+      "position": "HR Officer",
+      "employment_status": "Non-Plantilla"
+    },
+    {
+      "id": "c3913877-7e57-477b-b23a-16dbf78cb8fe",
+      "mock_auth_id": "user4",
+      "email": "diana@deped.gov.ph",
+      "office": "Procurement",
+      "position": "Procurement Specialist",
+      "employment_status": "Plantilla"
+    },
+    {
+      "id": "4d9b810f-9e3a-4eb5-bbac-e4b1279c96d4",
+      "mock_auth_id": "user5",
+      "email": "evan@deped.gov.ph",
+      "office": "Finance",
+      "position": "Accountant",
+      "employment_status": "Non-Plantilla"
+    }
+  ],
+  "progress_logs": [
+    {
+      "id": "897bf83a-d7c7-44bf-8aaf-e055a7466664",
+      "employee_id": "f441d89f-3338-4fb2-9c30-1f9075ac3c24",
+      "week_start_date": "2025-01-01",
+      "accomplishments": "Seed data accomplishment 1",
+      "milestones": [],
+      "bottlenecks": "Waiting for approval",
+      "spillovers": "",
+      "catch_up_plan": "",
+      "version": 1
+    },
+    {
+      "id": "5abed8fd-d49c-4981-89a5-56c53f0ec8c5",
+      "employee_id": "f441d89f-3338-4fb2-9c30-1f9075ac3c24",
+      "week_start_date": "2025-01-08",
+      "accomplishments": "New data accomplishment for HROD",
+      "milestones": [],
+      "bottlenecks": "None",
+      "spillovers": "None",
+      "catch_up_plan": "",
+      "version": 2,
+      "current_version": 1
+    },
+    {
+      "id": "50ac01b4-4424-45e5-82d9-b3116e3a3c7f",
+      "employee_id": "f441d89f-3338-4fb2-9c30-1f9075ac3c24",
+      "week_start_date": "2025-01-15",
+      "accomplishments": "Seed data accomplishment 3",
+      "milestones": [],
+      "bottlenecks": "Waiting for approval",
+      "spillovers": "",
+      "catch_up_plan": "",
+      "version": 1
+    },
+    {
+      "id": "e11f7291-ced0-4806-a82e-636c291734f0",
+      "employee_id": "f441d89f-3338-4fb2-9c30-1f9075ac3c24",
+      "week_start_date": "2025-01-22",
+      "accomplishments": "Seed data accomplishment 4",
+      "milestones": [],
+      "bottlenecks": "",
+      "spillovers": "",
+      "catch_up_plan": "",
+      "version": 1
+    },
+    {
+      "id": "99d334b8-213a-4bf3-9de5-e4d137f3d8cc",
+      "employee_id": "f441d89f-3338-4fb2-9c30-1f9075ac3c24",
+      "week_start_date": "2025-01-29",
+      "accomplishments": "Seed data accomplishment 5",
+      "milestones": [],
+      "bottlenecks": "Waiting for approval",
+      "spillovers": "",
+      "catch_up_plan": "",
+      "version": 1
+    }
+  ],
+  "progress_log_history": [
+    {
+      "id": "30bf24d6-e6d0-49b5-b5a1-111a7f13e2ba",
+      "log_id": "5abed8fd-d49c-4981-89a5-56c53f0ec8c5",
+      "previous_content": {
+        "id": "5abed8fd-d49c-4981-89a5-56c53f0ec8c5",
+        "employee_id": "f441d89f-3338-4fb2-9c30-1f9075ac3c24",
+        "week_start_date": "2025-01-08",
+        "accomplishments": "Seed data accomplishment 2",
+        "milestones": [],
+        "bottlenecks": "",
+        "spillovers": "",
+        "catch_up_plan": "",
+        "version": 1
+      },
+      "changed_at": "2026-01-27T03:29:02.824Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": "9a7501f5-3340-4113-be31-47d48e04492e",
+      "name": "SHA",
+      "description": "asdf",
+      "status": "Not Started",
+      "owner_id": "f441d89f-3338-4fb2-9c30-1f9075ac3c24",
+      "created_at": "2026-01-27T05:10:59.899Z"
+    },
+    {
+      "id": "fb58c1b1-632d-4fa6-816b-1112a1dfc0f2",
+      "name": "SGC",
+      "description": "SGC",
+      "status": "On Track",
+      "activity_categories": [],
+      "owner_id": "f441d89f-3338-4fb2-9c30-1f9075ac3c24",
+      "created_at": "2026-01-27T06:55:42.746Z"
+    },
+    {
+      "id": "408fb953-ac0a-44f6-a90c-d07aa721768a",
+      "name": "STRIDE Dashboard",
+      "description": "",
+      "status": "On Track",
+      "activity_categories": [],
+      "owner_id": "f441d89f-3338-4fb2-9c30-1f9075ac3c24",
+      "created_at": "2026-01-27T07:09:47.647Z"
+    }
+  ],
+  "project_updates": [
+    {
+      "id": "1db75745-caf8-4e16-8e77-f055a9fdef05",
+      "project_id": "9a7501f5-3340-4113-be31-47d48e04492e",
+      "accomplishments": "Issuance of JMC",
+      "bottlenecks": "Comms",
+      "spillovers": "",
+      "catch_up_plan": "",
+      "milestones": [],
+      "update_date": "2026-01-27T05:12:07.754Z"
+    },
+    {
+      "id": "0568c194-d462-495a-88f2-550d70a372b2",
+      "project_id": "9a7501f5-3340-4113-be31-47d48e04492e",
+      "accomplishments": "Issuance of DO",
+      "bottlenecks": "Commsasdfasdf",
+      "spillovers": "",
+      "catch_up_plan": "",
+      "milestones": [],
+      "update_date": "2026-01-27T05:15:49.748Z"
+    },
+    {
+      "id": "5aef9d5f-d584-4176-a5b5-77ecb98e23bd",
+      "project_id": "9a7501f5-3340-4113-be31-47d48e04492e",
+      "milestones": [
+        {
+          "name": "Provision of TA on Stakeholders",
+          "description": "We provided TA on stakeholderes",
+          "date": "2026-01-27",
+          "physical_target": 100,
+          "physical_actual": "50",
+          "financial_target": "100000",
+          "financial_actual": "120000"
+        }
+      ],
+      "accomplishments": [
+        {
+          "title": "Issuance of the DO",
+          "description": "Issuance of DO on Career Progression",
+          "date": "2026-01-27"
+        }
+      ],
+      "spillovers": [
+        {
+          "title": "Provision of Capacity Building Workshops",
+          "description": "due to heavy rains",
+          "initial_date": "2025-06-26",
+          "new_date": "2026-02-18"
+        }
+      ],
+      "catch_up_plan": [
+        {
+          "title": "CapBuild",
+          "description": "asdfasd",
+          "date": "2026-01-27"
+        }
+      ],
+      "bottlenecks": "Communications",
+      "update_date": "2026-01-27T05:23:39.543Z"
+    },
+    {
+      "id": "d848a510-a193-4f96-a686-50397f79f8f2",
+      "project_id": "9a7501f5-3340-4113-be31-47d48e04492e",
+      "milestones": [],
+      "accomplishments": [
+        {
+          "title": "Conduct of Capacity Building Workshop",
+          "description": "Held in Makati",
+          "date": "2026-01-12",
+          "remarks": "None",
+          "mov": "Activity Report"
+        }
+      ],
+      "spillovers": [],
+      "catch_up_plan": [],
+      "bottlenecks": "",
+      "update_date": "2026-01-27T07:19:24.045Z"
+    },
+    {
+      "id": "6375f47e-f801-4595-a566-2f7bce427aa4",
+      "project_id": "fb58c1b1-632d-4fa6-816b-1112a1dfc0f2",
+      "milestones": [],
+      "accomplishments": [
+        {
+          "title": "Capacity Building Workshop",
+          "description": "Held in Region II",
+          "date": "2026-01-13",
+          "remarks": "",
+          "mov": "Activity Report"
+        }
+      ],
+      "spillovers": [],
+      "catch_up_plan": [],
+      "bottlenecks": "",
+      "update_date": "2026-01-30T04:38:43.581Z"
+    }
+  ]
+}
