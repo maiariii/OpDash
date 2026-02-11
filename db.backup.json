@@ -1,0 +1,271 @@
+{
+  "divisions": [
+    {
+      "id": "d1",
+      "name": "School Effectiveness Division"
+    },
+    {
+      "id": "d2",
+      "name": "Employee Welfare Division"
+    },
+    {
+      "id": "d3",
+      "name": "Organization Effectiveness Division"
+    },
+    {
+      "id": "d4",
+      "name": "Personnel Division"
+    },
+    {
+      "id": "1877c072-c1cb-4498-8f1c-6e1bb33ef641",
+      "name": "Human Resource and Organizational Development Division"
+    }
+  ],
+  "users": [
+    {
+      "id": "2a12e1aa-591f-4899-bc60-7a7c4bf8409f",
+      "first_name": "Sebastian",
+      "middle_name": "Omapas",
+      "last_name": "Cheng",
+      "division_id": "d1",
+      "position": "Project Development Officer II",
+      "hourly_rate": 50
+    },
+    {
+      "id": "29138d67-fc98-4391-8280-455dba7df131",
+      "first_name": "Clea",
+      "middle_name": "",
+      "last_name": "Sacriz",
+      "division_id": "d1",
+      "position": "Technical Assistant I",
+      "hourly_rate": 50
+    },
+    {
+      "id": "17d20476-1e6f-45cc-8b6c-6a9f39ed0a80",
+      "first_name": "Klein",
+      "middle_name": "",
+      "last_name": "Catapang",
+      "division_id": "d1",
+      "position": "Technical Assistant I",
+      "hourly_rate": 50
+    },
+    {
+      "id": "00372044-aef1-4531-b744-62b52f392116",
+      "first_name": "Marian",
+      "middle_name": "",
+      "last_name": "Efondo",
+      "division_id": "d1",
+      "position": "Project Development Officer IV",
+      "hourly_rate": 50
+    }
+  ],
+  "projects": [
+    {
+      "id": "p1",
+      "name": "Enterprise SaaS Rewrite",
+      "description": "A complete rewrite of the legacy system to a modern SaaS architecture.",
+      "division": "IT Division",
+      "lead_personnel": "Alice Manager",
+      "supervising_officer": "Dave Director",
+      "assisting_personnel": "Bob Developer, Charlie Designer",
+      "status": "In Progress",
+      "created_at": "2026-02-01T10:00:00Z"
+    },
+    {
+      "id": "a178b80d-9d44-42b0-bcf1-a36e4faec393",
+      "name": "STRIDE",
+      "description": "Strategic Tracking and Reporting for Integrated Development.",
+      "division": "School Effectiveness Division",
+      "lead_personnel": "Sebastian Omapas Cheng",
+      "supervising_officer": "Marian Efondo",
+      "assisting_personnel": "Clea Sacriz, Klein Catapang, Sebastian Omapas Cheng",
+      "status": "Planning",
+      "created_at": "2026-02-02T13:26:13.304Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "project_id": "p1",
+      "path": "t1",
+      "title": "Phase 1: Planning",
+      "objective": "Define scope and requirements",
+      "status": "Done",
+      "priority": "High",
+      "assignee_id": "u1",
+      "estimated_hours": 40,
+      "start_date": "2026-02-01",
+      "due_date": "2026-02-14"
+    },
+    {
+      "id": "t2",
+      "project_id": "p1",
+      "path": "t1.t2",
+      "title": "Requirement Analysis",
+      "objective": "Analyze user needs",
+      "status": "Done",
+      "priority": "High",
+      "assignee_id": "u1",
+      "estimated_hours": 20,
+      "start_date": "2026-02-01",
+      "due_date": "2026-02-07"
+    },
+    {
+      "id": "t3",
+      "project_id": "p1",
+      "path": "t3",
+      "title": "Phase 2: Development",
+      "objective": "Execute core development",
+      "status": "In Progress",
+      "priority": "Medium",
+      "assignee_id": "u2",
+      "estimated_hours": 200,
+      "start_date": "2026-02-15",
+      "due_date": "2026-04-30"
+    },
+    {
+      "id": "t4",
+      "project_id": "p1",
+      "path": "t3.t4",
+      "title": "Database Schema",
+      "objective": "Design DB structure",
+      "status": "Done",
+      "priority": "High",
+      "assignee_id": "u2",
+      "estimated_hours": 10,
+      "start_date": "2026-02-15",
+      "due_date": "2026-02-20"
+    },
+    {
+      "id": "t5",
+      "project_id": "p1",
+      "path": "t3.t5",
+      "title": "API Implementation",
+      "objective": "Build REST endpoints",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee_id": "u2",
+      "estimated_hours": 40,
+      "start_date": "2026-02-21",
+      "due_date": "2026-03-10"
+    },
+    {
+      "id": "t6",
+      "project_id": "p1",
+      "path": "t3.t6",
+      "title": "Frontend Dashboard",
+      "objective": "Create React UI",
+      "status": "Todo",
+      "priority": "Medium",
+      "assignee_id": "u3",
+      "estimated_hours": 60,
+      "start_date": "2026-03-11",
+      "due_date": "2026-04-15"
+    },
+    {
+      "id": "1438c5b8_47a2_40b1_874f_ec5e0d98ed84",
+      "project_id": "a178b80d-9d44-42b0-bcf1-a36e4faec393",
+      "path": "1438c5b8_47a2_40b1_874f_ec5e0d98ed84",
+      "title": "Orientation (Cluster 1)",
+      "status": "Todo",
+      "priority": "Medium",
+      "estimated_hours": 0,
+      "due_date": "2026-02-25",
+      "version": 31,
+      "assignee_id": "2a12e1aa-591f-4899-bc60-7a7c4bf8409f",
+      "objective": "Provide Online Orientation",
+      "start_date": "2026-02-01",
+      "cost": 123456,
+      "budget": 1000000,
+      "expenses": [
+        {
+          "id": "1770277994027",
+          "description": "Catering",
+          "date": "2026-02-05",
+          "amount": 10000
+        }
+      ],
+      "subtasks": [
+        {
+          "id": "1770280995883",
+          "title": "Organize materials",
+          "assignee_id": "17d20476-1e6f-45cc-8b6c-6a9f39ed0a80",
+          "status": "Done",
+          "due_date": ""
+        },
+        {
+          "id": "1770282043516",
+          "title": "Create slides",
+          "assignee_id": "29138d67-fc98-4391-8280-455dba7df131",
+          "status": "In Progress",
+          "due_date": "2026-02-06"
+        },
+        {
+          "id": "1770282344177",
+          "title": "Present",
+          "assignee_id": "17d20476-1e6f-45cc-8b6c-6a9f39ed0a80",
+          "status": "Done",
+          "due_date": "2026-02-13"
+        }
+      ]
+    },
+    {
+      "id": "1213d7be_c0bd_41cc_9dff_f1baf15e40a9",
+      "project_id": "a178b80d-9d44-42b0-bcf1-a36e4faec393",
+      "path": "1213d7be_c0bd_41cc_9dff_f1baf15e40a9",
+      "title": "adsfasd",
+      "objective": "asdfasdf",
+      "status": "In Progress",
+      "priority": "Medium",
+      "assignee_id": "29138d67-fc98-4391-8280-455dba7df131",
+      "estimated_hours": 0,
+      "start_date": "2026-02-03",
+      "due_date": "",
+      "cost": 0,
+      "budget": 0,
+      "expenses": [],
+      "subtasks": [
+        {
+          "id": "1770343928294",
+          "title": "Manage",
+          "assignee_id": "29138d67-fc98-4391-8280-455dba7df131",
+          "status": "Todo",
+          "due_date": "2026-02-05"
+        },
+        {
+          "id": "1770344259071",
+          "title": "New Task",
+          "assignee_id": "17d20476-1e6f-45cc-8b6c-6a9f39ed0a80",
+          "status": "Todo",
+          "due_date": "2026-02-05"
+        }
+      ],
+      "version": 6
+    }
+  ],
+  "time_logs": [
+    {
+      "id": "l1",
+      "task_id": "t2",
+      "user_id": "u1",
+      "hours_logged": 20,
+      "logged_at": "2026-02-07T17:00:00Z"
+    },
+    {
+      "id": "l2",
+      "task_id": "t4",
+      "user_id": "u2",
+      "hours_logged": 12,
+      "logged_at": "2026-02-20T17:00:00Z"
+    },
+    {
+      "id": "l3",
+      "task_id": "t5",
+      "user_id": "u2",
+      "hours_logged": 25,
+      "logged_at": "2026-02-28T17:00:00Z"
+    }
+  ],
+  "progress_logs": [],
+  "project_updates": []
+}
