@@ -83,21 +83,29 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Project Name</label>
+                        <div className="flex justify-between">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Project Name</label>
+                            <span className="text-xs text-slate-400">{formData.name.length}/50</span>
+                        </div>
                         <input
                             type="text"
                             required
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            maxLength={50}
                             value={formData.name}
                             onChange={e => setFormData({ ...formData, name: e.target.value })}
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                        <div className="flex justify-between">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <span className="text-xs text-slate-400">{formData.description.length}/100</span>
+                        </div>
                         <textarea
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                             rows="3"
+                            maxLength={100}
                             placeholder="Brief project summary..."
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}

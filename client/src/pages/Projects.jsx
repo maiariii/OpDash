@@ -78,7 +78,7 @@ const Projects = () => {
                             {project.name}
                         </h3>
                         <p className="text-sm text-slate-500 mb-4">
-                            Budget: ${Number(project.total_budget).toLocaleString()}
+                            Budget: ₱{Number(project.total_budget).toLocaleString()}
                         </p>
 
                         <div className="flex items-center text-blue-600 text-sm font-medium gap-1">

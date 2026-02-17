@@ -4,7 +4,7 @@
     "description": "Root config for Vercel deployment",
     "scripts": {
         "start": "node api/index.js",
-        "dev": "nodemon api/index.js",
+        "dev": "nodemon --ignore db.json --ignore db.backup.json --ignore api/debug_log.txt api/index.js",
         "dev:full": "concurrently \"npm run dev\" \"npm run dev --prefix client\"",
         "install-client": "cd client && npm install",
         "build-client": "cd client && npm run build"

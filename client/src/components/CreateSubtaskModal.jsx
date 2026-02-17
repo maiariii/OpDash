@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Calendar } from 'lucide-react';
-import { updateTask } from '../api';
+import { createSubtask } from '../api';
 
 const CreateSubtaskModal = ({ activities = [], members = [], onClose, onCreate }) => {
     const [loading, setLoading] = useState(false);
@@ -26,27 +26,20 @@ const CreateSubtaskModal = ({ activities = [], members = [], onClose, onCreate }
             const parent = activities.find(a => a.id === formData.parentId);
             if (!parent) throw new Error("Parent activity not found");
 
-            // 2. Create new subtask object
-            const newSubtask = {
-                id: Date.now().toString(),
+            // 2. Create via API (Backend generates ID)
+            await createSubtask(formData.parentId, {
                 title: formData.title,
                 description: formData.description,
                 assignee_id: formData.assignee_id,
                 due_date: formData.due_date,
-                status: 'Todo' // Default
-            };
-
-            // 3. Append to existing subtasks
-            const updatedSubtasks = [...(parent.subtasks || []), newSubtask];
-
-            // 4. Update API
-            await updateTask(parent.id, { subtasks: updatedSubtasks });
+                status: 'Todo'
+            });
 
             onCreate && onCreate();
             onClose();
         } catch (err) {
-            console.error(err);
-            alert("Failed to create task");
+            console.error("CreateSubtask Error:", err);
+            alert(`Failed to create task: ${err.message || err.toString()}`);
         } finally {
             setLoading(false);
         }
@@ -82,11 +75,15 @@ const CreateSubtaskModal = ({ activities = [], members = [], onClose, onCreate }
 
                     {/* Task Title */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Task Title <span className="text-red-500">*</span></label>
+                        <div className="flex justify-between">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Task Title <span className="text-red-500">*</span></label>
+                            <span className="text-xs text-slate-400">{formData.title.length}/50</span>
+                        </div>
                         <input
                             type="text"
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="e.g. Draft Report"
+                            maxLength={50}
                             value={formData.title}
                             onChange={e => setFormData({ ...formData, title: e.target.value })}
                             required
@@ -95,11 +92,15 @@ const CreateSubtaskModal = ({ activities = [], members = [], onClose, onCreate }
 
                     {/* Description */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                        <div className="flex justify-between">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <span className="text-xs text-slate-400">{formData.description.length}/100</span>
+                        </div>
                         <textarea
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                             placeholder="Details about this task..."
                             rows="3"
+                            maxLength={100}
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
                         />

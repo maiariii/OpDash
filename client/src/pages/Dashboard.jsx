@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getEmployees, getProjects, getProjectTasks, getProjectFinancials } from '../api';
-import { ArrowRight, Folder } from 'lucide-react';
+import { getEmployees, getProjects, getProjectTasks, getProjectFinancials, getDivisions } from '../api';
 import DashboardCharts from '../components/DashboardCharts';
 
 const Dashboard = () => {
@@ -16,15 +14,22 @@ const Dashboard = () => {
         totalBudget: 0,
         totalSpent: 0
     });
-    const [projects, setProjects] = useState([]);
+
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [fetchedProjects, fetchedEmployees] = await Promise.all([
+                const [fetchedProjects, fetchedEmployees, fetchedDivisions] = await Promise.all([
                     getProjects(),
-                    getEmployees()
+                    getEmployees(),
+                    getDivisions()
                 ]);
+
+                // Map Division Names to Employees
+                const employeesWithDivision = fetchedEmployees.map(emp => ({
+                    ...emp,
+                    division_name: fetchedDivisions.find(d => d.id === emp.division_id)?.name || 'Unassigned'
+                }));
 
                 // Fetch details for all projects in parallel
                 const projectDetails = await Promise.all(
@@ -37,6 +42,19 @@ const Dashboard = () => {
                     })
                 );
 
+                const allTasks = [];
+                projectDetails.forEach(p => {
+                    if (p.tasks) {
+                        p.tasks.forEach(t => {
+                            allTasks.push({
+                                ...t,
+                                project_name: p.name,
+                                division_name: p.division // Ensure division context is available if needed
+                            });
+                        });
+                    }
+                });
+
                 // Aggregate Metrics
                 let totalActivities = 0;
                 let pendingActivities = 0;
@@ -48,38 +66,55 @@ const Dashboard = () => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                projectDetails.forEach(p => {
-                    // Task Metrics
-                    (p.tasks || []).forEach(t => {
-                        totalActivities++;
-                        if (t.status === 'Done') {
-                            accomplishedActivities++;
-                        } else {
-                            pendingActivities++;
-                            // Check for delay (past due and not done)
-                            if (t.due_date && new Date(t.due_date) < today) {
-                                delayedActivities++;
-                            }
-                        }
-                    });
+                const pendingTasks = [];
+                const accomplishedTasks = [];
+                const delayedTasks = [];
 
+                allTasks.forEach(t => {
+                    totalActivities++;
+                    if (t.status === 'Done') {
+                        accomplishedActivities++;
+                        accomplishedTasks.push(t);
+                    } else {
+                        pendingActivities++;
+                        pendingTasks.push(t);
+                        // Check for delay (past due and not done)
+                        if (t.due_date && new Date(t.due_date) < today) {
+                            delayedActivities++;
+                            delayedTasks.push(t);
+                        }
+                    }
+                });
+
+                projectDetails.forEach(p => {
                     // Financial Metrics
-                    totalBudget += Number(p.financials?.totalBudget || 0);
-                    totalSpent += Number(p.financials?.totalExpenses || 0);
+                    totalBudget += Number(p.financials?.total_budget || 0);
+                    totalSpent += Number(p.financials?.actual_cost || 0);
                 });
 
                 setStats({
                     totalProjects: fetchedProjects.length,
-                    totalEmployees: fetchedEmployees.length,
+                    totalEmployees: employeesWithDivision.length,
                     totalActivities,
                     pendingActivities,
                     accomplishedActivities,
                     delayedActivities,
                     totalBudget,
-                    totalSpent
+                    totalSpent,
+                    // Detailed Arrays
+                    allProjects: projectDetails.map(p => ({
+                        ...p,
+                        total_budget: p.financials?.total_budget || 0,
+                        actual_cost: p.financials?.actual_cost || 0
+                    })),
+                    allEmployees: employeesWithDivision,
+                    allTasks,
+                    pendingTasks,
+                    accomplishedTasks,
+                    delayedTasks
                 });
 
-                setProjects(fetchedProjects);
+
             } catch (error) {
                 console.error("Error loading dashboard data:", error);
             } finally {
@@ -101,38 +136,7 @@ const Dashboard = () => {
             {/* Metrics & Visuals */}
             <DashboardCharts metrics={stats} />
 
-            {/* Recent Projects List */}
-            <div>
-                <h3 className="text-xl font-bold text-slate-800 mb-4">Active Projects</h3>
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    {projects.length === 0 ? (
-                        <div className="p-8 text-center text-slate-500">
-                            No projects found.
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-slate-100">
-                            {projects.map(project => (
-                                <Link
-                                    key={project.id}
-                                    to={`/projects/${project.id}`}
-                                    className="block p-4 hover:bg-slate-50 transition-colors flex items-center justify-between group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
-                                            <Folder size={20} />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-semibold text-slate-900">{project.name}</h4>
-                                            <p className="text-sm text-slate-500">Status: {project.status}</p>
-                                        </div>
-                                    </div>
-                                    <ArrowRight size={20} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
+
         </div>
     );
 };

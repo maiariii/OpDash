@@ -101,14 +101,14 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-slate-800 font-mono text-xs">
-                                    {task.budget ? `$${Number(task.budget).toLocaleString()}` : '-'}
+                                    {task.budget ? `₱${Number(task.budget).toLocaleString()}` : '-'}
                                 </td>
                                 <td className="px-6 py-4 text-slate-800 font-mono text-xs">
                                     {(() => {
                                         const expenses = task.expenses || [];
                                         const total = expenses.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
                                         const displayCost = total > 0 ? total : (task.cost || 0);
-                                        return displayCost ? `$${Number(displayCost).toLocaleString()}` : '-';
+                                        return displayCost ? `₱${Number(displayCost).toLocaleString()}` : '-';
                                     })()}
                                 </td>
 

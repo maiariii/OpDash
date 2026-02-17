@@ -61,7 +61,8 @@ const CreateTaskModal = ({ projectId, task, members = [], onClose, onCreated }) 
     const statusOptions = [
         { label: 'Pending', value: 'Todo' },
         { label: 'In Progress', value: 'In Progress' },
-        { label: 'Accomplished', value: 'Done' }
+        { label: 'Accomplished', value: 'Done' },
+        { label: 'Deferred', value: 'Deferred' }
     ];
 
     const handleAddExpense = () => {
@@ -234,7 +235,7 @@ const CreateTaskModal = ({ projectId, task, members = [], onClose, onCreated }) 
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Actual Expenses</label>
                                 <div className="flex gap-2">
                                     <div className="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-700 font-mono">
-                                        ${(formData.expenses || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toLocaleString()}
+                                        ₱{(formData.expenses || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toLocaleString()}
                                     </div>
                                     <button
                                         type="button"
@@ -369,7 +370,7 @@ const CreateTaskModal = ({ projectId, task, members = [], onClose, onCreated }) 
                                                 <span className="text-slate-700 font-medium">{exp.description}</span>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <span className="font-mono text-slate-800">${Number(exp.amount).toLocaleString()}</span>
+                                                <span className="font-mono text-slate-800">₱{Number(exp.amount).toLocaleString()}</span>
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -387,7 +388,7 @@ const CreateTaskModal = ({ projectId, task, members = [], onClose, onCreated }) 
                                 <div className="bg-slate-50 px-3 py-2 border-t border-slate-200 flex justify-between font-bold text-sm text-slate-800 flex-shrink-0">
                                     <span>Total</span>
                                     <span>
-                                        ${(formData.expenses || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toLocaleString()}
+                                        ₱{(formData.expenses || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toLocaleString()}
                                     </span>
                                 </div>
                             </div>
@@ -422,21 +423,31 @@ const CreateTaskModal = ({ projectId, task, members = [], onClose, onCreated }) 
                             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
                                 <p className="text-xs font-bold text-slate-500 uppercase">Add New Task</p>
                                 <div className="space-y-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Task Title"
-                                        className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm outline-none"
-                                        value={newSubtask.title}
-                                        onChange={e => setNewSubtask({ ...newSubtask, title: e.target.value })}
-                                        onKeyDown={e => e.key === 'Enter' && handleAddSubtask()}
-                                    />
-                                    <textarea
-                                        placeholder="Description (optional)"
-                                        className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm outline-none resize-none"
-                                        rows="2"
-                                        value={newSubtask.description}
-                                        onChange={e => setNewSubtask({ ...newSubtask, description: e.target.value })}
-                                    />
+                                    <div className="flex justify-between">
+                                        <input
+                                            type="text"
+                                            placeholder="Task Title"
+                                            className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm outline-none"
+                                            maxLength={50}
+                                            value={newSubtask.title}
+                                            onChange={e => setNewSubtask({ ...newSubtask, title: e.target.value })}
+                                            onKeyDown={e => e.key === 'Enter' && handleAddSubtask()}
+                                        />
+                                        <span className="text-[10px] text-slate-400 ml-2 pt-2">{(newSubtask.title || '').length}/50</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <textarea
+                                            placeholder="Description (optional)"
+                                            className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm outline-none resize-none"
+                                            rows="2"
+                                            maxLength={100}
+                                            value={newSubtask.description}
+                                            onChange={e => setNewSubtask({ ...newSubtask, description: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <span className="text-[10px] text-slate-400">{(newSubtask.description || '').length}/100</span>
+                                    </div>
                                     <div className="flex gap-2">
                                         <input
                                             type="date"

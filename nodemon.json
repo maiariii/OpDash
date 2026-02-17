@@ -1,0 +1,14 @@
+{
+    "verbose": true,
+    "ignore": [
+        "db.json",
+        "api/db.json",
+        "db.backup.json",
+        "api/db.backup.json",
+        "debug_log.txt",
+        "api/debug_log.txt",
+        ".git/*",
+        "package-lock.json"
+    ],
+    "keywords": []
+}

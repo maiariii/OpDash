@@ -23,7 +23,14 @@ export const getProjectTasks = (projectId) => api.get(`/projects/${projectId}/ta
 export const getProjectFinancials = (projectId) => api.get(`/projects/${projectId}/financials`).then(res => res.data);
 
 export const createTask = (data) => api.post('/tasks', data).then(res => res.data);
+export const createSubtask = (activityId, data) => api.post(`/activities/${activityId}/tasks`, data).then(res => res.data);
 export const updateTask = (taskId, data) => api.put(`/tasks/${taskId}`, data).then(res => res.data);
 export const predictRisk = (data) => api.post('/ai/predict-risk', data).then(res => res.data);
+
+// Indicators
+export const getProjectIndicators = (projectId) => api.get(`/projects/${projectId}/indicators`).then(res => res.data);
+export const createIndicator = (data) => api.post('/indicators', data).then(res => res.data);
+export const createCatchUp = (data) => api.post('/catchups', data).then(res => res.data);
+export const getProjectCatchUps = (projectId) => api.get(`/projects/${projectId}/catchups`).then(res => res.data);
 
 export default api;

@@ -1,0 +1,685 @@
+[2026-02-17T04:40:16.493Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:40:24.250Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:40:57.284Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:41:04.334Z] [AzureDB] Attempting to log activity: "Test Activity via API" (ID: c8472360_1fa5_4eda_892c_dbf9d240ff03)
+[2026-02-17T04:41:05.018Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:41:06.541Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:41:45.818Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:42:11.133Z] [AzureDB] Attempting to log activity: "Test Activity via API" (ID: a49c6fed_8e8b_48fe_a305_9fd1f8d588d6)
+[2026-02-17T04:42:11.512Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:42:13.173Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:42:48.348Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:43:01.801Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:43:59.168Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:44:34.434Z] [AzureDB] Attempting to log activity: "asdfasdf" (ID: 397413d3_a87a_420e_85ee_2b72b8504519)
+[2026-02-17T04:44:36.060Z] [AzureDB] Activity "asdfasdf" successfully synced to OpDash DB.
+[2026-02-17T04:54:17.955Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:58:46.738Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T04:58:53.931Z] [AzureDB] Attempting to log activity: "Test Activity 1" (ID: HRODI-A001)
+[2026-02-17T04:58:53.938Z] [AzureDB] Attempting to log activity: "Test Activity 2" (ID: HRODI-A002)
+[2026-02-17T04:58:54.895Z] [AzureDB] Activity "Test Activity 2" successfully synced to OpDash DB.
+[2026-02-17T04:58:55.071Z] [AzureDB] Activity "Test Activity 1" successfully synced to OpDash DB.
+[2026-02-17T05:08:39.065Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:09:23.274Z] [AzureDB] Attempting to log activity: "Consultation Workshop" (ID: HRODI-A001)
+[2026-02-17T05:09:24.252Z] [AzureDB] Activity "Consultation Workshop" successfully synced to OpDash DB.
+[2026-02-17T05:11:43.061Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:19:38.966Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:20:30.565Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:21:04.870Z] [AzureDB] Attempting to log activity: "asdfasdf" (ID: HRODI-A002)
+[2026-02-17T05:21:05.075Z] [AzureDB] Activity "asdfasdf" successfully synced to OpDash DB.
+[2026-02-17T05:22:56.497Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:22:57.635Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:23:00.312Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:23:00.981Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:23:01.280Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:26:23.119Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:26:54.546Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:27:00.722Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:27:02.880Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:27:19.042Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:27:21.080Z] [AzureDB] Attempting to log activity: "Task Test Activity" (ID: HRODI-A003)
+[2026-02-17T05:27:21.807Z] [AzureDB] Error logging task to Azure DB: duplicate key value violates unique constraint "pg_type_typname_nsp_index"
+[2026-02-17T05:27:21.808Z] [AzureDB] CRITICAL ERROR logging activity: duplicate key value violates unique constraint "pg_type_typname_nsp_index"
+[2026-02-17T05:27:21.808Z] [AzureDB] Payload was: {
+  "id": "HRODI-A003",
+  "project_id": "HRODI-P003",
+  "path": "HRODI-A003",
+  "title": "Task Test Activity",
+  "objective": "",
+  "status": "Todo",
+  "priority": "Medium",
+  "estimated_hours": 0,
+  "cost": 0,
+  "budget": 0,
+  "expenses": [],
+  "subtasks": [],
+  "version": 1
+}
+[2026-02-17T05:27:21.849Z] [AzureDB] Task "Subtask 2" (HRODI-T002) synced to OpDash DB.
+[2026-02-17T05:27:46.262Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:33:25.637Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:33:42.388Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:35:13.012Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:35:13.542Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:42:11.453Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:42:12.630Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:42:13.928Z] [AzureDB] Error logging task to Azure DB: column "description" of relation "task_list" does not exist
+[2026-02-17T05:43:24.992Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:45:08.818Z] [AzureDB] Error logging task to Azure DB: column "description" of relation "task_list" does not exist
+[2026-02-17T05:47:01.462Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:56:18.201Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:56:25.342Z] [AzureDB] Attempting to log activity: "Valid Activity" (ID: HRODI-A003)
+[2026-02-17T05:56:26.787Z] [AzureDB] Activity "Valid Activity" successfully synced to OpDash DB.
+[2026-02-17T05:58:51.530Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:59:40.485Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T05:59:40.669Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:00:29.630Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:03:40.136Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:04:07.171Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:04:09.321Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:04:33.289Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:04:44.243Z] [AzureDB] Attempting to log activity: "Valid Activity" (ID: HRODI-A004)
+[2026-02-17T06:04:44.253Z] [AzureDB] Attempting to log activity: "Valid Activity For PUT" (ID: HRODI-A005)
+[2026-02-17T06:04:44.257Z] [AzureDB] Attempting to log activity: "Valid Activity For Subtask PUT" (ID: HRODI-A006)
+[2026-02-17T06:04:45.638Z] [AzureDB] Activity "Valid Activity For Subtask PUT" successfully synced to OpDash DB.
+[2026-02-17T06:04:45.639Z] [AzureDB] Activity "Valid Activity" successfully synced to OpDash DB.
+[2026-02-17T06:04:45.640Z] [AzureDB] Activity "Valid Activity For PUT" successfully synced to OpDash DB.
+[2026-02-17T06:11:36.671Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:12:05.780Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:13:07.251Z] [AzureDB] Task "Gawin ito" (HRODI-T003) synced to OpDash DB.
+[2026-02-17T06:14:25.590Z] [AzureDB] Attempting to log activity: "Workshop" (ID: HRODI-A007)
+[2026-02-17T06:14:26.698Z] [AzureDB] Activity "Workshop" successfully synced to OpDash DB.
+[2026-02-17T06:14:42.177Z] [AzureDB] Task "Present findings" (HRODI-T004) synced to OpDash DB.
+[2026-02-17T06:17:15.838Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:18:08.102Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:18:09.919Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:18:18.308Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:18:21.669Z] [AzureDB] Employee "TestUser_1771309100649 SyncCheck" synced to OpDash DB.
+[2026-02-17T06:20:31.445Z] [AzureDB] Employee "Ina Marie Claire Mallari" synced to OpDash DB.
+[2026-02-17T06:23:22.055Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:23:39.536Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:23:41.439Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:24:05.199Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:24:05.719Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:24:07.201Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:24:07.388Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:24:16.743Z] [AzureDB] Employee "Control NumberCheck" synced to OpDash DB.
+[2026-02-17T06:24:45.962Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:24:48.600Z] [AzureDB] Employee "Control NumberCheck" synced to OpDash DB.
+[2026-02-17T06:26:00.681Z] [AzureDB] Employee "Noverose  Dadole" synced to OpDash DB.
+[2026-02-17T06:29:06.831Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:29:07.080Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:29:10.826Z] [AzureDB] Attempting to log activity: "Activity 1-1" (ID: HRODI-A008)
+[2026-02-17T06:29:10.843Z] [AzureDB] Attempting to log activity: "Activity 1-2" (ID: HRODI-A009)
+[2026-02-17T06:29:10.853Z] [AzureDB] Attempting to log activity: "Activity 1-3" (ID: HRODI-A010)
+[2026-02-17T06:29:10.867Z] [AzureDB] Attempting to log activity: "Activity 1-4" (ID: HRODI-A011)
+[2026-02-17T06:29:10.883Z] [AzureDB] Attempting to log activity: "Activity 1-5" (ID: HRODI-A012)
+[2026-02-17T06:29:10.896Z] [AzureDB] Attempting to log activity: "Activity 2-1" (ID: HRODI-A013)
+[2026-02-17T06:29:10.907Z] [AzureDB] Attempting to log activity: "Activity 2-2" (ID: HRODI-A014)
+[2026-02-17T06:29:10.917Z] [AzureDB] Attempting to log activity: "Activity 2-3" (ID: HRODI-A015)
+[2026-02-17T06:29:10.932Z] [AzureDB] Attempting to log activity: "Activity 2-4" (ID: HRODI-A016)
+[2026-02-17T06:29:10.950Z] [AzureDB] Attempting to log activity: "Activity 2-5" (ID: HRODI-A017)
+[2026-02-17T06:29:10.961Z] [AzureDB] Attempting to log activity: "Activity 3-1" (ID: HRODI-A018)
+[2026-02-17T06:29:10.977Z] [AzureDB] Attempting to log activity: "Activity 3-2" (ID: HRODI-A019)
+[2026-02-17T06:29:10.987Z] [AzureDB] Attempting to log activity: "Activity 3-3" (ID: HRODI-A020)
+[2026-02-17T06:29:10.996Z] [AzureDB] Attempting to log activity: "Activity 3-4" (ID: HRODI-A021)
+[2026-02-17T06:29:11.009Z] [AzureDB] Attempting to log activity: "Activity 3-5" (ID: HRODI-A022)
+[2026-02-17T06:29:11.024Z] [AzureDB] Attempting to log activity: "Activity 4-1" (ID: HRODI-A023)
+[2026-02-17T06:29:11.043Z] [AzureDB] Attempting to log activity: "Activity 4-2" (ID: HRODI-A024)
+[2026-02-17T06:29:11.060Z] [AzureDB] Attempting to log activity: "Activity 4-3" (ID: HRODI-A025)
+[2026-02-17T06:29:11.076Z] [AzureDB] Attempting to log activity: "Activity 4-4" (ID: HRODI-A026)
+[2026-02-17T06:29:11.098Z] [AzureDB] Attempting to log activity: "Activity 4-5" (ID: HRODI-A027)
+[2026-02-17T06:29:11.114Z] [AzureDB] Attempting to log activity: "Activity 5-1" (ID: HRODI-A028)
+[2026-02-17T06:29:11.128Z] [AzureDB] Attempting to log activity: "Activity 5-2" (ID: HRODI-A029)
+[2026-02-17T06:29:11.145Z] [AzureDB] Attempting to log activity: "Activity 5-3" (ID: HRODI-A030)
+[2026-02-17T06:29:11.160Z] [AzureDB] Attempting to log activity: "Activity 5-4" (ID: HRODI-A031)
+[2026-02-17T06:29:11.185Z] [AzureDB] Attempting to log activity: "Activity 5-5" (ID: HRODI-A032)
+[2026-02-17T06:29:11.263Z] [AzureDB] Employee "Employee User1" synced to OpDash DB.
+[2026-02-17T06:29:11.266Z] [AzureDB] Employee "Employee User2" synced to OpDash DB.
+[2026-02-17T06:29:11.312Z] [AzureDB] Activity "Activity 1-1" successfully synced to OpDash DB.
+[2026-02-17T06:29:11.314Z] [AzureDB] Employee "Employee User3" synced to OpDash DB.
+[2026-02-17T06:29:11.376Z] [AzureDB] Task "Task 1-1-3" (HRODI-T007) synced to OpDash DB.
+[2026-02-17T06:29:11.381Z] [AzureDB] Task "Task 1-1-4" (HRODI-T008) synced to OpDash DB.
+[2026-02-17T06:29:11.385Z] [AzureDB] Task "Task 1-1-5" (HRODI-T009) synced to OpDash DB.
+[2026-02-17T06:29:11.394Z] [AzureDB] Employee "Employee User4" synced to OpDash DB.
+[2026-02-17T06:29:11.396Z] [AzureDB] Activity "Activity 1-2" successfully synced to OpDash DB.
+[2026-02-17T06:29:11.437Z] [AzureDB] Task "Task 1-2-1" (HRODI-T010) synced to OpDash DB.
+[2026-02-17T06:29:11.464Z] [AzureDB] Employee "Employee User5" synced to OpDash DB.
+[2026-02-17T06:29:11.475Z] [AzureDB] Activity "Activity 1-3" successfully synced to OpDash DB.
+[2026-02-17T06:29:11.497Z] [AzureDB] Task "Task 1-2-2" (HRODI-T011) synced to OpDash DB.
+[2026-02-17T06:29:11.498Z] [AzureDB] Task "Task 1-2-3" (HRODI-T012) synced to OpDash DB.
+[2026-02-17T06:29:11.503Z] [AzureDB] Task "Task 1-2-4" (HRODI-T013) synced to OpDash DB.
+[2026-02-17T06:29:11.506Z] [AzureDB] Task "Task 1-2-5" (HRODI-T014) synced to OpDash DB.
+[2026-02-17T06:29:11.552Z] [AzureDB] Task "Task 1-3-1" (HRODI-T015) synced to OpDash DB.
+[2026-02-17T06:29:11.577Z] [AzureDB] Task "Task 1-3-2" (HRODI-T016) synced to OpDash DB.
+[2026-02-17T06:29:11.588Z] [AzureDB] Activity "Activity 1-4" successfully synced to OpDash DB.
+[2026-02-17T06:29:11.593Z] [AzureDB] Task "Task 1-3-3" (HRODI-T017) synced to OpDash DB.
+[2026-02-17T06:29:11.615Z] [AzureDB] Task "Task 1-3-5" (HRODI-T019) synced to OpDash DB.
+[2026-02-17T06:29:11.618Z] [AzureDB] Task "Task 1-3-4" (HRODI-T018) synced to OpDash DB.
+[2026-02-17T06:29:11.619Z] [AzureDB] Task "Task 1-4-1" (HRODI-T020) synced to OpDash DB.
+[2026-02-17T06:29:11.623Z] [AzureDB] Task "Task 1-1-2" (HRODI-T006) synced to OpDash DB.
+[2026-02-17T06:29:11.634Z] [AzureDB] Task "Task 1-1-1" (HRODI-T005) synced to OpDash DB.
+[2026-02-17T06:29:11.642Z] [AzureDB] Task "Task 1-4-2" (HRODI-T021) synced to OpDash DB.
+[2026-02-17T06:29:11.666Z] [AzureDB] Task "Task 1-4-3" (HRODI-T022) synced to OpDash DB.
+[2026-02-17T06:29:11.667Z] [AzureDB] Activity "Activity 1-5" successfully synced to OpDash DB.
+[2026-02-17T06:29:11.690Z] [AzureDB] Task "Task 1-4-4" (HRODI-T023) synced to OpDash DB.
+[2026-02-17T06:29:11.725Z] [AzureDB] Task "Task 1-4-5" (HRODI-T024) synced to OpDash DB.
+[2026-02-17T06:29:11.730Z] [AzureDB] Task "Task 1-5-1" (HRODI-T025) synced to OpDash DB.
+[2026-02-17T06:29:11.731Z] [AzureDB] Task "Task 1-5-3" (HRODI-T027) synced to OpDash DB.
+[2026-02-17T06:29:11.733Z] [AzureDB] Task "Task 1-5-2" (HRODI-T026) synced to OpDash DB.
+[2026-02-17T06:29:11.736Z] [AzureDB] Task "Task 1-5-4" (HRODI-T028) synced to OpDash DB.
+[2026-02-17T06:29:11.742Z] [AzureDB] Activity "Activity 2-1" successfully synced to OpDash DB.
+[2026-02-17T06:29:11.757Z] [AzureDB] Task "Task 1-5-5" (HRODI-T029) synced to OpDash DB.
+[2026-02-17T06:29:11.780Z] [AzureDB] Task "Task 2-1-1" (HRODI-T030) synced to OpDash DB.
+[2026-02-17T06:29:11.804Z] [AzureDB] Task "Task 2-1-2" (HRODI-T031) synced to OpDash DB.
+[2026-02-17T06:29:11.806Z] [AzureDB] Activity "Activity 2-2" successfully synced to OpDash DB.
+[2026-02-17T06:29:11.880Z] [AzureDB] Task "Task 2-1-5" (HRODI-T034) synced to OpDash DB.
+[2026-02-17T06:29:11.880Z] [AzureDB] Task "Task 2-1-4" (HRODI-T033) synced to OpDash DB.
+[2026-02-17T06:29:11.881Z] [AzureDB] Task "Task 2-1-3" (HRODI-T032) synced to OpDash DB.
+[2026-02-17T06:29:11.890Z] [AzureDB] Task "Task 2-2-2" (HRODI-T036) synced to OpDash DB.
+[2026-02-17T06:29:11.891Z] [AzureDB] Task "Task 2-2-1" (HRODI-T035) synced to OpDash DB.
+[2026-02-17T06:29:11.892Z] [AzureDB] Task "Task 2-2-3" (HRODI-T037) synced to OpDash DB.
+[2026-02-17T06:29:11.897Z] [AzureDB] Task "Task 2-2-4" (HRODI-T038) synced to OpDash DB.
+[2026-02-17T06:29:11.941Z] [AzureDB] Activity "Activity 2-3" successfully synced to OpDash DB.
+[2026-02-17T06:29:11.953Z] [AzureDB] Task "Task 2-2-5" (HRODI-T039) synced to OpDash DB.
+[2026-02-17T06:29:11.970Z] [AzureDB] Task "Task 2-3-1" (HRODI-T040) synced to OpDash DB.
+[2026-02-17T06:29:11.991Z] [AzureDB] Activity "Activity 2-4" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.004Z] [AzureDB] Task "Task 2-3-3" (HRODI-T042) synced to OpDash DB.
+[2026-02-17T06:29:12.005Z] [AzureDB] Task "Task 2-3-2" (HRODI-T041) synced to OpDash DB.
+[2026-02-17T06:29:12.007Z] [AzureDB] Task "Task 2-3-4" (HRODI-T043) synced to OpDash DB.
+[2026-02-17T06:29:12.022Z] [AzureDB] Task "Task 2-4-1" (HRODI-T045) synced to OpDash DB.
+[2026-02-17T06:29:12.023Z] [AzureDB] Task "Task 2-3-5" (HRODI-T044) synced to OpDash DB.
+[2026-02-17T06:29:12.023Z] [AzureDB] Task "Task 2-4-2" (HRODI-T046) synced to OpDash DB.
+[2026-02-17T06:29:12.055Z] [AzureDB] Task "Task 2-4-3" (HRODI-T047) synced to OpDash DB.
+[2026-02-17T06:29:12.067Z] [AzureDB] Task "Task 2-4-4" (HRODI-T048) synced to OpDash DB.
+[2026-02-17T06:29:12.069Z] [AzureDB] Activity "Activity 2-5" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.089Z] [AzureDB] Task "Task 2-4-5" (HRODI-T049) synced to OpDash DB.
+[2026-02-17T06:29:12.122Z] [AzureDB] Task "Task 2-5-2" (HRODI-T051) synced to OpDash DB.
+[2026-02-17T06:29:12.123Z] [AzureDB] Task "Task 2-5-1" (HRODI-T050) synced to OpDash DB.
+[2026-02-17T06:29:12.128Z] [AzureDB] Task "Task 2-5-3" (HRODI-T052) synced to OpDash DB.
+[2026-02-17T06:29:12.132Z] [AzureDB] Activity "Activity 3-1" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.136Z] [AzureDB] Task "Task 2-5-5" (HRODI-T054) synced to OpDash DB.
+[2026-02-17T06:29:12.137Z] [AzureDB] Task "Task 2-5-4" (HRODI-T053) synced to OpDash DB.
+[2026-02-17T06:29:12.185Z] [AzureDB] Task "Task 3-1-1" (HRODI-T055) synced to OpDash DB.
+[2026-02-17T06:29:12.186Z] [AzureDB] Task "Task 3-1-2" (HRODI-T056) synced to OpDash DB.
+[2026-02-17T06:29:12.201Z] [AzureDB] Activity "Activity 3-2" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.205Z] [AzureDB] Task "Task 3-1-3" (HRODI-T057) synced to OpDash DB.
+[2026-02-17T06:29:12.219Z] [AzureDB] Task "Task 3-1-4" (HRODI-T058) synced to OpDash DB.
+[2026-02-17T06:29:12.242Z] [AzureDB] Task "Task 3-1-5" (HRODI-T059) synced to OpDash DB.
+[2026-02-17T06:29:12.245Z] [AzureDB] Task "Task 3-2-2" (HRODI-T061) synced to OpDash DB.
+[2026-02-17T06:29:12.247Z] [AzureDB] Task "Task 3-2-1" (HRODI-T060) synced to OpDash DB.
+[2026-02-17T06:29:12.249Z] [AzureDB] Task "Task 3-2-3" (HRODI-T062) synced to OpDash DB.
+[2026-02-17T06:29:12.250Z] [AzureDB] Task "Task 3-2-4" (HRODI-T063) synced to OpDash DB.
+[2026-02-17T06:29:12.266Z] [AzureDB] Activity "Activity 3-3" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.306Z] [AzureDB] Task "Task 3-2-5" (HRODI-T064) synced to OpDash DB.
+[2026-02-17T06:29:12.315Z] [AzureDB] Task "Task 3-3-1" (HRODI-T065) synced to OpDash DB.
+[2026-02-17T06:29:12.317Z] [AzureDB] Task "Task 3-3-2" (HRODI-T066) synced to OpDash DB.
+[2026-02-17T06:29:12.322Z] [AzureDB] Activity "Activity 3-4" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.337Z] [AzureDB] Task "Task 3-3-3" (HRODI-T067) synced to OpDash DB.
+[2026-02-17T06:29:12.356Z] [AzureDB] Task "Task 3-3-4" (HRODI-T068) synced to OpDash DB.
+[2026-02-17T06:29:12.357Z] [AzureDB] Task "Task 3-3-5" (HRODI-T069) synced to OpDash DB.
+[2026-02-17T06:29:12.365Z] [AzureDB] Task "Task 3-4-2" (HRODI-T071) synced to OpDash DB.
+[2026-02-17T06:29:12.366Z] [AzureDB] Task "Task 3-4-1" (HRODI-T070) synced to OpDash DB.
+[2026-02-17T06:29:12.386Z] [AzureDB] Task "Task 3-4-3" (HRODI-T072) synced to OpDash DB.
+[2026-02-17T06:29:12.391Z] [AzureDB] Activity "Activity 3-5" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.421Z] [AzureDB] Task "Task 3-4-4" (HRODI-T073) synced to OpDash DB.
+[2026-02-17T06:29:12.428Z] [AzureDB] Task "Task 3-4-5" (HRODI-T074) synced to OpDash DB.
+[2026-02-17T06:29:12.441Z] [AzureDB] Task "Task 3-5-1" (HRODI-T075) synced to OpDash DB.
+[2026-02-17T06:29:12.455Z] [AzureDB] Task "Task 3-5-2" (HRODI-T076) synced to OpDash DB.
+[2026-02-17T06:29:12.462Z] [AzureDB] Activity "Activity 4-1" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.469Z] [AzureDB] Task "Task 3-5-3" (HRODI-T077) synced to OpDash DB.
+[2026-02-17T06:29:12.471Z] [AzureDB] Task "Task 3-5-4" (HRODI-T078) synced to OpDash DB.
+[2026-02-17T06:29:12.478Z] [AzureDB] Task "Task 3-5-5" (HRODI-T079) synced to OpDash DB.
+[2026-02-17T06:29:12.502Z] [AzureDB] Task "Task 4-1-1" (HRODI-T080) synced to OpDash DB.
+[2026-02-17T06:29:12.532Z] [AzureDB] Activity "Activity 4-2" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.533Z] [AzureDB] Task "Task 4-1-2" (HRODI-T081) synced to OpDash DB.
+[2026-02-17T06:29:12.543Z] [AzureDB] Task "Task 4-1-3" (HRODI-T082) synced to OpDash DB.
+[2026-02-17T06:29:12.556Z] [AzureDB] Task "Task 4-1-4" (HRODI-T083) synced to OpDash DB.
+[2026-02-17T06:29:12.556Z] [AzureDB] Task "Task 4-1-5" (HRODI-T084) synced to OpDash DB.
+[2026-02-17T06:29:12.577Z] [AzureDB] Task "Task 4-2-1" (HRODI-T085) synced to OpDash DB.
+[2026-02-17T06:29:12.585Z] [AzureDB] Task "Task 4-2-2" (HRODI-T086) synced to OpDash DB.
+[2026-02-17T06:29:12.586Z] [AzureDB] Task "Task 4-2-3" (HRODI-T087) synced to OpDash DB.
+[2026-02-17T06:29:12.612Z] [AzureDB] Task "Task 4-2-4" (HRODI-T088) synced to OpDash DB.
+[2026-02-17T06:29:12.614Z] [AzureDB] Activity "Activity 4-3" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.615Z] [AzureDB] Task "Task 4-2-5" (HRODI-T089) synced to OpDash DB.
+[2026-02-17T06:29:12.654Z] [AzureDB] Task "Task 4-3-1" (HRODI-T090) synced to OpDash DB.
+[2026-02-17T06:29:12.659Z] [AzureDB] Task "Task 4-3-2" (HRODI-T091) synced to OpDash DB.
+[2026-02-17T06:29:12.660Z] [AzureDB] Activity "Activity 4-4" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.676Z] [AzureDB] Task "Task 4-3-3" (HRODI-T092) synced to OpDash DB.
+[2026-02-17T06:29:12.676Z] [AzureDB] Task "Task 4-3-4" (HRODI-T093) synced to OpDash DB.
+[2026-02-17T06:29:12.697Z] [AzureDB] Task "Task 4-3-5" (HRODI-T094) synced to OpDash DB.
+[2026-02-17T06:29:12.698Z] [AzureDB] Task "Task 4-4-1" (HRODI-T095) synced to OpDash DB.
+[2026-02-17T06:29:12.730Z] [AzureDB] Task "Task 4-4-2" (HRODI-T096) synced to OpDash DB.
+[2026-02-17T06:29:12.730Z] [AzureDB] Task "Task 4-4-4" (HRODI-T098) synced to OpDash DB.
+[2026-02-17T06:29:12.731Z] [AzureDB] Task "Task 4-4-3" (HRODI-T097) synced to OpDash DB.
+[2026-02-17T06:29:12.740Z] [AzureDB] Activity "Activity 4-5" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.778Z] [AzureDB] Task "Task 4-4-5" (HRODI-T099) synced to OpDash DB.
+[2026-02-17T06:29:12.778Z] [AzureDB] Task "Task 4-5-1" (HRODI-T100) synced to OpDash DB.
+[2026-02-17T06:29:12.793Z] [AzureDB] Task "Task 4-5-2" (HRODI-T101) synced to OpDash DB.
+[2026-02-17T06:29:12.795Z] [AzureDB] Task "Task 4-5-3" (HRODI-T102) synced to OpDash DB.
+[2026-02-17T06:29:12.812Z] [AzureDB] Activity "Activity 5-1" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.825Z] [AzureDB] Task "Task 4-5-4" (HRODI-T103) synced to OpDash DB.
+[2026-02-17T06:29:12.826Z] [AzureDB] Task "Task 4-5-5" (HRODI-T104) synced to OpDash DB.
+[2026-02-17T06:29:12.872Z] [AzureDB] Task "Task 5-1-1" (HRODI-T105) synced to OpDash DB.
+[2026-02-17T06:29:12.875Z] [AzureDB] Task "Task 5-1-2" (HRODI-T106) synced to OpDash DB.
+[2026-02-17T06:29:12.882Z] [AzureDB] Activity "Activity 5-2" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.900Z] [AzureDB] Task "Task 5-1-3" (HRODI-T107) synced to OpDash DB.
+[2026-02-17T06:29:12.904Z] [AzureDB] Task "Task 5-1-4" (HRODI-T108) synced to OpDash DB.
+[2026-02-17T06:29:12.918Z] [AzureDB] Task "Task 5-1-5" (HRODI-T109) synced to OpDash DB.
+[2026-02-17T06:29:12.930Z] [AzureDB] Task "Task 5-2-1" (HRODI-T110) synced to OpDash DB.
+[2026-02-17T06:29:12.937Z] [AzureDB] Task "Task 5-2-2" (HRODI-T111) synced to OpDash DB.
+[2026-02-17T06:29:12.940Z] [AzureDB] Task "Task 5-2-4" (HRODI-T113) synced to OpDash DB.
+[2026-02-17T06:29:12.951Z] [AzureDB] Task "Task 5-2-3" (HRODI-T112) synced to OpDash DB.
+[2026-02-17T06:29:12.952Z] [AzureDB] Activity "Activity 5-3" successfully synced to OpDash DB.
+[2026-02-17T06:29:12.993Z] [AzureDB] Task "Task 5-2-5" (HRODI-T114) synced to OpDash DB.
+[2026-02-17T06:29:12.997Z] [AzureDB] Task "Task 5-3-1" (HRODI-T115) synced to OpDash DB.
+[2026-02-17T06:29:13.013Z] [AzureDB] Activity "Activity 5-4" successfully synced to OpDash DB.
+[2026-02-17T06:29:13.016Z] [AzureDB] Task "Task 5-3-2" (HRODI-T116) synced to OpDash DB.
+[2026-02-17T06:29:13.016Z] [AzureDB] Task "Task 5-3-3" (HRODI-T117) synced to OpDash DB.
+[2026-02-17T06:29:13.035Z] [AzureDB] Task "Task 5-3-4" (HRODI-T118) synced to OpDash DB.
+[2026-02-17T06:29:13.042Z] [AzureDB] Task "Task 5-3-5" (HRODI-T119) synced to OpDash DB.
+[2026-02-17T06:29:13.055Z] [AzureDB] Task "Task 5-4-1" (HRODI-T120) synced to OpDash DB.
+[2026-02-17T06:29:13.071Z] [AzureDB] Task "Task 5-4-2" (HRODI-T121) synced to OpDash DB.
+[2026-02-17T06:29:13.073Z] [AzureDB] Task "Task 5-4-3" (HRODI-T122) synced to OpDash DB.
+[2026-02-17T06:29:13.093Z] [AzureDB] Activity "Activity 5-5" successfully synced to OpDash DB.
+[2026-02-17T06:29:13.121Z] [AzureDB] Task "Task 5-4-4" (HRODI-T123) synced to OpDash DB.
+[2026-02-17T06:29:13.122Z] [AzureDB] Task "Task 5-4-5" (HRODI-T124) synced to OpDash DB.
+[2026-02-17T06:29:13.136Z] [AzureDB] Task "Task 5-5-1" (HRODI-T125) synced to OpDash DB.
+[2026-02-17T06:29:13.137Z] [AzureDB] Task "Task 5-5-2" (HRODI-T126) synced to OpDash DB.
+[2026-02-17T06:29:13.154Z] [AzureDB] Task "Task 5-5-3" (HRODI-T127) synced to OpDash DB.
+[2026-02-17T06:29:13.163Z] [AzureDB] Task "Task 5-5-4" (HRODI-T128) synced to OpDash DB.
+[2026-02-17T06:29:13.179Z] [AzureDB] Task "Task 5-5-5" (HRODI-T129) synced to OpDash DB.
+[2026-02-17T06:29:23.665Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:29:23.864Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:48:50.808Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T06:49:12.430Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:16:18.149Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:16:30.271Z] [AzureDB] Indicator "Test Indicator 1771312588563" synced to OpDash DB.
+[2026-02-17T07:17:07.896Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:18:28.550Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:20:07.095Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:26:29.195Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:27:02.786Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:28:42.240Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:28:46.114Z] [AzureDB] Attempting to log activity: "Indicator Test Activity 1771313326095" (ID: HRODI-A033)
+[2026-02-17T07:28:46.128Z] [AzureDB] Attempting to log activity: "Indicator Test Activity 1771313326095" (ID: HRODI-A033)
+[2026-02-17T07:28:47.067Z] [AzureDB] Activity "Indicator Test Activity 1771313326095" successfully synced to OpDash DB.
+[2026-02-17T07:28:47.073Z] [AzureDB] Activity "Indicator Test Activity 1771313326095" successfully synced to OpDash DB.
+[2026-02-17T07:28:56.185Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:34:07.192Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:34:25.676Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:35:46.972Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:37:57.100Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:38:01.230Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:39:06.927Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:39:08.900Z] [AzureDB] Attempting to log activity: "Verify Indicators Refactor" (ID: HRODI-A034)
+[2026-02-17T07:39:10.197Z] [AzureDB] Error logging indicator to Azure DB: column "activity_id" of relation "indicator_list" already exists
+[2026-02-17T07:39:10.217Z] [AzureDB] Activity "Verify Indicators Refactor" successfully synced to OpDash DB.
+[2026-02-17T07:39:10.256Z] [AzureDB] Indicator "Reports Generated" synced to OpDash DB.
+[2026-02-17T07:39:11.340Z] [AzureDB] Attempting to log activity: "Verify Indicators Refactor" (ID: HRODI-A034)
+[2026-02-17T07:39:11.473Z] [AzureDB] Activity "Verify Indicators Refactor" successfully synced to OpDash DB.
+[2026-02-17T07:39:11.476Z] [AzureDB] Indicator "Workshops Conducted" synced to OpDash DB.
+[2026-02-17T07:39:11.478Z] [AzureDB] Indicator "Reports Generated" synced to OpDash DB.
+[2026-02-17T07:39:12.124Z] [AzureDB] Indicator "Participants Trained" synced to OpDash DB.
+[2026-02-17T07:40:01.770Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:40:39.885Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:40:41.856Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:40:56.352Z] [AzureDB] Attempting to log activity: "Verify Indicators Refactor" (ID: HRODI-A035)
+[2026-02-17T07:40:57.065Z] [AzureDB] Indicator "Workshops Conducted" synced to OpDash DB.
+[2026-02-17T07:40:57.070Z] [AzureDB] Indicator "Reports Generated" synced to OpDash DB.
+[2026-02-17T07:40:57.326Z] [AzureDB] Activity "Verify Indicators Refactor" successfully synced to OpDash DB.
+[2026-02-17T07:40:59.090Z] [AzureDB] Attempting to log activity: "Verify Indicators Refactor" (ID: HRODI-A035)
+[2026-02-17T07:40:59.213Z] [AzureDB] Indicator "Reports Generated" synced to OpDash DB.
+[2026-02-17T07:40:59.215Z] [AzureDB] Activity "Verify Indicators Refactor" successfully synced to OpDash DB.
+[2026-02-17T07:40:59.219Z] [AzureDB] Indicator "Workshops Conducted" synced to OpDash DB.
+[2026-02-17T07:40:59.857Z] [AzureDB] Indicator "Participants Trained" synced to OpDash DB.
+[2026-02-17T07:41:28.622Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:41:30.643Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:41:32.487Z] [AzureDB] Attempting to log activity: "Verify Indicators Refactor" (ID: HRODI-A036)
+[2026-02-17T07:41:33.135Z] [AzureDB] Activity "Verify Indicators Refactor" successfully synced to OpDash DB.
+[2026-02-17T07:41:33.140Z] [AzureDB] Indicator "Reports Generated" synced to OpDash DB.
+[2026-02-17T07:41:33.147Z] [AzureDB] Indicator "Workshops Conducted" synced to OpDash DB.
+[2026-02-17T07:41:35.508Z] [AzureDB] Attempting to log activity: "Verify Indicators Refactor" (ID: HRODI-A036)
+[2026-02-17T07:41:35.635Z] [AzureDB] Activity "Verify Indicators Refactor" successfully synced to OpDash DB.
+[2026-02-17T07:41:35.636Z] [AzureDB] Indicator "Reports Generated" synced to OpDash DB.
+[2026-02-17T07:41:35.642Z] [AzureDB] Indicator "Workshops Conducted" synced to OpDash DB.
+[2026-02-17T07:41:36.289Z] [AzureDB] Indicator "Participants Trained" synced to OpDash DB.
+[2026-02-17T07:42:28.423Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:42:30.711Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:42:31.180Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:42:33.653Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:42:34.308Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:43:00.645Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:48:05.469Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:50:12.095Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:55:07.658Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:55:57.505Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:56:01.025Z] [AzureDB] Indicator "Test Indicator 1771314960114" synced to OpDash DB.
+[2026-02-17T07:56:38.172Z] [AzureDB] Indicator "Test Indicator 1771314997078" synced to OpDash DB.
+[2026-02-17T07:56:59.475Z] [AzureDB] Indicator "Test Indicator 1771315018063" synced to OpDash DB.
+[2026-02-17T07:57:10.961Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:57:12.881Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:57:15.537Z] [AzureDB] Indicator "Test Indicator 1771315034624" synced to OpDash DB.
+[2026-02-17T07:57:29.795Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T07:58:45.312Z] [AzureDB] Indicator "Data Analyzed " synced to OpDash DB.
+[2026-02-17T07:58:54.127Z] [AzureDB] Indicator "Schools Visited" synced to OpDash DB.
+[2026-02-17T08:02:01.922Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:03:26.920Z] [AzureDB] Indicator "Wala Lang" synced to OpDash DB.
+[2026-02-17T08:06:28.338Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:08:31.094Z] [AzureDB] Indicator "Hehehe" synced to OpDash DB.
+[2026-02-17T08:08:58.255Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:09:21.738Z] [AzureDB] Indicator "Helloasdfasdfas" synced to OpDash DB.
+[2026-02-17T08:10:28.733Z] [AzureDB] Attempting to log activity: "ito lang" (ID: HRODI-A037)
+[2026-02-17T08:10:29.837Z] [AzureDB] Activity "ito lang" successfully synced to OpDash DB.
+[2026-02-17T08:10:43.130Z] [AzureDB] Indicator "Ayun O" synced to OpDash DB.
+[2026-02-17T08:15:32.149Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:16:11.614Z] [AzureDB] Indicator "CC Ref Test 1771316170539" synced to OpDash DB.
+[2026-02-17T08:16:32.897Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:17:27.427Z] [AzureDB] Indicator "Asdfasdfasd" synced to OpDash DB.
+[2026-02-17T08:19:39.085Z] [AzureDB] Indicator "Testtest" synced to OpDash DB.
+[2026-02-17T08:24:01.398Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:24:02.880Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:24:24.192Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:24:26.145Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:24:26.682Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:24:46.664Z] [AzureDB] Employee "Sebastian Cheng" synced to OpDash DB.
+[2026-02-17T08:24:46.787Z] [AzureDB] Employee "Clea Sacriz" synced to OpDash DB.
+[2026-02-17T08:24:46.922Z] [AzureDB] Employee "Klein Catapang" synced to OpDash DB.
+[2026-02-17T08:24:47.046Z] [AzureDB] Employee "Marian Efondo" synced to OpDash DB.
+[2026-02-17T08:24:47.169Z] [AzureDB] Employee "TestUser_1771309100649 SyncCheck" synced to OpDash DB.
+[2026-02-17T08:24:47.291Z] [AzureDB] Employee "TestUser_1771309100649 SyncCheck" synced to OpDash DB.
+[2026-02-17T08:24:47.429Z] [AzureDB] Employee "Ina Marie Claire Mallari" synced to OpDash DB.
+[2026-02-17T08:24:47.552Z] [AzureDB] Employee "Ina Marie Claire Mallari" synced to OpDash DB.
+[2026-02-17T08:24:47.678Z] [AzureDB] Employee "Control NumberCheck" synced to OpDash DB.
+[2026-02-17T08:24:47.815Z] [AzureDB] Employee "Control NumberCheck" synced to OpDash DB.
+[2026-02-17T08:24:47.940Z] [AzureDB] Employee "Control NumberCheck" synced to OpDash DB.
+[2026-02-17T08:24:48.063Z] [AzureDB] Employee "Noverose  Dadole" synced to OpDash DB.
+[2026-02-17T08:24:48.186Z] [AzureDB] Employee "Employee User1" synced to OpDash DB.
+[2026-02-17T08:24:48.307Z] [AzureDB] Employee "Employee User2" synced to OpDash DB.
+[2026-02-17T08:24:48.429Z] [AzureDB] Employee "Employee User3" synced to OpDash DB.
+[2026-02-17T08:24:48.554Z] [AzureDB] Employee "Employee User4" synced to OpDash DB.
+[2026-02-17T08:24:48.679Z] [AzureDB] Employee "Employee User5" synced to OpDash DB.
+[2026-02-17T08:24:48.680Z] [AzureDB] Attempting to log activity: "Data Analysis" (ID: HRODI-A038)
+[2026-02-17T08:24:48.771Z] [AzureDB] Activity "Data Analysis" successfully synced to OpDash DB.
+[2026-02-17T08:24:48.897Z] [AzureDB] Task "Compute" (HRODI-T130) synced to OpDash DB.
+[2026-02-17T08:24:49.019Z] [AzureDB] Task "Draft Report" (HRODI-T131) synced to OpDash DB.
+[2026-02-17T08:24:49.139Z] [AzureDB] Task "Test Subtask via API" (HRODI-T001) synced to OpDash DB.
+[2026-02-17T08:24:49.261Z] [AzureDB] Task "Gawin ito" (HRODI-T003) synced to OpDash DB.
+[2026-02-17T08:24:49.262Z] [AzureDB] Attempting to log activity: "Pilot Test (Phase I) in Region II" (ID: HRODI-A039)
+[2026-02-17T08:24:49.343Z] [AzureDB] Activity "Pilot Test (Phase I) in Region II" successfully synced to OpDash DB.
+[2026-02-17T08:24:49.344Z] [AzureDB] Attempting to log activity: "sdfgsdfg" (ID: HRODI-A040)
+[2026-02-17T08:24:49.432Z] [AzureDB] Activity "sdfgsdfg" successfully synced to OpDash DB.
+[2026-02-17T08:24:49.433Z] [AzureDB] Attempting to log activity: "sdfgsdfg" (ID: HRODI-A041)
+[2026-02-17T08:24:49.523Z] [AzureDB] Activity "sdfgsdfg" successfully synced to OpDash DB.
+[2026-02-17T08:24:49.523Z] [AzureDB] Attempting to log activity: "Test Activity via API" (ID: HRODI-A042)
+[2026-02-17T08:24:49.613Z] [AzureDB] Activity "Test Activity via API" successfully synced to OpDash DB.
+[2026-02-17T08:24:49.614Z] [AzureDB] Attempting to log activity: "Test Activity via API" (ID: HRODI-A043)
+[2026-02-17T08:24:49.702Z] [AzureDB] Activity "Test Activity via API" successfully synced to OpDash DB.
+[2026-02-17T08:24:49.703Z] [AzureDB] Attempting to log activity: "Test Activity via API" (ID: HRODI-A044)
+[2026-02-17T08:24:49.802Z] [AzureDB] Activity "Test Activity via API" successfully synced to OpDash DB.
+[2026-02-17T08:24:49.803Z] [AzureDB] Attempting to log activity: "asdfasdf" (ID: HRODI-A045)
+[2026-02-17T08:24:49.885Z] [AzureDB] Activity "asdfasdf" successfully synced to OpDash DB.
+[2026-02-17T08:24:49.885Z] [AzureDB] Attempting to log activity: "Consultation Workshop" (ID: HRODI-A001)
+[2026-02-17T08:24:49.966Z] [AzureDB] Activity "Consultation Workshop" successfully synced to OpDash DB.
+[2026-02-17T08:24:49.967Z] [AzureDB] Attempting to log activity: "asdfasdf" (ID: HRODI-A002)
+[2026-02-17T08:24:50.050Z] [AzureDB] Activity "asdfasdf" successfully synced to OpDash DB.
+[2026-02-17T08:24:50.177Z] [AzureDB] Task "Gawin to" (HRODI-T002) synced to OpDash DB.
+[2026-02-17T08:24:50.178Z] [AzureDB] Attempting to log activity: "Valid Activity" (ID: HRODI-A003)
+[2026-02-17T08:24:50.256Z] [AzureDB] Activity "Valid Activity" successfully synced to OpDash DB.
+[2026-02-17T08:24:50.257Z] [AzureDB] Attempting to log activity: "Valid Activity" (ID: HRODI-A004)
+[2026-02-17T08:24:50.340Z] [AzureDB] Activity "Valid Activity" successfully synced to OpDash DB.
+[2026-02-17T08:24:50.341Z] [AzureDB] Attempting to log activity: "Valid Activity For PUT" (ID: HRODI-A005)
+[2026-02-17T08:24:50.436Z] [AzureDB] Activity "Valid Activity For PUT" successfully synced to OpDash DB.
+[2026-02-17T08:24:50.436Z] [AzureDB] Attempting to log activity: "Valid Activity For Subtask PUT" (ID: HRODI-A006)
+[2026-02-17T08:24:50.529Z] [AzureDB] Activity "Valid Activity For Subtask PUT" successfully synced to OpDash DB.
+[2026-02-17T08:24:50.530Z] [AzureDB] Attempting to log activity: "Workshop" (ID: HRODI-A007)
+[2026-02-17T08:24:50.619Z] [AzureDB] Activity "Workshop" successfully synced to OpDash DB.
+[2026-02-17T08:24:50.754Z] [AzureDB] Task "Present findings" (HRODI-T004) synced to OpDash DB.
+[2026-02-17T08:24:50.754Z] [AzureDB] Attempting to log activity: "Activity 1-1" (ID: HRODI-A008)
+[2026-02-17T08:24:50.837Z] [AzureDB] Activity "Activity 1-1" successfully synced to OpDash DB.
+[2026-02-17T08:24:50.957Z] [AzureDB] Task "Task 1-1-1" (HRODI-T005) synced to OpDash DB.
+[2026-02-17T08:24:51.080Z] [AzureDB] Task "Task 1-1-2" (HRODI-T006) synced to OpDash DB.
+[2026-02-17T08:24:51.203Z] [AzureDB] Task "Task 1-1-3" (HRODI-T007) synced to OpDash DB.
+[2026-02-17T08:24:51.326Z] [AzureDB] Task "Task 1-1-4" (HRODI-T008) synced to OpDash DB.
+[2026-02-17T08:24:51.450Z] [AzureDB] Task "Task 1-1-5" (HRODI-T009) synced to OpDash DB.
+[2026-02-17T08:24:51.451Z] [AzureDB] Attempting to log activity: "Activity 1-2" (ID: HRODI-A009)
+[2026-02-17T08:24:51.531Z] [AzureDB] Activity "Activity 1-2" successfully synced to OpDash DB.
+[2026-02-17T08:24:51.651Z] [AzureDB] Task "Task 1-2-1" (HRODI-T010) synced to OpDash DB.
+[2026-02-17T08:24:51.769Z] [AzureDB] Task "Task 1-2-2" (HRODI-T011) synced to OpDash DB.
+[2026-02-17T08:24:51.888Z] [AzureDB] Task "Task 1-2-3" (HRODI-T012) synced to OpDash DB.
+[2026-02-17T08:24:52.009Z] [AzureDB] Task "Task 1-2-4" (HRODI-T013) synced to OpDash DB.
+[2026-02-17T08:24:52.132Z] [AzureDB] Task "Task 1-2-5" (HRODI-T014) synced to OpDash DB.
+[2026-02-17T08:24:52.133Z] [AzureDB] Attempting to log activity: "Activity 1-3" (ID: HRODI-A010)
+[2026-02-17T08:24:52.214Z] [AzureDB] Activity "Activity 1-3" successfully synced to OpDash DB.
+[2026-02-17T08:24:52.335Z] [AzureDB] Task "Task 1-3-1" (HRODI-T015) synced to OpDash DB.
+[2026-02-17T08:24:52.454Z] [AzureDB] Task "Task 1-3-2" (HRODI-T016) synced to OpDash DB.
+[2026-02-17T08:24:52.577Z] [AzureDB] Task "Task 1-3-3" (HRODI-T017) synced to OpDash DB.
+[2026-02-17T08:24:52.701Z] [AzureDB] Task "Task 1-3-4" (HRODI-T018) synced to OpDash DB.
+[2026-02-17T08:24:52.826Z] [AzureDB] Task "Task 1-3-5" (HRODI-T019) synced to OpDash DB.
+[2026-02-17T08:24:52.826Z] [AzureDB] Attempting to log activity: "Activity 1-4" (ID: HRODI-A011)
+[2026-02-17T08:24:52.909Z] [AzureDB] Activity "Activity 1-4" successfully synced to OpDash DB.
+[2026-02-17T08:24:53.047Z] [AzureDB] Task "Task 1-4-1" (HRODI-T020) synced to OpDash DB.
+[2026-02-17T08:24:53.253Z] [AzureDB] Task "Task 1-4-2" (HRODI-T021) synced to OpDash DB.
+[2026-02-17T08:24:53.376Z] [AzureDB] Task "Task 1-4-3" (HRODI-T022) synced to OpDash DB.
+[2026-02-17T08:24:53.523Z] [AzureDB] Task "Task 1-4-4" (HRODI-T023) synced to OpDash DB.
+[2026-02-17T08:24:53.688Z] [AzureDB] Task "Task 1-4-5" (HRODI-T024) synced to OpDash DB.
+[2026-02-17T08:24:53.689Z] [AzureDB] Attempting to log activity: "Activity 1-5" (ID: HRODI-A012)
+[2026-02-17T08:24:53.784Z] [AzureDB] Activity "Activity 1-5" successfully synced to OpDash DB.
+[2026-02-17T08:24:53.965Z] [AzureDB] Task "Task 1-5-1" (HRODI-T025) synced to OpDash DB.
+[2026-02-17T08:24:54.088Z] [AzureDB] Task "Task 1-5-2" (HRODI-T026) synced to OpDash DB.
+[2026-02-17T08:24:54.208Z] [AzureDB] Task "Task 1-5-3" (HRODI-T027) synced to OpDash DB.
+[2026-02-17T08:24:54.336Z] [AzureDB] Task "Task 1-5-4" (HRODI-T028) synced to OpDash DB.
+[2026-02-17T08:24:54.455Z] [AzureDB] Task "Task 1-5-5" (HRODI-T029) synced to OpDash DB.
+[2026-02-17T08:24:54.456Z] [AzureDB] Attempting to log activity: "Activity 2-1" (ID: HRODI-A013)
+[2026-02-17T08:24:54.536Z] [AzureDB] Activity "Activity 2-1" successfully synced to OpDash DB.
+[2026-02-17T08:24:54.661Z] [AzureDB] Task "Task 2-1-1" (HRODI-T030) synced to OpDash DB.
+[2026-02-17T08:24:54.789Z] [AzureDB] Task "Task 2-1-2" (HRODI-T031) synced to OpDash DB.
+[2026-02-17T08:24:54.909Z] [AzureDB] Task "Task 2-1-3" (HRODI-T032) synced to OpDash DB.
+[2026-02-17T08:24:55.031Z] [AzureDB] Task "Task 2-1-4" (HRODI-T033) synced to OpDash DB.
+[2026-02-17T08:24:55.163Z] [AzureDB] Task "Task 2-1-5" (HRODI-T034) synced to OpDash DB.
+[2026-02-17T08:24:55.163Z] [AzureDB] Attempting to log activity: "Activity 2-2" (ID: HRODI-A014)
+[2026-02-17T08:24:55.243Z] [AzureDB] Activity "Activity 2-2" successfully synced to OpDash DB.
+[2026-02-17T08:24:55.368Z] [AzureDB] Task "Task 2-2-1" (HRODI-T035) synced to OpDash DB.
+[2026-02-17T08:24:55.505Z] [AzureDB] Task "Task 2-2-2" (HRODI-T036) synced to OpDash DB.
+[2026-02-17T08:24:55.635Z] [AzureDB] Task "Task 2-2-3" (HRODI-T037) synced to OpDash DB.
+[2026-02-17T08:24:55.760Z] [AzureDB] Task "Task 2-2-4" (HRODI-T038) synced to OpDash DB.
+[2026-02-17T08:24:55.879Z] [AzureDB] Task "Task 2-2-5" (HRODI-T039) synced to OpDash DB.
+[2026-02-17T08:24:55.880Z] [AzureDB] Attempting to log activity: "Activity 2-3" (ID: HRODI-A015)
+[2026-02-17T08:24:55.961Z] [AzureDB] Activity "Activity 2-3" successfully synced to OpDash DB.
+[2026-02-17T08:24:56.083Z] [AzureDB] Task "Task 2-3-1" (HRODI-T040) synced to OpDash DB.
+[2026-02-17T08:24:56.207Z] [AzureDB] Task "Task 2-3-2" (HRODI-T041) synced to OpDash DB.
+[2026-02-17T08:24:56.332Z] [AzureDB] Task "Task 2-3-3" (HRODI-T042) synced to OpDash DB.
+[2026-02-17T08:24:56.454Z] [AzureDB] Task "Task 2-3-4" (HRODI-T043) synced to OpDash DB.
+[2026-02-17T08:24:56.575Z] [AzureDB] Task "Task 2-3-5" (HRODI-T044) synced to OpDash DB.
+[2026-02-17T08:24:56.575Z] [AzureDB] Attempting to log activity: "Activity 2-4" (ID: HRODI-A016)
+[2026-02-17T08:24:56.655Z] [AzureDB] Activity "Activity 2-4" successfully synced to OpDash DB.
+[2026-02-17T08:24:56.781Z] [AzureDB] Task "Task 2-4-1" (HRODI-T045) synced to OpDash DB.
+[2026-02-17T08:24:56.947Z] [AzureDB] Task "Task 2-4-2" (HRODI-T046) synced to OpDash DB.
+[2026-02-17T08:24:57.080Z] [AzureDB] Task "Task 2-4-3" (HRODI-T047) synced to OpDash DB.
+[2026-02-17T08:24:57.208Z] [AzureDB] Task "Task 2-4-4" (HRODI-T048) synced to OpDash DB.
+[2026-02-17T08:24:57.375Z] [AzureDB] Task "Task 2-4-5" (HRODI-T049) synced to OpDash DB.
+[2026-02-17T08:24:57.375Z] [AzureDB] Attempting to log activity: "Activity 2-5" (ID: HRODI-A017)
+[2026-02-17T08:24:57.456Z] [AzureDB] Activity "Activity 2-5" successfully synced to OpDash DB.
+[2026-02-17T08:24:57.578Z] [AzureDB] Task "Task 2-5-1" (HRODI-T050) synced to OpDash DB.
+[2026-02-17T08:24:57.709Z] [AzureDB] Task "Task 2-5-2" (HRODI-T051) synced to OpDash DB.
+[2026-02-17T08:24:57.831Z] [AzureDB] Task "Task 2-5-3" (HRODI-T052) synced to OpDash DB.
+[2026-02-17T08:24:57.950Z] [AzureDB] Task "Task 2-5-4" (HRODI-T053) synced to OpDash DB.
+[2026-02-17T08:24:58.078Z] [AzureDB] Task "Task 2-5-5" (HRODI-T054) synced to OpDash DB.
+[2026-02-17T08:24:58.079Z] [AzureDB] Attempting to log activity: "Activity 3-1" (ID: HRODI-A018)
+[2026-02-17T08:24:58.163Z] [AzureDB] Activity "Activity 3-1" successfully synced to OpDash DB.
+[2026-02-17T08:24:58.284Z] [AzureDB] Task "Task 3-1-1" (HRODI-T055) synced to OpDash DB.
+[2026-02-17T08:24:58.414Z] [AzureDB] Task "Task 3-1-2" (HRODI-T056) synced to OpDash DB.
+[2026-02-17T08:24:58.536Z] [AzureDB] Task "Task 3-1-3" (HRODI-T057) synced to OpDash DB.
+[2026-02-17T08:24:58.655Z] [AzureDB] Task "Task 3-1-4" (HRODI-T058) synced to OpDash DB.
+[2026-02-17T08:24:58.777Z] [AzureDB] Task "Task 3-1-5" (HRODI-T059) synced to OpDash DB.
+[2026-02-17T08:24:58.778Z] [AzureDB] Attempting to log activity: "Activity 3-2" (ID: HRODI-A019)
+[2026-02-17T08:24:58.858Z] [AzureDB] Activity "Activity 3-2" successfully synced to OpDash DB.
+[2026-02-17T08:24:58.983Z] [AzureDB] Task "Task 3-2-1" (HRODI-T060) synced to OpDash DB.
+[2026-02-17T08:24:59.105Z] [AzureDB] Task "Task 3-2-2" (HRODI-T061) synced to OpDash DB.
+[2026-02-17T08:24:59.225Z] [AzureDB] Task "Task 3-2-3" (HRODI-T062) synced to OpDash DB.
+[2026-02-17T08:24:59.347Z] [AzureDB] Task "Task 3-2-4" (HRODI-T063) synced to OpDash DB.
+[2026-02-17T08:24:59.466Z] [AzureDB] Task "Task 3-2-5" (HRODI-T064) synced to OpDash DB.
+[2026-02-17T08:24:59.467Z] [AzureDB] Attempting to log activity: "Activity 3-3" (ID: HRODI-A020)
+[2026-02-17T08:24:59.550Z] [AzureDB] Activity "Activity 3-3" successfully synced to OpDash DB.
+[2026-02-17T08:24:59.674Z] [AzureDB] Task "Task 3-3-1" (HRODI-T065) synced to OpDash DB.
+[2026-02-17T08:24:59.793Z] [AzureDB] Task "Task 3-3-2" (HRODI-T066) synced to OpDash DB.
+[2026-02-17T08:24:59.918Z] [AzureDB] Task "Task 3-3-3" (HRODI-T067) synced to OpDash DB.
+[2026-02-17T08:25:00.040Z] [AzureDB] Task "Task 3-3-4" (HRODI-T068) synced to OpDash DB.
+[2026-02-17T08:25:00.161Z] [AzureDB] Task "Task 3-3-5" (HRODI-T069) synced to OpDash DB.
+[2026-02-17T08:25:00.162Z] [AzureDB] Attempting to log activity: "Activity 3-4" (ID: HRODI-A021)
+[2026-02-17T08:25:00.241Z] [AzureDB] Activity "Activity 3-4" successfully synced to OpDash DB.
+[2026-02-17T08:25:00.362Z] [AzureDB] Task "Task 3-4-1" (HRODI-T070) synced to OpDash DB.
+[2026-02-17T08:25:00.482Z] [AzureDB] Task "Task 3-4-2" (HRODI-T071) synced to OpDash DB.
+[2026-02-17T08:25:00.605Z] [AzureDB] Task "Task 3-4-3" (HRODI-T072) synced to OpDash DB.
+[2026-02-17T08:25:00.729Z] [AzureDB] Task "Task 3-4-4" (HRODI-T073) synced to OpDash DB.
+[2026-02-17T08:25:00.863Z] [AzureDB] Task "Task 3-4-5" (HRODI-T074) synced to OpDash DB.
+[2026-02-17T08:25:00.864Z] [AzureDB] Attempting to log activity: "Activity 3-5" (ID: HRODI-A022)
+[2026-02-17T08:25:00.945Z] [AzureDB] Activity "Activity 3-5" successfully synced to OpDash DB.
+[2026-02-17T08:25:01.080Z] [AzureDB] Task "Task 3-5-1" (HRODI-T075) synced to OpDash DB.
+[2026-02-17T08:25:01.202Z] [AzureDB] Task "Task 3-5-2" (HRODI-T076) synced to OpDash DB.
+[2026-02-17T08:25:01.328Z] [AzureDB] Task "Task 3-5-3" (HRODI-T077) synced to OpDash DB.
+[2026-02-17T08:25:01.458Z] [AzureDB] Task "Task 3-5-4" (HRODI-T078) synced to OpDash DB.
+[2026-02-17T08:25:01.584Z] [AzureDB] Task "Task 3-5-5" (HRODI-T079) synced to OpDash DB.
+[2026-02-17T08:25:01.585Z] [AzureDB] Attempting to log activity: "Activity 4-1" (ID: HRODI-A023)
+[2026-02-17T08:25:01.669Z] [AzureDB] Activity "Activity 4-1" successfully synced to OpDash DB.
+[2026-02-17T08:25:01.787Z] [AzureDB] Task "Task 4-1-1" (HRODI-T080) synced to OpDash DB.
+[2026-02-17T08:25:01.925Z] [AzureDB] Task "Task 4-1-2" (HRODI-T081) synced to OpDash DB.
+[2026-02-17T08:25:02.044Z] [AzureDB] Task "Task 4-1-3" (HRODI-T082) synced to OpDash DB.
+[2026-02-17T08:25:02.163Z] [AzureDB] Task "Task 4-1-4" (HRODI-T083) synced to OpDash DB.
+[2026-02-17T08:25:02.291Z] [AzureDB] Task "Task 4-1-5" (HRODI-T084) synced to OpDash DB.
+[2026-02-17T08:25:02.292Z] [AzureDB] Attempting to log activity: "Activity 4-2" (ID: HRODI-A024)
+[2026-02-17T08:25:02.372Z] [AzureDB] Activity "Activity 4-2" successfully synced to OpDash DB.
+[2026-02-17T08:25:02.494Z] [AzureDB] Task "Task 4-2-1" (HRODI-T085) synced to OpDash DB.
+[2026-02-17T08:25:02.617Z] [AzureDB] Task "Task 4-2-2" (HRODI-T086) synced to OpDash DB.
+[2026-02-17T08:25:02.751Z] [AzureDB] Task "Task 4-2-3" (HRODI-T087) synced to OpDash DB.
+[2026-02-17T08:25:02.876Z] [AzureDB] Task "Task 4-2-4" (HRODI-T088) synced to OpDash DB.
+[2026-02-17T08:25:02.995Z] [AzureDB] Task "Task 4-2-5" (HRODI-T089) synced to OpDash DB.
+[2026-02-17T08:25:02.996Z] [AzureDB] Attempting to log activity: "Activity 4-3" (ID: HRODI-A025)
+[2026-02-17T08:25:03.081Z] [AzureDB] Activity "Activity 4-3" successfully synced to OpDash DB.
+[2026-02-17T08:25:03.201Z] [AzureDB] Task "Task 4-3-1" (HRODI-T090) synced to OpDash DB.
+[2026-02-17T08:25:03.299Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:25:03.319Z] [AzureDB] Task "Task 4-3-2" (HRODI-T091) synced to OpDash DB.
+[2026-02-17T08:25:03.437Z] [AzureDB] Task "Task 4-3-3" (HRODI-T092) synced to OpDash DB.
+[2026-02-17T08:25:03.553Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:25:03.554Z] [AzureDB] Task "Task 4-3-4" (HRODI-T093) synced to OpDash DB.
+[2026-02-17T08:25:03.672Z] [AzureDB] Task "Task 4-3-5" (HRODI-T094) synced to OpDash DB.
+[2026-02-17T08:25:03.672Z] [AzureDB] Attempting to log activity: "Activity 4-4" (ID: HRODI-A026)
+[2026-02-17T08:25:03.752Z] [AzureDB] Activity "Activity 4-4" successfully synced to OpDash DB.
+[2026-02-17T08:25:03.884Z] [AzureDB] Task "Task 4-4-1" (HRODI-T095) synced to OpDash DB.
+[2026-02-17T08:25:04.006Z] [AzureDB] Task "Task 4-4-2" (HRODI-T096) synced to OpDash DB.
+[2026-02-17T08:25:04.174Z] [AzureDB] Task "Task 4-4-3" (HRODI-T097) synced to OpDash DB.
+[2026-02-17T08:25:04.298Z] [AzureDB] Task "Task 4-4-4" (HRODI-T098) synced to OpDash DB.
+[2026-02-17T08:25:04.424Z] [AzureDB] Task "Task 4-4-5" (HRODI-T099) synced to OpDash DB.
+[2026-02-17T08:25:04.425Z] [AzureDB] Attempting to log activity: "Activity 4-5" (ID: HRODI-A027)
+[2026-02-17T08:25:04.511Z] [AzureDB] Activity "Activity 4-5" successfully synced to OpDash DB.
+[2026-02-17T08:25:04.645Z] [AzureDB] Task "Task 4-5-1" (HRODI-T100) synced to OpDash DB.
+[2026-02-17T08:25:04.766Z] [AzureDB] Task "Task 4-5-2" (HRODI-T101) synced to OpDash DB.
+[2026-02-17T08:25:04.888Z] [AzureDB] Task "Task 4-5-3" (HRODI-T102) synced to OpDash DB.
+[2026-02-17T08:25:05.008Z] [AzureDB] Task "Task 4-5-4" (HRODI-T103) synced to OpDash DB.
+[2026-02-17T08:25:05.130Z] [AzureDB] Task "Task 4-5-5" (HRODI-T104) synced to OpDash DB.
+[2026-02-17T08:25:05.131Z] [AzureDB] Attempting to log activity: "Activity 5-1" (ID: HRODI-A028)
+[2026-02-17T08:25:05.214Z] [AzureDB] Activity "Activity 5-1" successfully synced to OpDash DB.
+[2026-02-17T08:25:05.339Z] [AzureDB] Task "Task 5-1-1" (HRODI-T105) synced to OpDash DB.
+[2026-02-17T08:25:05.470Z] [AzureDB] Task "Task 5-1-2" (HRODI-T106) synced to OpDash DB.
+[2026-02-17T08:25:05.614Z] [AzureDB] Task "Task 5-1-3" (HRODI-T107) synced to OpDash DB.
+[2026-02-17T08:25:05.735Z] [AzureDB] Task "Task 5-1-4" (HRODI-T108) synced to OpDash DB.
+[2026-02-17T08:25:05.860Z] [AzureDB] Task "Task 5-1-5" (HRODI-T109) synced to OpDash DB.
+[2026-02-17T08:25:05.861Z] [AzureDB] Attempting to log activity: "Activity 5-2" (ID: HRODI-A029)
+[2026-02-17T08:25:05.942Z] [AzureDB] Activity "Activity 5-2" successfully synced to OpDash DB.
+[2026-02-17T08:25:06.062Z] [AzureDB] Task "Task 5-2-1" (HRODI-T110) synced to OpDash DB.
+[2026-02-17T08:25:06.181Z] [AzureDB] Task "Task 5-2-2" (HRODI-T111) synced to OpDash DB.
+[2026-02-17T08:25:06.297Z] [AzureDB] Task "Task 5-2-3" (HRODI-T112) synced to OpDash DB.
+[2026-02-17T08:25:06.419Z] [AzureDB] Task "Task 5-2-4" (HRODI-T113) synced to OpDash DB.
+[2026-02-17T08:25:06.539Z] [AzureDB] Task "Task 5-2-5" (HRODI-T114) synced to OpDash DB.
+[2026-02-17T08:25:06.539Z] [AzureDB] Attempting to log activity: "Activity 5-3" (ID: HRODI-A030)
+[2026-02-17T08:25:06.617Z] [AzureDB] Activity "Activity 5-3" successfully synced to OpDash DB.
+[2026-02-17T08:25:06.738Z] [AzureDB] Task "Task 5-3-1" (HRODI-T115) synced to OpDash DB.
+[2026-02-17T08:25:06.857Z] [AzureDB] Task "Task 5-3-2" (HRODI-T116) synced to OpDash DB.
+[2026-02-17T08:25:06.986Z] [AzureDB] Task "Task 5-3-3" (HRODI-T117) synced to OpDash DB.
+[2026-02-17T08:25:07.108Z] [AzureDB] Task "Task 5-3-4" (HRODI-T118) synced to OpDash DB.
+[2026-02-17T08:25:07.274Z] [AzureDB] Task "Task 5-3-5" (HRODI-T119) synced to OpDash DB.
+[2026-02-17T08:25:07.275Z] [AzureDB] Attempting to log activity: "Activity 5-4" (ID: HRODI-A031)
+[2026-02-17T08:25:07.356Z] [AzureDB] Activity "Activity 5-4" successfully synced to OpDash DB.
+[2026-02-17T08:25:07.475Z] [AzureDB] Task "Task 5-4-1" (HRODI-T120) synced to OpDash DB.
+[2026-02-17T08:25:07.626Z] [AzureDB] Task "Task 5-4-2" (HRODI-T121) synced to OpDash DB.
+[2026-02-17T08:25:07.754Z] [AzureDB] Task "Task 5-4-3" (HRODI-T122) synced to OpDash DB.
+[2026-02-17T08:25:07.905Z] [AzureDB] Task "Task 5-4-4" (HRODI-T123) synced to OpDash DB.
+[2026-02-17T08:25:08.033Z] [AzureDB] Task "Task 5-4-5" (HRODI-T124) synced to OpDash DB.
+[2026-02-17T08:25:08.034Z] [AzureDB] Attempting to log activity: "Activity 5-5" (ID: HRODI-A032)
+[2026-02-17T08:25:08.132Z] [AzureDB] Activity "Activity 5-5" successfully synced to OpDash DB.
+[2026-02-17T08:25:08.269Z] [AzureDB] Task "Task 5-5-1" (HRODI-T125) synced to OpDash DB.
+[2026-02-17T08:25:08.408Z] [AzureDB] Task "Task 5-5-2" (HRODI-T126) synced to OpDash DB.
+[2026-02-17T08:25:08.540Z] [AzureDB] Task "Task 5-5-3" (HRODI-T127) synced to OpDash DB.
+[2026-02-17T08:25:08.661Z] [AzureDB] Task "Task 5-5-4" (HRODI-T128) synced to OpDash DB.
+[2026-02-17T08:25:08.785Z] [AzureDB] Task "Task 5-5-5" (HRODI-T129) synced to OpDash DB.
+[2026-02-17T08:25:08.785Z] [AzureDB] Attempting to log activity: "Indicator Test Activity 1771313326095" (ID: HRODI-A033)
+[2026-02-17T08:25:08.873Z] [AzureDB] Activity "Indicator Test Activity 1771313326095" successfully synced to OpDash DB.
+[2026-02-17T08:25:08.874Z] [AzureDB] Attempting to log activity: "Verify Indicators Refactor" (ID: HRODI-A034)
+[2026-02-17T08:25:08.957Z] [AzureDB] Activity "Verify Indicators Refactor" successfully synced to OpDash DB.
+[2026-02-17T08:25:08.957Z] [AzureDB] Attempting to log activity: "Verify Indicators Refactor" (ID: HRODI-A035)
+[2026-02-17T08:25:09.037Z] [AzureDB] Activity "Verify Indicators Refactor" successfully synced to OpDash DB.
+[2026-02-17T08:25:09.038Z] [AzureDB] Attempting to log activity: "Verify Indicators Refactor" (ID: HRODI-A036)
+[2026-02-17T08:25:09.120Z] [AzureDB] Activity "Verify Indicators Refactor" successfully synced to OpDash DB.
+[2026-02-17T08:25:09.121Z] [AzureDB] Attempting to log activity: "ito lang" (ID: HRODI-A037)
+[2026-02-17T08:25:09.199Z] [AzureDB] Activity "ito lang" successfully synced to OpDash DB.
+[2026-02-17T08:25:09.321Z] [AzureDB] Indicator "Test Indicator 1771312588563" synced to OpDash DB.
+[2026-02-17T08:25:09.445Z] [AzureDB] Indicator "Test Indicator 1771314960114" synced to OpDash DB.
+[2026-02-17T08:25:09.566Z] [AzureDB] Indicator "Test Indicator 1771314997078" synced to OpDash DB.
+[2026-02-17T08:25:09.685Z] [AzureDB] Indicator "Test Indicator 1771315018063" synced to OpDash DB.
+[2026-02-17T08:25:09.805Z] [AzureDB] Indicator "Test Indicator 1771315034624" synced to OpDash DB.
+[2026-02-17T08:25:09.923Z] [AzureDB] Indicator "Data Analyzed " synced to OpDash DB.
+[2026-02-17T08:25:10.046Z] [AzureDB] Indicator "Schools Visited" synced to OpDash DB.
+[2026-02-17T08:25:10.170Z] [AzureDB] Indicator "Wala Lang" synced to OpDash DB.
+[2026-02-17T08:25:10.293Z] [AzureDB] Indicator "Hehehe" synced to OpDash DB.
+[2026-02-17T08:25:10.414Z] [AzureDB] Indicator "Helloasdfasdfas" synced to OpDash DB.
+[2026-02-17T08:25:10.535Z] [AzureDB] Indicator "Ayun O" synced to OpDash DB.
+[2026-02-17T08:25:10.653Z] [AzureDB] Indicator "CC Ref Test 1771316170539" synced to OpDash DB.
+[2026-02-17T08:25:10.770Z] [AzureDB] Indicator "Asdfasdfasd" synced to OpDash DB.
+[2026-02-17T08:25:10.888Z] [AzureDB] Indicator "Testtest" synced to OpDash DB.
+[2026-02-17T08:26:14.116Z] [AzureDB] Indicator "Mlbb" synced to OpDash DB.
+[2026-02-17T08:32:03.029Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:32:07.021Z] [AzureDB] Attempting to log activity: "Deferred Activity Test 1771317126990" (ID: HRODI-A046)
+[2026-02-17T08:32:07.602Z] [AzureDB] Activity "Deferred Activity Test 1771317126990" successfully synced to OpDash DB.
+[2026-02-17T08:32:19.975Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:36:50.307Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:37:21.888Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:37:57.899Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:38:39.740Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:38:39.940Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:38:42.303Z] [AzureDB] Attempting to log activity: "Deferred Base for Catch-up 1771317522292" (ID: HRODI-A047)
+[2026-02-17T08:38:43.135Z] [AzureDB] Activity "Deferred Base for Catch-up 1771317522292" successfully synced to OpDash DB.
+[2026-02-17T08:39:13.753Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:39:15.554Z] [AzureDB] Attempting to log activity: "Deferred Base for Catch-up 1771317555540" (ID: HRODI-A048)
+[2026-02-17T08:39:16.689Z] [AzureDB] Activity "Deferred Base for Catch-up 1771317555540" successfully synced to OpDash DB.
+[2026-02-17T08:39:59.249Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:40:07.522Z] [AzureDB] Attempting to log activity: "Deferred Base for Catch-up 1771317607509" (ID: HRODI-A049)
+[2026-02-17T08:40:08.382Z] [AzureDB] Activity "Deferred Base for Catch-up 1771317607509" successfully synced to OpDash DB.
+[2026-02-17T08:40:08.397Z] [AzureDB] Catch-up Activity "Catch-up Plan 1771317607530" synced to OpDash DB.
+[2026-02-17T08:40:17.137Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:54:26.006Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:54:27.333Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:55:13.605Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:55:57.350Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:56:10.063Z] [AzureDB] Attempting to log activity: "Verif Activity 1771318570047" (ID: HRODI-A050)
+[2026-02-17T08:56:10.902Z] [AzureDB] Catch-up Activity "Verif CatchUp 1771318570070" synced to OpDash DB.
+[2026-02-17T08:56:10.903Z] [AzureDB] Activity "Verif Activity 1771318570047" successfully synced to OpDash DB.
+[2026-02-17T08:56:36.830Z] [AzureDB] Attempting to log activity: "Verif Activity 1771318596825" (ID: HRODI-A051)
+[2026-02-17T08:56:37.696Z] [AzureDB] Catch-up Activity "Verif CatchUp 1771318596833" synced to OpDash DB.
+[2026-02-17T08:56:37.697Z] [AzureDB] Activity "Verif Activity 1771318596825" successfully synced to OpDash DB.
+[2026-02-17T08:57:27.221Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:57:29.208Z] [AzureDB] Attempting to log activity: "Verif Activity 1771318649201" (ID: HRODI-A052)
+[2026-02-17T08:57:30.161Z] [AzureDB] Catch-up Activity "Verif CatchUp 1771318649220" synced to OpDash DB.
+[2026-02-17T08:57:30.223Z] [AzureDB] Activity "Verif Activity 1771318649201" successfully synced to OpDash DB.
+[2026-02-17T08:58:28.807Z] [AzureDB] Attempting to log activity: "Verif Activity 1771318708801" (ID: HRODI-A053)
+[2026-02-17T08:58:29.990Z] [AzureDB] Catch-up Activity "Verif CatchUp 1771318708809" synced to OpDash DB.
+[2026-02-17T08:58:29.991Z] [AzureDB] Activity "Verif Activity 1771318708801" successfully synced to OpDash DB.
+[2026-02-17T08:58:43.109Z] [AzureDB] Attempting to log activity: "Verif Activity 1771318723104" (ID: HRODI-A054)
+[2026-02-17T08:58:44.318Z] [AzureDB] Catch-up Activity "Verif CatchUp 1771318723120" synced to OpDash DB.
+[2026-02-17T08:58:44.319Z] [AzureDB] Activity "Verif Activity 1771318723104" successfully synced to OpDash DB.
+[2026-02-17T08:59:21.349Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T08:59:22.681Z] [AzureDB] Attempting to log activity: "Verif Activity 1771318762654" (ID: HRODI-A055)
+[2026-02-17T08:59:23.546Z] [AzureDB] Catch-up Activity "Verif CatchUp 1771318762691" synced to OpDash DB.
+[2026-02-17T08:59:23.549Z] [AzureDB] Activity "Verif Activity 1771318762654" successfully synced to OpDash DB.
+[2026-02-17T08:59:37.735Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T09:00:07.321Z] SERVER STARTUP: api/index.js loaded
+[2026-02-17T09:01:52.428Z] [AzureDB] Catch-up Activity "Conduct session" synced to OpDash DB.

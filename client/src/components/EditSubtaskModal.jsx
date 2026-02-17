@@ -17,7 +17,8 @@ const EditSubtaskModal = ({ subtask, parentId, parentTask, members = [], onClose
     const statusOptions = [
         { label: 'Pending', value: 'Todo' },
         { label: 'In Progress', value: 'In Progress' },
-        { label: 'Accomplished', value: 'Done' }
+        { label: 'Accomplished', value: 'Done' },
+        { label: 'Deferred', value: 'Deferred' }
     ];
 
     const handleSubmit = async (e) => {
@@ -63,10 +64,14 @@ const EditSubtaskModal = ({ subtask, parentId, parentTask, members = [], onClose
 
                 <form onSubmit={handleSubmit} className="p-4 space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                        <div className="flex justify-between">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                            <span className="text-xs text-slate-400">{formData.title.length}/50</span>
+                        </div>
                         <input
                             type="text"
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                            maxLength={50}
                             value={formData.title}
                             onChange={e => setFormData({ ...formData, title: e.target.value })}
                             required
@@ -74,10 +79,14 @@ const EditSubtaskModal = ({ subtask, parentId, parentTask, members = [], onClose
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                        <div className="flex justify-between">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <span className="text-xs text-slate-400">{formData.description.length}/100</span>
+                        </div>
                         <textarea
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                             rows="3"
+                            maxLength={100}
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
                         />

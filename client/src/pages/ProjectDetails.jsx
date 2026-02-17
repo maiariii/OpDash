@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { DragDropContext } from '@hello-pangea/dnd';
 import {
-    ArrowLeft, Layout, Calendar, PieChart, Activity,
+    ArrowLeft, Layout, Calendar, PieChart, Activity, Target,
     Users, Edit2, Save, X, Layers, CheckSquare, Square, Table, Plus, List
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -13,13 +13,16 @@ import {
     updateProject, getDivisions, getEmployees
 } from '../api';
 
-import KanbanBoard from '../components/KanbanBoard';
+// import KanbanBoard from '../components/KanbanBoard';
 import GanttChart from '../components/GanttChart';
 import CreateTaskModal from '../components/CreateTaskModal';
 import EditSubtaskModal from '../components/EditSubtaskModal';
 import TaskTable from '../components/TaskTable';
 import SubtaskTable from '../components/SubtaskTable';
 import CreateSubtaskModal from '../components/CreateSubtaskModal';
+import IndicatorsTab from '../components/IndicatorsTab';
+import SpilloversTab from '../components/SpilloversTab';
+import DashboardCharts from '../components/DashboardCharts';
 
 
 const TabButton = ({ active, children, onClick, icon: Icon }) => (
@@ -181,6 +184,64 @@ const ProjectDetails = () => {
 
     const filteredEmployees = getDivisionEmployees();
 
+    // Calculate Project Metrics for Dashboard
+    const calculateDashboardMetrics = () => {
+        if (!project || !financials) return null;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let pendingCount = 0;
+        let accomplishedCount = 0;
+        let delayedCount = 0;
+
+        const pendingList = [];
+        const accomplishedList = [];
+        const delayedList = [];
+        const enrichedTasks = tasks.map(t => ({
+            ...t,
+            project_name: project.name
+        }));
+
+        enrichedTasks.forEach(t => {
+            if (t.status === 'Done') {
+                accomplishedCount++;
+                accomplishedList.push(t);
+            } else {
+                pendingCount++;
+                pendingList.push(t);
+                if (t.due_date && new Date(t.due_date) < today) {
+                    delayedCount++;
+                    delayedList.push(t);
+                }
+            }
+        });
+
+        // Mock AI Message construction based on single project
+        // (If `aiRisk` exists, we can incorporate it or just let the dashboard use it if we passed it down, 
+        // but DashboardCharts currently doesn't render AI risk itself, purely stats).
+
+        return {
+            totalProjects: 1,
+            totalEmployees: filteredEmployees.length,
+            totalActivities: tasks.length,
+            pendingActivities: pendingCount,
+            accomplishedActivities: accomplishedCount,
+            delayedActivities: delayedCount,
+            totalBudget: Number(financials.total_budget || 0),
+            totalSpent: Number(financials.actual_cost || 0),
+            // Detailed Arrays
+            allProjects: [{ ...project, total_budget: financials.total_budget, actual_cost: financials.actual_cost }],
+            allEmployees: filteredEmployees.map(e => ({ ...e, division_name: project.division })),
+            allTasks: enrichedTasks,
+            pendingTasks: pendingList,
+            accomplishedTasks: accomplishedList,
+            delayedTasks: delayedList
+        };
+    };
+
+    const dashboardMetrics = calculateDashboardMetrics();
+
     return (
         <div className="flex flex-col h-full bg-slate-50">
             {/* Header */}
@@ -202,11 +263,14 @@ const ProjectDetails = () => {
 
                 <div className="flex justify-between items-end">
                     <div className="flex gap-2 overflow-x-auto pb-1">
-                        <TabButton active={activeTab === 'kanban'} onClick={() => setActiveTab('kanban')} icon={Layout}>Kanban</TabButton>
+                        {/* Renamed Kanban to Dashboard */}
+                        <TabButton active={activeTab === 'kanban'} onClick={() => setActiveTab('kanban')} icon={Layout}>Dashboard</TabButton>
                         <TabButton active={activeTab === 'table'} onClick={() => setActiveTab('table')} icon={Table}>Activity List</TabButton>
                         <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={List}>Tasks</TabButton>
                         <TabButton active={activeTab === 'gantt'} onClick={() => setActiveTab('gantt')} icon={Calendar}>Timeline</TabButton>
+                        <TabButton active={activeTab === 'indicators'} onClick={() => setActiveTab('indicators')} icon={Target}>Indicators</TabButton>
                         <TabButton active={activeTab === 'financials'} onClick={() => setActiveTab('financials')} icon={PieChart}>Financials</TabButton>
+                        <TabButton active={activeTab === 'spillovers'} onClick={() => setActiveTab('spillovers')} icon={Layers}>Spillovers</TabButton>
                     </div>
 
                     {activeTab === 'table' && (
@@ -234,13 +298,16 @@ const ProjectDetails = () => {
 
                 {/* Center Workspace (3/4) */}
                 <div className="xl:col-span-3 overflow-y-auto p-6">
-                    {activeTab === 'kanban' && (
-                        <KanbanBoard
+                    {activeTab === 'kanban' && dashboardMetrics && (
+                        <div className="max-w-6xl mx-auto">
+                            <DashboardCharts metrics={dashboardMetrics} />
+                        </div>
+                    )}
+
+                    {activeTab === 'spillovers' && (
+                        <SpilloversTab
                             tasks={tasks}
-                            members={filteredEmployees}
-                            onTaskUpdate={handleTaskUpdate}
                             onTaskClick={setEditingTask}
-                            onAddTask={() => setIsCreatingTask(true)}
                         />
                     )}
 
@@ -273,7 +340,9 @@ const ProjectDetails = () => {
                         </div>
                     )}
 
-
+                    {activeTab === 'indicators' && (
+                        <IndicatorsTab projectId={id} />
+                    )}
 
                     {activeTab === 'financials' && financials && (
                         <div className="max-w-4xl">
@@ -282,19 +351,19 @@ const ProjectDetails = () => {
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total Budget</h3>
                                     <p className="text-3xl font-bold text-slate-800 tracking-tight mt-1">
-                                        ${Number(financials?.total_budget || 0).toLocaleString()}
+                                        ₱{Number(financials?.total_budget || 0).toLocaleString()}
                                     </p>
                                 </div>
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Actual Cost</h3>
                                     <p className="text-3xl font-bold text-slate-800 tracking-tight mt-1">
-                                        ${Number(financials?.actual_cost || 0).toLocaleString()}
+                                        ₱{Number(financials?.actual_cost || 0).toLocaleString()}
                                     </p>
                                 </div>
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Remaining Cost</h3>
                                     <p className={`text-3xl font-bold tracking-tight mt-1 ${(financials?.remaining_budget || 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                        ${Number(financials?.remaining_budget || 0).toLocaleString()}
+                                        ₱{Number(financials?.remaining_budget || 0).toLocaleString()}
                                     </p>
                                 </div>
                             </div>
@@ -463,7 +532,7 @@ const ProjectDetails = () => {
                 <CreateTaskModal
                     projectId={id}
                     task={editingTask}
-                    members={filteredEmployees}
+                    members={employees}
                     onClose={() => {
                         setEditingTask(null);
                         setIsCreatingTask(false);
@@ -481,7 +550,7 @@ const ProjectDetails = () => {
                     subtask={editingSubtask}
                     parentId={editingSubtask.parentId}
                     parentTask={editingSubtask.parentTask}
-                    members={filteredEmployees}
+                    members={employees}
                     onClose={() => setEditingSubtask(null)}
                     onUpdate={() => {
                         getProjectTasks(id).then(setTasks);
@@ -492,7 +561,7 @@ const ProjectDetails = () => {
             {showCreateSubtask && (
                 <CreateSubtaskModal
                     activities={tasks}
-                    members={filteredEmployees}
+                    members={employees}
                     onClose={() => setShowCreateSubtask(false)}
                     onCreate={() => {
                         getProjectTasks(id).then(setTasks);
