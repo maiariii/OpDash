@@ -5,7 +5,11 @@ const fs = require('fs');
 const logFile = path.join(__dirname, 'debug_log.txt');
 const log = (msg) => fs.appendFileSync(logFile, `[${new Date().toISOString()}] [AzureDB] ${msg}\n`);
 
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+// Try loading .env from current directory first, then parent
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+if (!process.env.DATABASE_URL) {
+    require('dotenv').config({ path: path.join(__dirname, '../.env') });
+}
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -21,17 +25,19 @@ const pool = opDashUrl ? new Pool({
     ssl: { rejectUnauthorized: false }
 }) : null;
 
-// Ensure table exists
+// Ensure tables exist
 const ensureTableExistsQuery = `
 CREATE TABLE IF NOT EXISTS projects_list (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
-    division TEXT,
+    division TEXT, -- retained for backward compat, but we might rely on divisions_list
     lead_personnel TEXT,
     supervising_officer TEXT,
     assisting_personnel TEXT,
     status TEXT,
+    basecamp_target TEXT,
+    total_budget NUMERIC,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -47,8 +53,10 @@ CREATE TABLE IF NOT EXISTS activities_list (
     cost NUMERIC,
     assignee_id TEXT,
     path TEXT,
+    priority TEXT DEFAULT 'Medium',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 CREATE TABLE IF NOT EXISTS task_list (
     id TEXT PRIMARY KEY,
     project_id TEXT,
@@ -67,466 +75,442 @@ CREATE TABLE IF NOT EXISTS employee_list (
     middle_name TEXT,
     last_name TEXT NOT NULL,
     division_id TEXT,
+    division TEXT, -- Name of division
     position TEXT,
     hourly_rate NUMERIC,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-    CREATE TABLE IF NOT EXISTS indicator_list (
-    id TEXT PRIMARY KEY,
-    project_id TEXT,
-    indicator TEXT NOT NULL,
-    target NUMERIC,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-    CREATE TABLE IF NOT EXISTS milestones_list (
-    id TEXT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS milestones_list (
+    id TEXT PRIMARY KEY, -- This will be the control code e.g. HRODI-Mxxxx
     project_id TEXT,
     title TEXT NOT NULL,
     description TEXT,
     target_date DATE,
     status TEXT DEFAULT 'Pending',
     notes TEXT,
+    importance INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS catchup_list (
+    id TEXT PRIMARY KEY,
+    activity_id TEXT,
+    title TEXT NOT NULL,
+    description TEXT,
+    target_date DATE,
+    status TEXT DEFAULT 'Pending',
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS divisions_list (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS expense_list (
+    id TEXT PRIMARY KEY,
+    activity_id TEXT, -- Can be linked to activity (tasks table in JSON, activities_list in SQL)
+    description TEXT,
+    amount NUMERIC,
+    date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 `;
 
-async function ensureTableAndInsertMilestone(milestoneData) {
-    if (!pool) {
-        log("Azure DB Pool not initialized.");
-        return;
-    }
-
+// Helper: Run generic query
+const query = async (text, params) => {
+    if (!pool) throw new Error("Database pool not initialized");
     const client = await pool.connect();
     try {
-        await client.query(ensureTableExistsQuery); // Ensure milestones_list exists
-
-        // Migration: Add status/notes/milestone_id/importance if missing, drop accomplishment if exists
-        await client.query(`
-            DO $$ 
-            BEGIN 
-                -- Add status column
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='milestones_list' AND column_name='status') THEN 
-                    ALTER TABLE milestones_list ADD COLUMN status TEXT DEFAULT 'Pending'; 
-                END IF;
-                -- Add notes column
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='milestones_list' AND column_name='notes') THEN 
-                    ALTER TABLE milestones_list ADD COLUMN notes TEXT; 
-                END IF;
-                -- Add milestone_id column (Control Number)
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='milestones_list' AND column_name='milestone_id') THEN 
-                    ALTER TABLE milestones_list ADD COLUMN milestone_id TEXT; 
-                END IF;
-                -- Add importance column (1-5 stars)
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='milestones_list' AND column_name='importance') THEN 
-                    ALTER TABLE milestones_list ADD COLUMN importance INTEGER DEFAULT 1; 
-                END IF;
-                -- Drop accomplishment column
-                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='milestones_list' AND column_name='accomplishment') THEN 
-                    ALTER TABLE milestones_list DROP COLUMN accomplishment; 
-                END IF;
-            END $$;
-        `);
-
-        // APPEND-ONLY LOGIC:
-        // 1. Generate a new UUID for the primary key 'id' of this specific history row.
-        // 2. Store the Control Number (HRODI-Mxxxx) in 'milestone_id'.
-        // 3. Always INSERT, never UPDATE.
-        const { v4: uuidv4 } = require('uuid');
-        const historyRowId = uuidv4();
-
-        const insertQuery = `
-            INSERT INTO milestones_list (
-                id, milestone_id, project_id, title, description, target_date, status, notes, importance, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
-        `;
-
-        const targetDate = (milestoneData.target_date && milestoneData.target_date.trim() !== '') ? milestoneData.target_date : null;
-
-        const values = [
-            historyRowId,                // New UUID for this history entry
-            milestoneData.id,            // HRODI-Mxxxx Control Number
-            milestoneData.project_id,
-            milestoneData.title,
-            milestoneData.description || '',
-            targetDate,
-            milestoneData.status || 'Pending',
-            milestoneData.notes || '',
-            Number(milestoneData.importance) || 1
-        ];
-
-        await client.query(insertQuery, values);
-        log(`Milestone "${milestoneData.title}" (ID: ${milestoneData.id}, Stars: ${milestoneData.importance}) history log saved to OpDash DB.`);
-    } catch (err) {
-        log(`Error logging milestone to Azure DB: ${err.message}`);
+        const res = await client.query(text, params);
+        return res;
     } finally {
         client.release();
     }
-}
-async function ensureTableAndInsertProject(projectData) {
-    if (!pool) {
-        console.error("Pool not initialized. Check .env configuration.");
-        return;
-    }
+};
 
-    const client = await pool.connect();
-    try {
-        await client.query(ensureTableExistsQuery);
+// --- GENERIC HELPERS ---
 
-        // Migration: Ensure 'basecamp_target' column exists
-        await client.query(`
-            DO $$
-            BEGIN
-                IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'projects_list' AND column_name = 'basecamp_target') THEN
-                    ALTER TABLE projects_list ADD COLUMN basecamp_target TEXT;
-                END IF;
-                -- Also ensure total_budget exists as we added it to API but maybe not DB yet
-                IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'projects_list' AND column_name = 'total_budget') THEN
-                    ALTER TABLE projects_list ADD COLUMN total_budget NUMERIC;
-                END IF;
-            END $$;
-        `);
-
-        const insertQuery = `
-            INSERT INTO projects_list(
-                id, name, description, division, lead_personnel,
-                supervising_officer, assisting_personnel, status, 
-                basecamp_target, total_budget, created_at
-            ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            ON CONFLICT(id) DO UPDATE SET
-                name = EXCLUDED.name,
-                description = EXCLUDED.description,
-                division = EXCLUDED.division,
-                lead_personnel = EXCLUDED.lead_personnel,
-                supervising_officer = EXCLUDED.supervising_officer,
-                assisting_personnel = EXCLUDED.assisting_personnel,
-                status = EXCLUDED.status,
-                basecamp_target = EXCLUDED.basecamp_target,
-                total_budget = EXCLUDED.total_budget;
-        `;
-
-        const values = [
-            projectData.id,
-            projectData.name,
-            projectData.description || '',
-            projectData.division || 'N/A',
-            projectData.lead_personnel || 'N/A',
-            projectData.supervising_officer || 'N/A',
-            projectData.assisting_personnel || 'N/A',
-            projectData.status || 'Planning',
-            projectData.basecamp_target || '',
-            Number(projectData.total_budget) || 0,
-            projectData.created_at || new Date().toISOString()
-        ];
-
-        await client.query(insertQuery, values);
-        console.log(`Project ${projectData.name} (${projectData.id}) lodged in OpDash database.`);
-    } catch (err) {
-        console.error("Error logging project to Azure DB:", err);
-    } finally {
-        client.release();
-    }
+async function initDB() {
+    await query(ensureTableExistsQuery);
+    // Add columns if missing (Migrations)
+    await query(`
+        DO $$ 
+        BEGIN 
+            -- activities_list: priority
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='priority') THEN 
+                ALTER TABLE activities_list ADD COLUMN priority TEXT DEFAULT 'Medium'; 
+            END IF;
+        END $$;
+    `);
 }
 
+// Generate Control Code
+async function generateControlCode(type) {
+    let prefix = '';
+    let table = '';
+    let digits = 3;
 
+    if (type === 'project') { prefix = 'HRODI-P'; table = 'projects_list'; }
+    else if (type === 'activity') { prefix = 'HRODI-A'; table = 'activities_list'; }
+    else if (type === 'task') { prefix = 'HRODI-T'; table = 'task_list'; } // Subtasks
+    else if (type === 'employee') { prefix = 'HRODI-E'; table = 'employee_list'; digits = 4; }
+    else if (type === 'milestone') { prefix = 'HRODI-M'; table = 'milestones_list'; digits = 4; }
 
-async function ensureTableAndInsertActivity(activityData) {
-    if (!pool) {
-        log("Azure DB Pool not initialized. Please check DATABASE_URL in .env");
-        return;
+    // Find max ID
+    // We look for IDs that start with the prefix
+    const res = await query(`
+        SELECT id FROM ${table} 
+        WHERE id LIKE $1 
+        ORDER BY LENGTH(id) DESC, id DESC 
+        LIMIT 1
+    `, [`${prefix}%`]);
+
+    let maxNum = 0;
+    if (res.rows.length > 0) {
+        const lastId = res.rows[0].id;
+        const numPart = lastId.replace(prefix, '');
+        maxNum = parseInt(numPart, 10);
+        if (isNaN(maxNum)) maxNum = 0;
     }
 
-    log(`Attempting to log activity: "${activityData.title}"(ID: ${activityData.id})`);
-
-    const client = await pool.connect();
-    try {
-        await client.query(ensureTableExistsQuery);
-
-        // Sanitize numeric fields (remove commas if string, default to 0)
-        const parseMoney = (val) => {
-            if (typeof val === 'string') return Number(val.replace(/,/g, '')) || 0;
-            return Number(val) || 0;
-        };
-
-        const budget = parseMoney(activityData.budget);
-        const cost = parseMoney(activityData.cost);
-
-        // Sanitize dates: Postgres DATE handles ISO strings, but empty string must be NULL
-        const startDate = (activityData.start_date && activityData.start_date.trim() !== '') ? activityData.start_date : null;
-        const dueDate = (activityData.due_date && activityData.due_date.trim() !== '') ? activityData.due_date : null;
-
-        const insertQuery = `
-            INSERT INTO activities_list(
-    id, project_id, title, objective, status,
-    start_date, due_date, budget, cost,
-    assignee_id, path, created_at
-) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
-            ON CONFLICT(id) DO UPDATE SET
-title = EXCLUDED.title,
-    objective = EXCLUDED.objective,
-    status = EXCLUDED.status,
-    start_date = EXCLUDED.start_date,
-    due_date = EXCLUDED.due_date,
-    budget = EXCLUDED.budget,
-    cost = EXCLUDED.cost,
-    assignee_id = EXCLUDED.assignee_id,
-    path = EXCLUDED.path;
-`;
-
-        const values = [
-            activityData.id,
-            activityData.project_id,
-            activityData.title,
-            activityData.objective || '',
-            activityData.status || 'Todo',
-            startDate,
-            dueDate,
-            budget,
-            cost,
-            activityData.assignee_id || null,
-            activityData.path || String(activityData.id)
-        ];
-
-        await client.query(insertQuery, values);
-        log(`Activity "${activityData.title}" successfully synced to OpDash DB.`);
-    } catch (err) {
-        log(`CRITICAL ERROR logging activity: ${err.message} `);
-        log(`Payload was: ${JSON.stringify(activityData, null, 2)} `);
-    } finally {
-        client.release();
-    }
+    const nextNum = maxNum + 1;
+    return `${prefix}${String(nextNum).padStart(digits, '0')}`;
 }
 
-async function ensureTableAndInsertTask(taskData) {
-    if (!pool) {
-        log("Azure DB Pool not initialized.");
-        return;
-    }
+// --- PROJECTS ---
 
-    const client = await pool.connect();
-    try {
-        await client.query(ensureTableExistsQuery);
-
-        // Ensure description column exists (migration for existing tables)
-        await client.query(`
-            DO $$
-BEGIN 
-                IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'task_list' AND column_name = 'description') THEN 
-                    ALTER TABLE task_list ADD COLUMN description TEXT; 
-                END IF; 
-            END $$;
-`);
-
-        const insertQuery = `
-            INSERT INTO task_list(
-    id, project_id, activity_id, title, description, status,
-    assignee_id, due_date, created_at
-) VALUES($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
-            ON CONFLICT(id) DO UPDATE SET
-title = EXCLUDED.title,
-    description = EXCLUDED.description,
-    status = EXCLUDED.status,
-    assignee_id = EXCLUDED.assignee_id,
-    due_date = EXCLUDED.due_date;
-`;
-
-        const dueDate = (taskData.due_date && taskData.due_date.trim() !== '') ? taskData.due_date : null;
-
-        const values = [
-            taskData.id,
-            taskData.project_id,
-            taskData.activity_id,
-            taskData.title,
-            taskData.description || '',
-            taskData.status || 'Todo',
-            taskData.assignee_id || null,
-            dueDate
-        ];
-
-        await client.query(insertQuery, values);
-        log(`Task "${taskData.title}"(${taskData.id}) synced to OpDash DB.`);
-    } catch (err) {
-        log(`Error logging task to Azure DB: ${err.message} `);
-    } finally {
-        client.release();
-    }
+async function getProjects() {
+    const res = await query('SELECT * FROM projects_list ORDER BY created_at DESC');
+    return res.rows;
 }
 
-async function ensureTableAndInsertEmployee(employeeData) {
-    if (!pool) {
-        log("Azure DB Pool not initialized.");
-        return;
-    }
-
-    const client = await pool.connect();
-    try {
-        await client.query(ensureTableExistsQuery);
-
-        // Migration: Ensure 'division' column exists and 'hourly_rate' is removed (optional, but good practice to sync schema)
-        await client.query(`
-            DO $$
-BEGIN
---Add division column if missing
-                IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'employee_list' AND column_name = 'division') THEN 
-                    ALTER TABLE employee_list ADD COLUMN division TEXT; 
-                END IF;
---Drop hourly_rate column if exists
-                IF EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'employee_list' AND column_name = 'hourly_rate') THEN 
-                    ALTER TABLE employee_list DROP COLUMN hourly_rate; 
-                END IF;
-            END $$;
-`);
-
-        const insertQuery = `
-            INSERT INTO employee_list(
-    id, first_name, middle_name, last_name, division,
-    position, created_at
-) VALUES($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-            ON CONFLICT(id) DO UPDATE SET
-first_name = EXCLUDED.first_name,
-    middle_name = EXCLUDED.middle_name,
-    last_name = EXCLUDED.last_name,
-    division = EXCLUDED.division,
-    position = EXCLUDED.position;
-`;
-
-        const values = [
-            employeeData.id,
-            employeeData.first_name,
-            employeeData.middle_name || '',
-            employeeData.last_name,
-            employeeData.division || 'Unknown', // Use the resolved name
-            employeeData.position || 'Staff'
-        ];
-
-        await client.query(insertQuery, values);
-        log(`Employee "${employeeData.first_name} ${employeeData.last_name}" synced to OpDash DB.`);
-    } catch (err) {
-        log(`Error logging employee to Azure DB: ${err.message} `);
-    } finally {
-        client.release();
-    }
+async function getProjectById(id) {
+    const res = await query('SELECT * FROM projects_list WHERE id = $1', [id]);
+    return res.rows[0];
 }
 
-async function ensureTableAndInsertMilestone_OLD(milestoneData) {
-    if (!pool) {
-        log("Azure DB Pool not initialized.");
-        return;
-    }
-
-    const client = await pool.connect();
-    try {
-        await client.query(ensureTableExistsQuery); // Ensure milestones_list exists
-
-        const insertQuery = `
-            INSERT INTO milestones_list(
-    id, project_id, title, description, target_date, accomplishment, created_at
-) VALUES($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-            ON CONFLICT(id) DO UPDATE SET
-title = EXCLUDED.title,
-    description = EXCLUDED.description,
-    target_date = EXCLUDED.target_date,
-    accomplishment = EXCLUDED.accomplishment;
-`;
-
-        const targetDate = (milestoneData.target_date && milestoneData.target_date.trim() !== '') ? milestoneData.target_date : null;
-
-        const values = [
-            milestoneData.id,
-            milestoneData.project_id,
-            milestoneData.title,
-            milestoneData.description || '',
-            targetDate,
-            Number(milestoneData.accomplishment) || 0
-        ];
-
-        await client.query(insertQuery, values);
-        log(`Milestone "${milestoneData.title}" synced to OpDash DB.`);
-    } catch (err) {
-        log(`Error logging milestone to Azure DB: ${err.message} `);
-    } finally {
-        client.release();
-    }
+async function upsertProject(data) {
+    await initDB();
+    const q = `
+        INSERT INTO projects_list(
+            id, name, description, division, lead_personnel,
+            supervising_officer, assisting_personnel, status, 
+            basecamp_target, total_budget, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11, CURRENT_TIMESTAMP))
+        ON CONFLICT(id) DO UPDATE SET
+            name = EXCLUDED.name,
+            description = EXCLUDED.description,
+            division = EXCLUDED.division,
+            lead_personnel = EXCLUDED.lead_personnel,
+            supervising_officer = EXCLUDED.supervising_officer,
+            assisting_personnel = EXCLUDED.assisting_personnel,
+            status = EXCLUDED.status,
+            basecamp_target = EXCLUDED.basecamp_target,
+            total_budget = EXCLUDED.total_budget
+        RETURNING *;
+    `;
+    const values = [
+        data.id, data.name, data.description || '', data.division || 'N/A',
+        data.lead_personnel || 'N/A', data.supervising_officer || 'N/A',
+        data.assisting_personnel || 'N/A', data.status || 'Planning',
+        data.basecamp_target || '', Number(data.total_budget) || 0,
+        data.created_at
+    ];
+    const res = await query(q, values);
+    return res.rows[0];
 }
 
-async function ensureTableAndInsertCatchUp(catchUpData) {
-    if (!pool) {
-        log("Azure DB Pool not initialized.");
-        return;
-    }
-
-    const client = await pool.connect();
-    try {
-        // Ensure table exists
-        await client.query(ensureTableExistsQuery);
-
-        // Migration: Ensure 'reason' column exists
-        await client.query(`
-            DO $$
-            BEGIN
-                IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'catchup_list' AND column_name = 'reason') THEN
-                    ALTER TABLE catchup_list ADD COLUMN reason TEXT;
-                END IF;
-            END $$;
-        `);
-
-        const insertQuery = `
-            INSERT INTO catchup_list(
-                id, activity_id, title, description, target_date, status, reason, created_at
-            ) VALUES($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
-            ON CONFLICT(id) DO UPDATE SET
-                title = EXCLUDED.title,
-                description = EXCLUDED.description,
-                target_date = EXCLUDED.target_date,
-                status = EXCLUDED.status,
-                reason = EXCLUDED.reason;
-        `;
-
-        const values = [
-            catchUpData.id,
-            catchUpData.activity_id,
-            catchUpData.title,
-            catchUpData.description || '',
-            catchUpData.target_date || null,
-            catchUpData.status || 'Pending',
-            catchUpData.reason || ''
-        ];
-
-        await client.query(insertQuery, values);
-        log(`Catch - up Activity "${catchUpData.title}" synced to OpDash DB.`);
-    } catch (err) {
-        log(`Error logging catch-up activity to Azure DB: ${err.message} `);
-    } finally {
-        client.release();
-    }
+async function deleteProject(id) {
+    await query('DELETE FROM projects_list WHERE id = $1', [id]);
 }
 
-async function truncateAllTables() {
-    if (!pool) {
-        log("Azure DB Pool not initialized.");
-        return;
-    }
+// --- ACTIVITIES (Tasks in JSON) ---
 
-    const client = await pool.connect();
-    try {
-        await client.query(`
-            TRUNCATE TABLE projects_list, activities_list, task_list, milestones_list, catchup_list RESTART IDENTITY CASCADE;
-        `);
-        log("All tables truncated successfully.");
-    } catch (err) {
-        log(`Error truncating tables: ${err.message}`);
-    } finally {
-        client.release();
+async function getActivities(projectId = null) {
+    let q = 'SELECT * FROM activities_list';
+    const params = [];
+    if (projectId) {
+        q += ' WHERE project_id = $1';
+        params.push(projectId);
     }
+    q += ' ORDER BY path ASC';
+    const res = await query(q, params);
+    return res.rows;
 }
+
+async function getActivityById(id) {
+    const res = await query('SELECT * FROM activities_list WHERE id = $1', [id]);
+    return res.rows[0];
+}
+
+async function upsertActivity(data) {
+    await initDB();
+    const q = `
+        INSERT INTO activities_list(
+            id, project_id, title, objective, status,
+            start_date, due_date, budget, cost,
+            assignee_id, path, priority, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13, CURRENT_TIMESTAMP))
+        ON CONFLICT(id) DO UPDATE SET
+            title = EXCLUDED.title,
+            objective = EXCLUDED.objective,
+            status = EXCLUDED.status,
+            start_date = EXCLUDED.start_date,
+            due_date = EXCLUDED.due_date,
+            budget = EXCLUDED.budget,
+            cost = EXCLUDED.cost,
+            assignee_id = EXCLUDED.assignee_id,
+            path = EXCLUDED.path,
+            priority = EXCLUDED.priority
+        RETURNING *;
+    `;
+    const values = [
+        data.id, data.project_id, data.title, data.objective || '',
+        data.status || 'Todo', data.start_date || null, data.due_date || null,
+        Number(data.budget) || 0, Number(data.cost) || 0,
+        data.assignee_id || null, data.path || data.id,
+        data.priority || 'Medium', data.created_at
+    ];
+    const res = await query(q, values);
+    return res.rows[0];
+}
+
+async function deleteActivity(id) {
+    await query('DELETE FROM activities_list WHERE id = $1', [id]);
+}
+
+// --- SUBTASKS ---
+
+async function getSubtasks(activityId = null) {
+    let q = 'SELECT * FROM task_list';
+    const params = [];
+    if (activityId) {
+        q += ' WHERE activity_id = $1';
+        params.push(activityId);
+    }
+    const res = await query(q, params);
+    return res.rows;
+}
+
+async function upsertSubtask(data) {
+    await initDB();
+    const q = `
+        INSERT INTO task_list(
+            id, project_id, activity_id, title, description, status,
+            assignee_id, due_date, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, CURRENT_TIMESTAMP))
+        ON CONFLICT(id) DO UPDATE SET
+            title = EXCLUDED.title,
+            description = EXCLUDED.description,
+            status = EXCLUDED.status,
+            assignee_id = EXCLUDED.assignee_id,
+            due_date = EXCLUDED.due_date
+        RETURNING *;
+    `;
+    const values = [
+        data.id, data.project_id, data.activity_id, data.title,
+        data.description || '', data.status || 'Todo',
+        data.assignee_id || null, data.due_date || null,
+        data.created_at
+    ];
+    const res = await query(q, values);
+    return res.rows[0];
+}
+
+// --- EMPLOYEES ---
+
+async function getEmployees() {
+    const res = await query('SELECT * FROM employee_list');
+    return res.rows;
+}
+
+async function getEmployeeById(id) {
+    const res = await query('SELECT * FROM employee_list WHERE id = $1', [id]);
+    return res.rows[0];
+}
+
+async function upsertEmployee(data) {
+    await initDB();
+    const q = `
+        INSERT INTO employee_list(
+            id, first_name, middle_name, last_name, division,
+            division_id, position, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, COALESCE($8, CURRENT_TIMESTAMP))
+        ON CONFLICT(id) DO UPDATE SET
+            first_name = EXCLUDED.first_name,
+            middle_name = EXCLUDED.middle_name,
+            last_name = EXCLUDED.last_name,
+            division = EXCLUDED.division,
+            division_id = EXCLUDED.division_id,
+            position = EXCLUDED.position
+        RETURNING *;
+    `;
+    const values = [
+        data.id, data.first_name, data.middle_name || '', data.last_name,
+        data.division || 'Unknown', data.division_id || null,
+        data.position || 'Staff', data.created_at
+    ];
+    const res = await query(q, values);
+    return res.rows[0];
+}
+
+async function deleteEmployee(id) {
+    await query('DELETE FROM employee_list WHERE id = $1', [id]);
+}
+
+// --- DIVISIONS ---
+
+async function getDivisions() {
+    const res = await query('SELECT * FROM divisions_list');
+    return res.rows;
+}
+
+async function upsertDivision(data) {
+    await initDB();
+    const q = `
+        INSERT INTO divisions_list(id, name, created_at)
+        VALUES($1, $2, COALESCE($3, CURRENT_TIMESTAMP))
+        ON CONFLICT(id) DO UPDATE SET name = EXCLUDED.name
+        RETURNING *;
+    `;
+    // If id is not provided, generate one? API usually provides UUID
+    const values = [data.id, data.name, data.created_at];
+    const res = await query(q, values);
+    return res.rows[0];
+}
+
+// --- MILESTONES ---
+
+async function getMilestones(projectId = null) {
+    let q = 'SELECT * FROM milestones_list';
+    const params = [];
+    if (projectId) {
+        q += ' WHERE project_id = $1';
+        params.push(projectId);
+    }
+    const res = await query(q, params);
+    return res.rows;
+}
+
+async function upsertMilestone(data) {
+    await initDB();
+    const q = `
+        INSERT INTO milestones_list(
+            id, project_id, title, description, target_date, status, notes, importance, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, CURRENT_TIMESTAMP))
+        ON CONFLICT(id) DO UPDATE SET
+            title = EXCLUDED.title,
+            description = EXCLUDED.description,
+            target_date = EXCLUDED.target_date,
+            status = EXCLUDED.status,
+            notes = EXCLUDED.notes,
+            importance = EXCLUDED.importance
+        RETURNING *;
+    `;
+    const values = [
+        data.id, data.project_id, data.title, data.description || '',
+        data.target_date || null, data.status || 'Pending',
+        data.notes || '', Number(data.importance) || 1,
+        data.created_at
+    ];
+    const res = await query(q, values);
+    return res.rows[0];
+}
+
+async function deleteMilestone(id) {
+    await query('DELETE FROM milestones_list WHERE id = $1', [id]);
+}
+
+// --- EXPENSES ---
+
+async function getExpenses(activityId) {
+    const res = await query('SELECT * FROM expense_list WHERE activity_id = $1', [activityId]);
+    return res.rows;
+}
+
+async function getExpensesByProject(projectId) {
+    // Join with activities
+    const q = `
+        SELECT e.* FROM expense_list e
+        JOIN activities_list a ON e.activity_id = a.id
+        WHERE a.project_id = $1
+    `;
+    const res = await query(q, [projectId]);
+    return res.rows;
+}
+
+async function addExpense(data) {
+    await initDB();
+    const q = `
+        INSERT INTO expense_list(id, activity_id, description, amount, date, created_at)
+        VALUES($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+        RETURNING *;
+    `;
+    const values = [data.id, data.task_id || data.activity_id, data.description, data.amount, data.date];
+    const res = await query(q, values);
+    return res.rows[0];
+}
+
+async function deleteExpense(id) {
+    await query('DELETE FROM expense_list WHERE id = $1', [id]);
+}
+
+// --- CATCHUPS ---
+async function upsertCatchup(data) {
+    await initDB();
+    const q = `
+        INSERT INTO catchup_list(
+            id, activity_id, title, description, target_date, status, reason, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, COALESCE($8, CURRENT_TIMESTAMP))
+        ON CONFLICT(id) DO UPDATE SET
+            title = EXCLUDED.title,
+            description = EXCLUDED.description,
+            target_date = EXCLUDED.target_date,
+            status = EXCLUDED.status,
+            reason = EXCLUDED.reason
+        RETURNING *;
+    `;
+    const values = [
+        data.id, data.activity_id, data.title, data.description || '',
+        data.target_date || null, data.status || 'Pending',
+        data.reason || '', data.created_at
+    ];
+    const res = await query(q, values);
+    return res.rows[0];
+}
+
+async function getCatchups(activityId = null) {
+    let q = 'SELECT * FROM catchup_list';
+    const params = [];
+    if (activityId) {
+        q += ' WHERE activity_id = $1';
+        params.push(activityId);
+    }
+    const res = await query(q, params);
+    return res.rows;
+}
+
 
 module.exports = {
-    ensureTableAndInsertProject,
-    ensureTableAndInsertActivity,
-    ensureTableAndInsertTask,
-    ensureTableAndInsertEmployee,
-    ensureTableAndInsertMilestone,
-    ensureTableAndInsertCatchUp,
-    truncateAllTables
+    initDB,
+    generateControlCode,
+    getProjects, getProjectById, upsertProject, deleteProject,
+    getActivities, getActivityById, upsertActivity, deleteActivity,
+    getSubtasks, upsertSubtask,
+    getEmployees, getEmployeeById, upsertEmployee, deleteEmployee,
+    getDivisions, upsertDivision,
+    getMilestones, upsertMilestone, deleteMilestone,
+    getExpenses, getExpensesByProject, addExpense, deleteExpense,
+    upsertCatchup, getCatchups,
+    // Alias for backward compat / ease of refactor
+    ensureTableAndInsertProject: upsertProject,
+    ensureTableAndInsertActivity: upsertActivity,
+    ensureTableAndInsertTask: upsertSubtask,
+    ensureTableAndInsertEmployee: upsertEmployee,
+    ensureTableAndInsertMilestone: upsertMilestone,
+    ensureTableAndInsertCatchUp: upsertCatchup
 };

@@ -125,6 +125,84 @@
       "basecamp_target": "HROD Process Excellence",
       "status": "Planning",
       "created_at": "2026-02-18T06:56:49.744Z"
+    },
+    {
+      "id": "HRODI-P003",
+      "name": "Migration Test Project 1771404056946",
+      "description": "Test description",
+      "division": "N/A",
+      "lead_personnel": "N/A",
+      "supervising_officer": "N/A",
+      "assisting_personnel": "N/A",
+      "total_budget": 100000,
+      "basecamp_target": "",
+      "status": "Planning",
+      "created_at": "2026-02-18T08:40:57.050Z"
+    },
+    {
+      "id": "HRODI-P004",
+      "name": "Migration Test Project 1771404096928",
+      "description": "Test description",
+      "division": "N/A",
+      "lead_personnel": "N/A",
+      "supervising_officer": "N/A",
+      "assisting_personnel": "N/A",
+      "total_budget": 100000,
+      "basecamp_target": "",
+      "status": "Planning",
+      "created_at": "2026-02-18T08:41:36.978Z"
+    },
+    {
+      "id": "HRODI-P005",
+      "name": "Migration Test Project 1771404167633",
+      "description": "Test description",
+      "division": "N/A",
+      "lead_personnel": "N/A",
+      "supervising_officer": "N/A",
+      "assisting_personnel": "N/A",
+      "total_budget": 100000,
+      "basecamp_target": "",
+      "status": "Planning",
+      "created_at": "2026-02-18T08:42:47.683Z"
+    },
+    {
+      "id": "HRODI-P006",
+      "name": "Migration Test Project 1771404249065",
+      "description": "Test description",
+      "division": "N/A",
+      "lead_personnel": "N/A",
+      "supervising_officer": "N/A",
+      "assisting_personnel": "N/A",
+      "total_budget": 100000,
+      "basecamp_target": "",
+      "status": "Planning",
+      "created_at": "2026-02-18T08:44:09.118Z"
+    },
+    {
+      "id": "HRODI-P007",
+      "name": "Migration Test Project 1771404282350",
+      "description": "Test description",
+      "division": "N/A",
+      "lead_personnel": "N/A",
+      "supervising_officer": "N/A",
+      "assisting_personnel": "N/A",
+      "total_budget": 100000,
+      "basecamp_target": "",
+      "status": "Planning",
+      "created_at": "2026-02-18T08:44:42.392Z"
+    },
+    {
+      "id": "HRODI-P008",
+      "name": "Migration Test Project 1771404355182",
+      "description": "Test description",
+      "division": "N/A",
+      "lead_personnel": "N/A",
+      "supervising_officer": "N/A",
+      "assisting_personnel": "N/A",
+      "total_budget": 100000,
+      "basecamp_target": "",
+      "status": "Planning",
+      "created_at": "2026-02-18T08:45:55.271Z"
     }
   ],
   "tasks": [
@@ -159,6 +237,138 @@
       "cost": 0,
       "budget": 0,
       "expenses": [],
+      "subtasks": [],
+      "version": 1
+    },
+    {
+      "id": "HRODI-A003",
+      "project_id": "HRODI-P003",
+      "path": "HRODI-A003",
+      "title": "Test Activity",
+      "objective": "",
+      "status": "Todo",
+      "priority": "Medium",
+      "estimated_hours": 0,
+      "cost": 1000,
+      "budget": 5000,
+      "expenses": [
+        {
+          "id": "051ab188-2039-4ef0-baa8-b55cf496b27c",
+          "description": "Test Expense",
+          "amount": 500,
+          "date": "2026-02-18T08:40:57.111Z"
+        }
+      ],
+      "subtasks": [],
+      "version": 1
+    },
+    {
+      "id": "HRODI-A004",
+      "project_id": "HRODI-P004",
+      "path": "HRODI-A004",
+      "title": "Test Activity",
+      "objective": "",
+      "status": "Todo",
+      "priority": "Medium",
+      "estimated_hours": 0,
+      "cost": 1000,
+      "budget": 5000,
+      "expenses": [
+        {
+          "id": "12ec6dcd-0999-45cf-83b5-12b1d711a695",
+          "description": "Test Expense",
+          "amount": 500,
+          "date": "2026-02-18T08:41:37.000Z"
+        }
+      ],
+      "subtasks": [],
+      "version": 1
+    },
+    {
+      "id": "HRODI-A005",
+      "project_id": "HRODI-P005",
+      "path": "HRODI-A005",
+      "title": "Test Activity",
+      "objective": "",
+      "status": "Todo",
+      "priority": "Medium",
+      "estimated_hours": 0,
+      "cost": 1000,
+      "budget": 5000,
+      "expenses": [
+        {
+          "id": "9627050b-9f92-42a5-9506-df84e0a048f2",
+          "description": "Test Expense",
+          "amount": 500,
+          "date": "2026-02-18T08:42:47.706Z"
+        }
+      ],
+      "subtasks": [],
+      "version": 1
+    },
+    {
+      "id": "HRODI-A006",
+      "project_id": "HRODI-P006",
+      "path": "HRODI-A006",
+      "title": "Test Activity",
+      "objective": "",
+      "status": "Todo",
+      "priority": "Medium",
+      "estimated_hours": 0,
+      "cost": 1000,
+      "budget": 5000,
+      "expenses": [
+        {
+          "id": "4c02af28-e2cd-4c8f-ad70-4edc0e545d05",
+          "description": "Test Expense",
+          "amount": 500,
+          "date": "2026-02-18T08:44:09.141Z"
+        }
+      ],
+      "subtasks": [],
+      "version": 1
+    },
+    {
+      "id": "HRODI-A007",
+      "project_id": "HRODI-P007",
+      "path": "HRODI-A007",
+      "title": "Test Activity",
+      "objective": "",
+      "status": "Todo",
+      "priority": "Medium",
+      "estimated_hours": 0,
+      "cost": 1000,
+      "budget": 5000,
+      "expenses": [
+        {
+          "id": "3ccb9e05-2b5e-4c36-aded-898de28d6632",
+          "description": "Test Expense",
+          "amount": 500,
+          "date": "2026-02-18T08:44:42.415Z"
+        }
+      ],
+      "subtasks": [],
+      "version": 1
+    },
+    {
+      "id": "HRODI-A008",
+      "project_id": "HRODI-P008",
+      "path": "HRODI-A008",
+      "title": "Test Activity",
+      "objective": "",
+      "status": "Todo",
+      "priority": "Medium",
+      "estimated_hours": 0,
+      "cost": 1000,
+      "budget": 5000,
+      "expenses": [
+        {
+          "id": "713806ff-bd81-438c-9660-23a2c16d36b3",
+          "description": "Test Expense",
+          "amount": 500,
+          "date": "2026-02-18T08:45:55.305Z"
+        }
+      ],
       "subtasks": [],
       "version": 1
     }

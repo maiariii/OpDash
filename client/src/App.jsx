@@ -11,7 +11,7 @@ import Employees from './pages/Employees';
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/opdash">
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />

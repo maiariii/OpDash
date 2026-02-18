@@ -1,15 +1,11 @@
 const express = require('express');
 const cors = require('cors');
-const { readDb, writeDb } = require('./db');
+const path = require('path'); // Added for static serving
+// const { readDb, writeDb } = require('./db'); // Removed
+const azureDb = require('./azureDb'); // Import all
 const http = require('http');
 const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
-const { ensureTableAndInsertProject, ensureTableAndInsertActivity, ensureTableAndInsertTask, ensureTableAndInsertEmployee, ensureTableAndInsertMilestone, ensureTableAndInsertCatchUp } = require('./azureDb');
-const fs = require('fs');
-const path = require('path');
-
-const logFile = path.join(__dirname, 'debug_log.txt');
-fs.appendFileSync(logFile, `[${new Date().toISOString()}] SERVER STARTUP: api/index.js loaded\n`);
 
 const app = express();
 const server = http.createServer(app);
@@ -20,10 +16,17 @@ const io = new Server(server, {
     }
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve Static Files from React App
+// production mode
+app.use('/opdash', express.static(path.join(__dirname, '../')));
+
+// Initialize DB schema on startup
+azureDb.initDB().catch(err => console.error("DB Init failed:", err));
 
 // Socket.io Connection
 io.on('connection', (socket) => {
@@ -37,576 +40,516 @@ io.on('connection', (socket) => {
 // Helper to simulate a delay (for realism)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper to generate control codes
-const generateControlCode = (db, type) => {
-    let prefix = '';
-    let list = [];
-
-    if (type === 'project') {
-        prefix = 'HRODI-P';
-        list = db.projects || [];
-    } else if (type === 'activity') {
-        prefix = 'HRODI-A';
-        list = db.tasks || [];
-    } else if (type === 'task') {
-        prefix = 'HRODI-T';
-        // Flatten all subtasks from all activities
-        (db.tasks || []).forEach(activity => {
-            if (activity.subtasks && Array.isArray(activity.subtasks)) {
-                list = list.concat(activity.subtasks);
-            }
-        });
-    } else if (type === 'employee') {
-        prefix = 'HRODI-E';
-        list = db.users || [];
-    } else if (type === 'milestone') {
-        prefix = 'HRODI-M';
-        list = db.milestones || [];
-    }
-
-    let maxNum = 0;
-    // Projects/Tasks use 3 digits, Employees use 4 digits, Milestones use 4 digits
-    const digits = (type === 'employee' || type === 'milestone') ? 4 : 3;
-    const regex = new RegExp(`^${prefix}(\\d{${digits}})$`);
-
-    list.forEach(item => {
-        if (item.id) {
-            const match = item.id.match(regex);
-            if (match) {
-                const num = parseInt(match[1], 10);
-                if (num > maxNum) maxNum = num;
-            }
-        }
-    });
-
-    const nextNum = maxNum + 1;
-    return `${prefix}${String(nextNum).padStart(digits, '0')}`;
-};
-
 // ---------------------------
 // ENDPOINTS
+const apiRouter = express.Router();
 // ---------------------------
 
 // GET All Projects
-app.get('/api/projects', (req, res) => {
-    const db = readDb();
-    const projectsWithBudget = (db.projects || []).map(p => {
-        // Calculate fallback budget from tasks if explicit budget is missing/zero
-        let calculatedBudget = 0;
-        if (!p.total_budget || Number(p.total_budget) <= 0) {
-            const projectTasks = (db.tasks || []).filter(t => t.project_id === p.id);
-            calculatedBudget = projectTasks.reduce((sum, t) => sum + (Number(t.budget) || 0), 0);
-        }
+apiRouter.get('/projects', async (req, res) => {
+    try {
+        const projects = await azureDb.getProjects();
+        // Fallback budget logic: if total_budget is 0, sum up task budgets
+        const allActivities = await azureDb.getActivities();
 
-        return {
-            ...p,
-            total_budget: (p.total_budget && Number(p.total_budget) > 0)
-                ? Number(p.total_budget)
-                : (calculatedBudget > 0 ? calculatedBudget : 0) // Default to 0 if no tasks budget either
-        };
-    });
-    res.json(projectsWithBudget);
+        const projectsWithBudget = projects.map(p => {
+            let calculatedBudget = 0;
+            if (!p.total_budget || Number(p.total_budget) <= 0) {
+                const projectTasks = allActivities.filter(t => t.project_id === p.id);
+                calculatedBudget = projectTasks.reduce((sum, t) => sum + (Number(t.budget) || 0), 0);
+            }
+
+            return {
+                ...p,
+                total_budget: (p.total_budget && Number(p.total_budget) > 0)
+                    ? Number(p.total_budget)
+                    : (calculatedBudget > 0 ? calculatedBudget : 0)
+            };
+        });
+        res.json(projectsWithBudget);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // POST Create Project
-app.post('/api/projects', (req, res) => {
-    const db = readDb();
-    const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, total_budget, basecamp_target } = req.body;
+apiRouter.post('/projects', async (req, res) => {
+    try {
+        const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, total_budget, basecamp_target } = req.body;
 
-    if (!name) {
-        return res.status(400).json({ error: 'Project Name is required' });
+        if (!name) return res.status(400).json({ error: 'Project Name is required' });
+        if (name.length > 50) return res.status(400).json({ error: 'Project Name cannot exceed 50 characters' });
+        if (description && description.length > 100) return res.status(400).json({ error: 'Project description cannot exceed 100 characters' });
+
+        const id = await azureDb.generateControlCode('project');
+
+        const newProject = {
+            id,
+            name,
+            description: description || '',
+            division: division || 'N/A',
+            lead_personnel: lead_personnel || 'N/A',
+            supervising_officer: supervising_officer || 'N/A',
+            assisting_personnel: assisting_personnel || 'N/A',
+            total_budget: Number(total_budget) || 0,
+            basecamp_target: basecamp_target || '',
+            status: 'Planning',
+            created_at: new Date().toISOString()
+        };
+
+        const saved = await azureDb.upsertProject(newProject);
+        res.status(201).json(saved);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
     }
-    if (name.length > 50) {
-        return res.status(400).json({ error: 'Project Name cannot exceed 50 characters' });
-    }
-    if (description && description.length > 100) {
-        return res.status(400).json({ error: 'Project description cannot exceed 100 characters' });
-    }
-
-    const newProject = {
-        id: generateControlCode(db, 'project'),
-        name,
-        description: description || '',
-        division: division || 'N/A',
-        lead_personnel: lead_personnel || 'N/A',
-        supervising_officer: supervising_officer || 'N/A',
-        assisting_personnel: assisting_personnel || 'N/A',
-        total_budget: Number(total_budget) || 0,
-        basecamp_target: basecamp_target || '', // Store as comma-separated string
-        status: 'Planning',
-        created_at: new Date().toISOString()
-    };
-
-    if (!db.projects) db.projects = [];
-    db.projects.push(newProject);
-    writeDb(db);
-
-    // Lodge in Azure OpDash database
-    ensureTableAndInsertProject(newProject).catch(err => console.error("Azure DB Sync Error:", err));
-
-    res.status(201).json(newProject);
 });
 
 // PUT Update Project
-app.put('/api/projects/:id', (req, res) => {
-    const db = readDb();
-    const { id } = req.params;
-    const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, status, total_budget, basecamp_target } = req.body;
+apiRouter.put('/projects/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const current = await azureDb.getProjectById(id);
+        if (!current) return res.status(404).json({ error: 'Project not found' });
 
-    if (name && name.length > 50) {
-        return res.status(400).json({ error: 'Project Name cannot exceed 50 characters' });
+        const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, status, total_budget, basecamp_target } = req.body;
+
+        if (name && name.length > 50) return res.status(400).json({ error: 'Project Name cannot exceed 50 characters' });
+        if (description && description.length > 100) return res.status(400).json({ error: 'Project description cannot exceed 100 characters' });
+
+        const updatedProject = {
+            ...current,
+            name: name || current.name,
+            description: description !== undefined ? description : current.description,
+            division: division || current.division,
+            lead_personnel: lead_personnel || current.lead_personnel,
+            supervising_officer: supervising_officer || current.supervising_officer,
+            assisting_personnel: assisting_personnel || current.assisting_personnel,
+            total_budget: total_budget !== undefined ? Number(total_budget) : current.total_budget,
+            basecamp_target: basecamp_target !== undefined ? basecamp_target : current.basecamp_target,
+            status: status || current.status
+        };
+
+        const saved = await azureDb.upsertProject(updatedProject);
+        res.json(saved);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
     }
-
-    if (description !== undefined && description.length > 100) {
-        return res.status(400).json({ error: 'Project description cannot exceed 100 characters' });
-    }
-
-    const index = (db.projects || []).findIndex(p => p.id === id);
-    if (index === -1) return res.status(404).json({ error: 'Project not found' });
-
-    const updatedProject = {
-        ...db.projects[index],
-        name: name || db.projects[index].name,
-        description: description !== undefined ? description : db.projects[index].description,
-        division: division || db.projects[index].division,
-        lead_personnel: lead_personnel || db.projects[index].lead_personnel,
-        supervising_officer: supervising_officer || db.projects[index].supervising_officer,
-        assisting_personnel: assisting_personnel || db.projects[index].assisting_personnel,
-        total_budget: total_budget !== undefined ? Number(total_budget) : db.projects[index].total_budget,
-        basecamp_target: basecamp_target !== undefined ? basecamp_target : db.projects[index].basecamp_target,
-        status: status || db.projects[index].status
-    };
-
-    db.projects[index] = updatedProject;
-    writeDb(db);
-
-    // Sync to Azure
-    ensureTableAndInsertProject(updatedProject).catch(err => console.error("Azure DB Sync Error:", err));
-
-    res.json(updatedProject);
 });
 
 // GET All Divisions
-app.get('/api/divisions', (req, res) => {
-    const db = readDb();
-    res.json(db.divisions || []);
+apiRouter.get('/divisions', async (req, res) => {
+    try {
+        const divs = await azureDb.getDivisions();
+        res.json(divs);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // POST Create Division
-app.post('/api/divisions', (req, res) => {
-    const db = readDb();
-    const { name } = req.body;
-    if (!name) return res.status(400).json({ error: 'Name required' });
-
-    const newDiv = { id: uuidv4(), name };
-    if (!db.divisions) db.divisions = [];
-    db.divisions.push(newDiv);
-    writeDb(db);
-    res.status(201).json(newDiv);
+apiRouter.post('/divisions', async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ error: 'Name required' });
+        const newDiv = { id: uuidv4(), name, created_at: new Date().toISOString() };
+        const saved = await azureDb.upsertDivision(newDiv);
+        res.status(201).json(saved);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // PUT Update Division
-app.put('/api/divisions/:id', (req, res) => {
-    const db = readDb();
-    const { name } = req.body;
-    const { id } = req.params;
-
-    if (!db.divisions) return res.status(404).json({ error: 'No divisions found' });
-
-    const index = db.divisions.findIndex(d => d.id === id);
-    if (index === -1) return res.status(404).json({ error: 'Division not found' });
-
-    db.divisions[index].name = name || db.divisions[index].name;
-    writeDb(db);
-    res.json(db.divisions[index]);
+apiRouter.put('/divisions/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name } = req.body;
+        // Verify existence? upsertDivision handles insert if id provided, but we want update semantics
+        const saved = await azureDb.upsertDivision({ id, name });
+        res.json(saved);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // GET All Employees
-app.get('/api/employees', (req, res) => {
-    const db = readDb();
-    const users = (db.users || []).map(u => ({
-        ...u,
-        // Virtual field for backward compatibility
-        name: `${u.first_name || ''} ${u.middle_name || ''} ${u.last_name || ''}`.trim().replace(/\s+/g, ' ')
-    }));
-    res.json(users);
+apiRouter.get('/employees', async (req, res) => {
+    try {
+        const users = await azureDb.getEmployees();
+        const mapped = users.map(u => ({
+            ...u,
+            name: `${u.first_name || ''} ${u.middle_name || ''} ${u.last_name || ''}`.trim().replace(/\s+/g, ' ')
+        }));
+        res.json(mapped);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // POST Create Employee
-app.post('/api/employees', (req, res) => {
-    const db = readDb();
-    const { first_name, middle_name, last_name, division_id, position } = req.body;
+apiRouter.post('/employees', async (req, res) => {
+    try {
+        const { first_name, middle_name, last_name, division_id, position } = req.body;
+        if (!first_name || !last_name || !division_id) return res.status(400).json({ error: 'Name and Division required' });
 
-    if (!first_name || !last_name || !division_id) return res.status(400).json({ error: 'Name and Division required' });
+        // Get Division Name
+        const allDivs = await azureDb.getDivisions();
+        const div = allDivs.find(d => d.id === division_id);
+        const divName = div ? div.name : 'Unknown';
 
-    // Find division name
-    const division = (db.divisions || []).find(d => d.id === division_id);
-    const divisionName = division ? division.name : 'Unknown';
+        const id = await azureDb.generateControlCode('employee');
+        const newUser = {
+            id,
+            first_name,
+            middle_name: middle_name || '',
+            last_name,
+            division_id,
+            division: divName,
+            position: position || 'Staff',
+            created_at: new Date().toISOString()
+        };
 
-    const newUser = {
-        id: generateControlCode(db, 'employee'),
-        first_name,
-        middle_name: middle_name || '',
-        last_name,
-        division_id, // Keep for reference if needed, or remove? Plan said "Put actual Division instead of Division ID". I'll keep ID for linking but ADD name, or replace?
-        // User said "Put the actual Division instead of Division ID". 
-        // In local DB (JSON), I should probably keep division_id for relational integrity if I ever need it, 
-        // BUT for the Azure Sync I definitely need to send the name.
-        // Let's store both in local DB for now to be safe, but focus on the "division" field for Azure.
-        division: divisionName,
-        position: position || 'Staff'
-        // hourly_rate removed
-    };
-
-    if (!db.users) db.users = [];
-    db.users.push(newUser);
-    writeDb(db);
-
-    // Lodge in Azure OpDash database (employee_list)
-    // Pass the full object, ensureTableAndInsertEmployee will handle the mapping
-    ensureTableAndInsertEmployee(newUser).catch(err => console.error("Azure DB Employee Sync Error:", err));
-
-    // Return with virtual name for frontend consistency
-    res.status(201).json({
-        ...newUser,
-        name: `${first_name} ${middle_name || ''} ${last_name}`.trim().replace(/\s+/g, ' ')
-    });
+        const saved = await azureDb.upsertEmployee(newUser);
+        res.status(201).json({
+            ...saved,
+            name: `${saved.first_name} ${saved.middle_name || ''} ${saved.last_name}`.trim().replace(/\s+/g, ' ')
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // PUT Update Employee
-app.put('/api/employees/:id', (req, res) => {
-    const db = readDb();
-    const { id } = req.params;
-    const { first_name, middle_name, last_name, division_id, position } = req.body;
+apiRouter.put('/employees/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const current = await azureDb.getEmployeeById(id);
+        if (!current) return res.status(404).json({ error: 'Employee not found' });
 
-    if (!db.users) return res.status(404).json({ error: 'No users found' });
+        const { first_name, middle_name, last_name, division_id, position } = req.body;
 
-    const index = db.users.findIndex(u => u.id === id);
-    if (index === -1) return res.status(404).json({ error: 'Employee not found' });
+        // Resolve new division Name if changed
+        let divisionName = current.division;
+        let finalDivId = division_id || current.division_id;
+        if (division_id && division_id !== current.division_id) {
+            const allDivs = await azureDb.getDivisions();
+            const d = allDivs.find(x => x.id === division_id);
+            divisionName = d ? d.name : 'Unknown';
+        }
 
-    // Find division name if division changed
-    let divisionName = db.users[index].division;
-    if (division_id && division_id !== db.users[index].division_id) {
-        const division = (db.divisions || []).find(d => d.id === division_id);
-        divisionName = division ? division.name : 'Unknown';
+        const updatedUser = {
+            ...current,
+            first_name: first_name || current.first_name,
+            middle_name: middle_name !== undefined ? middle_name : current.middle_name,
+            last_name: last_name || current.last_name,
+            division_id: finalDivId,
+            division: divisionName,
+            position: position || current.position
+        };
+
+        const saved = await azureDb.upsertEmployee(updatedUser);
+        res.json({
+            ...saved,
+            name: `${saved.first_name} ${saved.middle_name || ''} ${saved.last_name}`.trim().replace(/\s+/g, ' ')
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-
-    const updatedUser = {
-        ...db.users[index],
-        first_name: first_name || db.users[index].first_name,
-        middle_name: middle_name !== undefined ? middle_name : db.users[index].middle_name,
-        last_name: last_name || db.users[index].last_name,
-        division_id: division_id || db.users[index].division_id,
-        division: divisionName,
-        position: position || db.users[index].position
-    };
-
-    db.users[index] = updatedUser;
-    writeDb(db);
-
-    // Sync to Azure
-    ensureTableAndInsertEmployee(updatedUser).catch(err => console.error("Azure DB Employee Sync Error:", err));
-
-    res.json({
-        ...updatedUser,
-        name: `${updatedUser.first_name} ${updatedUser.middle_name || ''} ${updatedUser.last_name}`.trim().replace(/\s+/g, ' ')
-    });
 });
 
 // DELETE Employee
-app.delete('/api/employees/:id', (req, res) => {
-    const db = readDb();
-    const { id } = req.params;
-
-    if (!db.users) return res.status(404).json({ error: 'No users found' });
-
-    const initialLength = db.users.length;
-    db.users = db.users.filter(u => u.id !== id);
-
-    if (db.users.length === initialLength) {
-        return res.status(404).json({ error: 'Employee not found' });
+apiRouter.delete('/employees/:id', async (req, res) => {
+    try {
+        await azureDb.deleteEmployee(req.params.id);
+        res.json({ message: 'Employee deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-
-    writeDb(db);
-    res.json({ message: 'Employee deleted successfully' });
 });
 
-// GET Project Financials (Simulated SQL View)
-app.get('/api/projects/:id/financials', (req, res) => {
-    const db = readDb();
-    const projectId = req.params.id;
-    const project = (db.projects || []).find(p => p.id === projectId);
-
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-
-    // 1. Get all tasks for project
-    const projectTasks = (db.tasks || []).filter(t => t.project_id === projectId);
-    const taskIds = projectTasks.map(t => t.id);
-
-    // 2. Get all time logs for these tasks
-    const logs = (db.time_logs || []).filter(l => taskIds.includes(l.task_id));
-
-    // 3. Calculate Actual Cost (Sum of hours * user_rate) + (Sum of Task Costs)
-    let actualCost = 0;
-    let totalHours = 0;
-
-    // Labor Cost
-    logs.forEach(log => {
-        const user = (db.users || []).find(u => u.id === log.user_id);
-        const rate = user ? user.hourly_rate : 0;
-        actualCost += (log.hours_logged * rate);
-        totalHours += log.hours_logged;
-    });
-
-    // Task Expenses (Direct Costs) AND Budget Calculation
-    let dynamicTotalBudget = 0;
-    projectTasks.forEach(t => {
-        // Legacy Cost support + New Expenses array
-        let taskCost = 0;
-        if (t.expenses && Array.isArray(t.expenses)) {
-            taskCost = t.expenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
-        } else if (t.cost) {
-            taskCost = Number(t.cost);
-        }
-        actualCost += taskCost;
-
-        if (t.budget) {
-            dynamicTotalBudget += Number(t.budget);
-        }
-    });
-
-    // If project has an explicit total_budget, use it. Otherwise sum of task budgets.
-    const finalBudget = (project.total_budget && Number(project.total_budget) > 0)
-        ? Number(project.total_budget)
-        : (dynamicTotalBudget > 0 ? dynamicTotalBudget : 0);
-
-    // 4. Calculate Metrics
-    const burnRate = finalBudget > 0 ? (actualCost / finalBudget) * 100 : 0;
-
-    // CPI Calculation (Simplified: Earned Value / Actual Cost)
-    // EV = (% of tasks done) * Budget
-    const completedTasks = projectTasks.filter(t => t.status === 'Done').length;
-    const totalTasks = projectTasks.length || 1;
-    const percentComplete = completedTasks / totalTasks;
-    const earnedValue = percentComplete * (finalBudget || 1); // Fallback to 1 for EV calc if budget is 0 to avoid total fail? Actually if budget is 0, EV is 0.
-
-    const cpi = actualCost > 0 ? ((percentComplete * finalBudget) / actualCost) : 1;
-
-    // Remaining Budget
-    const remainingBudget = finalBudget - actualCost;
-
-    res.json({
-        id: project.id,
-        name: project.name,
-        total_budget: finalBudget,
-        remaining_budget: remainingBudget,
-        actual_cost: actualCost,
-        total_hours: totalHours,
-        burn_rate_percent: burnRate,
-        cpi: cpi
-    });
+// DELETE Project
+apiRouter.delete('/projects/:id', async (req, res) => {
+    try {
+        await azureDb.deleteProject(req.params.id);
+        res.json({ message: 'Project deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// GET Hierarchical Tasks (Simulated ltree)
-app.get('/api/projects/:id/tasks', (req, res) => {
-    const db = readDb();
-    const projectId = req.params.id;
+// GET Project Financials (Complex Logic)
+apiRouter.get('/projects/:id/financials', async (req, res) => {
+    try {
+        const projectId = req.params.id;
+        const project = await azureDb.getProjectById(projectId);
+        if (!project) return res.status(404).json({ error: 'Project not found' });
 
-    // Filter tasks for this project
-    let tasks = (db.tasks || []).filter(t => t.project_id === projectId);
+        // 1. Get Activities
+        const activities = await azureDb.getActivities(projectId);
+        console.log(`[Financials] Project ${projectId} has ${activities.length} activities.`);
 
-    // Join with Users and Divisions to get "Division Name" for color coding
-    tasks = tasks.map(t => {
-        let divisionName = 'Unassigned';
-        if (t.assignee_id) {
-            const user = (db.users || []).find(u => u.id === t.assignee_id);
-            if (user && user.division_id) {
-                const division = (db.divisions || []).find(d => d.id === user.division_id);
-                if (division) {
-                    divisionName = division.name;
+        // 2. Get Expenses (Direct Costs from expense_list) linked to activities
+        const expenses = await azureDb.getExpensesByProject(projectId);
+        console.log(`[Financials] Project ${projectId} has ${expenses.length} expenses.`);
+
+        // 3. Calculate Actual Cost
+        let actualCost = 0;
+        let totalHours = 0; // Simulated/Missing
+
+        // Add up activity.cost (Legacy field) + expenses
+        activities.forEach(a => {
+            actualCost += Number(a.cost) || 0;
+        });
+
+        expenses.forEach(e => {
+            actualCost += Number(e.amount) || 0;
+        });
+
+        console.log(`[Financials] Calculated Actual Cost: ${actualCost}`);
+
+        // Dynamic Budget
+        let dynamicTotalBudget = activities.reduce((sum, a) => sum + (Number(a.budget) || 0), 0);
+
+        const finalBudget = (project.total_budget && Number(project.total_budget) > 0)
+            ? Number(project.total_budget)
+            : (dynamicTotalBudget > 0 ? dynamicTotalBudget : 0);
+
+        const burnRate = finalBudget > 0 ? (actualCost / finalBudget) * 100 : 0;
+
+        // CPI
+        const completedTasks = activities.filter(t => t.status === 'Done').length;
+        const totalTasks = activities.length || 1;
+        const percentComplete = completedTasks / totalTasks;
+
+        const cpi = actualCost > 0 ? ((percentComplete * finalBudget) / actualCost) : 1;
+        const remainingBudget = finalBudget - actualCost;
+
+        res.json({
+            id: project.id,
+            name: project.name,
+            total_budget: finalBudget,
+            remaining_budget: remainingBudget,
+            actual_cost: actualCost,
+            total_hours: totalHours,
+            burn_rate_percent: burnRate,
+            cpi: cpi
+        });
+
+    } catch (err) {
+        console.error(`[Financials] ERROR: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET Hierarchical Tasks
+apiRouter.get('/projects/:id/tasks', async (req, res) => {
+    try {
+        const projectId = req.params.id;
+        const activities = await azureDb.getActivities(projectId);
+        const users = await azureDb.getEmployees();
+        const divisions = await azureDb.getDivisions();
+
+        // Map division name
+        const mapped = activities.map(t => {
+            let divisionName = 'Unassigned';
+            if (t.assignee_id) {
+                const user = users.find(u => u.id === t.assignee_id);
+                if (user && user.division_id) {
+                    const div = divisions.find(d => d.id === user.division_id);
+                    if (div) divisionName = div.name;
                 }
             }
-        }
-        return { ...t, division_name: divisionName };
-    });
+            return {
+                ...t,
+                division_name: divisionName,
+                subtasks: [] // Will populate
+            };
+        });
 
-    // Sort by path (simulating ltree sorting: t1, t1.t2, t3...)
-    tasks.sort((a, b) => {
-        if (!a.path) return 1;
-        if (!b.path) return -1;
-        return a.path.localeCompare(b.path);
-    });
+        // Now fetch Subtasks for these activities
+        const allSubtasks = await azureDb.getSubtasks();
 
-    res.json(tasks);
+        mapped.forEach(activity => {
+            const subs = allSubtasks.filter(s => s.activity_id === activity.id);
+            activity.subtasks = subs;
+        });
+
+        // Sort
+        mapped.sort((a, b) => {
+            const pA = a.path || a.id;
+            const pB = b.path || b.id;
+            return pA.localeCompare(pB);
+        });
+
+        res.json(mapped);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// POST Create Task
-app.post('/api/tasks', (req, res) => {
-    const database = readDb();
-    const { project_id, title, objective, parent_path, status, assignee_id, estimated_hours, start_date, due_date, cost, budget } = req.body;
+// POST Create Task (Activity)
+apiRouter.post('/tasks', async (req, res) => {
+    try {
+        const { project_id, title, objective, parent_path, status, assignee_id, estimated_hours, start_date, due_date, cost, budget } = req.body;
 
-    if (title && title.length > 50) {
-        return res.status(400).json({ error: 'Activity title cannot exceed 50 characters' });
-    }
-    if (objective && objective.length > 100) {
-        return res.status(400).json({ error: 'Activity objective cannot exceed 100 characters' });
-    }
+        if (title && title.length > 50) return res.status(400).json({ error: 'Activity title cannot exceed 50 characters' });
+        if (objective && objective.length > 100) return res.status(400).json({ error: 'Activity objective cannot exceed 100 characters' });
 
-    const newId = generateControlCode(database, 'activity');
-    const path = parent_path ? `${parent_path}.${newId}` : newId;
+        const newId = await azureDb.generateControlCode('activity');
+        const path = parent_path ? `${parent_path}.${newId}` : newId;
 
-    // Log the incoming request body for debugging
-    console.log("[API] POST /api/tasks received body:", req.body);
-
-    const newTask = {
-        id: newId,
-        project_id,
-        path,
-        title,
-        objective: objective || '',
-        status: status || 'Todo',
-        priority: 'Medium',
-        assignee_id,
-        estimated_hours: Number(estimated_hours) || 0,
-        start_date,
-        due_date,
-        cost: Number(cost) || 0,
-        budget: Number(budget) || 0,
-        expenses: req.body.expenses || [],
-        subtasks: req.body.subtasks || [],
-        version: 1
-    };
-
-    console.log("[API] Constructed newTask:", newTask);
-
-    if (!database.tasks) database.tasks = [];
-    database.tasks.push(newTask);
-    writeDb(database);
-
-    // Lodge in Azure OpDash database (activities_list)
-    ensureTableAndInsertActivity(newTask).catch(err => console.error("Azure DB Activity Sync Error:", err));
-
-    io.to(project_id).emit('task_updated', { type: 'CREATED', task: newTask });
-    res.status(201).json(newTask);
-});
-
-// PUT Update Task
-app.put('/api/tasks/:id', (req, res) => {
-    const db = readDb();
-    const { status, title, objective, priority, assignee_id, start_date, due_date, cost, budget } = req.body;
-
-    if (title !== undefined && title.length > 50) {
-        return res.status(400).json({ error: 'Activity title cannot exceed 50 characters' });
-    }
-
-    if (objective !== undefined && objective.length > 100) {
-        return res.status(400).json({ error: 'Activity objective cannot exceed 100 characters' });
-    }
-
-    if (req.body.subtasks && Array.isArray(req.body.subtasks)) {
-        const invalidSubtaskTitle = req.body.subtasks.find(st => st.title && st.title.length > 50);
-        if (invalidSubtaskTitle) {
-            return res.status(400).json({ error: 'Task title cannot exceed 50 characters' });
-        }
-        const invalidSubtask = req.body.subtasks.find(st => st.description && st.description.length > 100);
-        if (invalidSubtask) {
-            return res.status(400).json({ error: 'Task description cannot exceed 100 characters' });
-        }
-    }
-    const tasks = db.tasks || [];
-    const index = tasks.findIndex(t => t.id === req.params.id);
-
-    if (index !== -1) {
-        const task = tasks[index];
-        const updatedTask = {
-            ...task,
-            title: title || task.title,
-            objective: objective !== undefined ? objective : task.objective,
-            status: status || task.status,
-            priority: priority || task.priority,
-            assignee_id: assignee_id || task.assignee_id,
-            start_date: start_date || task.start_date,
-            due_date: due_date || task.due_date,
-            cost: cost !== undefined ? Number(cost) : task.cost,
-            budget: budget !== undefined ? Number(budget) : task.budget,
-            expenses: req.body.expenses || task.expenses || [],
-            subtasks: req.body.subtasks || task.subtasks || [],
-            version: (task.version || 1) + 1
+        const newTask = {
+            id: newId,
+            project_id,
+            path,
+            title,
+            objective: objective || '',
+            status: status || 'Todo',
+            priority: 'Medium',
+            assignee_id,
+            estimated_hours: Number(estimated_hours) || 0,
+            start_date,
+            due_date,
+            cost: Number(cost) || 0,
+            budget: Number(budget) || 0,
+            created_at: new Date().toISOString()
         };
 
-        db.tasks[index] = updatedTask;
-        writeDb(db);
+        const saved = await azureDb.upsertActivity(newTask);
 
-        // Sync to Azure (Activity)
-        ensureTableAndInsertActivity(updatedTask).catch(err => console.error("Azure DB Activity Sync Error:", err));
+        // Handle subtasks if any in payload? (Usually separate call, but original code had it)
+        if (req.body.subtasks && Array.isArray(req.body.subtasks)) {
+            for (const sub of req.body.subtasks) {
+                const subTaskObj = {
+                    id: await azureDb.generateControlCode('task'),
+                    project_id,
+                    activity_id: saved.id,
+                    title: sub.title,
+                    description: sub.description || '',
+                    status: 'Todo'
+                };
+                await azureDb.upsertSubtask(subTaskObj);
+            }
+        }
 
-        // Notify with full task data
-        io.to(updatedTask.project_id).emit('task_updated', { type: 'UPDATED', task: updatedTask });
-        res.json(updatedTask);
-    } else {
-        res.status(404).json({ error: "Task not found" });
+        // Expenses
+        if (req.body.expenses && Array.isArray(req.body.expenses)) {
+            for (const exp of req.body.expenses) {
+                await azureDb.addExpense({
+                    id: uuidv4(),
+                    task_id: saved.id,
+                    description: exp.description,
+                    amount: exp.amount,
+                    date: exp.date || new Date().toISOString()
+                });
+            }
+        }
+
+        // Re-fetch to return full object with children?
+        saved.subtasks = await azureDb.getSubtasks(saved.id);
+        saved.expenses = await azureDb.getExpenses(saved.id);
+
+        io.to(project_id).emit('task_updated', { type: 'CREATED', task: saved });
+        res.status(201).json(saved);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
     }
 });
 
-// POST Add Expense to Task
-app.post('/api/tasks/:id/expenses', (req, res) => {
-    const db = readDb();
-    const { description, amount, date } = req.body;
-    const tasks = db.tasks || [];
-    const index = tasks.findIndex(t => t.id === req.params.id);
+// PUT Update Task (Activity)
+apiRouter.put('/tasks/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const current = await azureDb.getActivityById(id);
+        if (!current) return res.status(404).json({ error: "Task (Activity) not found" });
 
-    if (index !== -1) {
-        const task = tasks[index];
+        const { status, title, objective, priority, assignee_id, start_date, due_date, cost, budget } = req.body;
+
+        const updatedTask = {
+            ...current,
+            title: title || current.title,
+            objective: objective !== undefined ? objective : current.objective,
+            status: status || current.status,
+            priority: priority || current.priority,
+            assignee_id: assignee_id || current.assignee_id,
+            start_date: start_date || current.start_date,
+            due_date: due_date || current.due_date,
+            cost: cost !== undefined ? Number(cost) : current.cost,
+            budget: budget !== undefined ? Number(budget) : current.budget
+        };
+
+        const saved = await azureDb.upsertActivity(updatedTask);
+
+        saved.subtasks = await azureDb.getSubtasks(saved.id);
+        saved.expenses = await azureDb.getExpenses(saved.id);
+
+        io.to(saved.project_id).emit('task_updated', { type: 'UPDATED', task: saved });
+        res.json(saved);
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST Add Expense
+apiRouter.post('/tasks/:id/expenses', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const current = await azureDb.getActivityById(id); // Ensure activity exists
+        if (!current) return res.status(404).json({ error: "Task not found" });
+
+        const { description, amount, date } = req.body;
         const newExpense = {
             id: uuidv4(),
+            task_id: id,
             description,
             amount: Number(amount),
             date: date || new Date().toISOString()
         };
+        const saved = await azureDb.addExpense(newExpense);
 
-        if (!task.expenses) task.expenses = [];
-        task.expenses.push(newExpense);
+        // Notify
+        const taskWithExpenses = {
+            ...current,
+            expenses: await azureDb.getExpenses(id)
+        };
+        io.to(current.project_id).emit('task_updated', { type: 'EXPENSE_ADDED', task: taskWithExpenses });
 
-        // Update task actual cost (legacy field sync optional, but we verify on read)
-
-        db.tasks[index] = task;
-        writeDb(db);
-
-        io.to(task.project_id).emit('task_updated', { type: 'EXPENSE_ADDED', task });
-        res.status(201).json(newExpense);
-    } else {
-        res.status(404).json({ error: "Task not found" });
+        res.status(201).json(saved);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
-// DELETE Remove Expense from Task
-app.delete('/api/tasks/:taskId/expenses/:expenseId', (req, res) => {
-    const db = readDb();
-    const { taskId, expenseId } = req.params;
-    const tasks = db.tasks || [];
-    const index = tasks.findIndex(t => t.id === taskId);
+// DELETE Expense
+apiRouter.delete('/tasks/:taskId/expenses/:expenseId', async (req, res) => {
+    try {
+        const { taskId, expenseId } = req.params;
+        await azureDb.deleteExpense(expenseId);
 
-    if (index !== -1) {
-        const task = tasks[index];
-        if (task.expenses) {
-            task.expenses = task.expenses.filter(e => e.id !== expenseId);
-            db.tasks[index] = task;
-            writeDb(db);
-
-            io.to(task.project_id).emit('task_updated', { type: 'EXPENSE_REMOVED', task });
-            res.status(200).json({ message: "Expense removed" });
-        } else {
-            res.status(404).json({ error: "No expenses found" });
+        const current = await azureDb.getActivityById(taskId);
+        if (current) {
+            const taskWithExpenses = {
+                ...current,
+                expenses: await azureDb.getExpenses(taskId)
+            };
+            io.to(current.project_id).emit('task_updated', { type: 'EXPENSE_REMOVED', task: taskWithExpenses });
         }
-    } else {
-        res.status(404).json({ error: "Task not found" });
+        res.status(200).json({ message: "Expense removed" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
 // AI Mock Service
-app.post('/api/ai/predict-risk', (req, res) => {
+apiRouter.post('/ai/predict-risk', (req, res) => {
     const { burnRate, progress } = req.body;
-    // Logic: If Burn Rate > 80% AND Progress < 50% -> High Risk
     const isHighRisk = burnRate > 80 && progress < 50;
 
     setTimeout(() => {
@@ -619,256 +562,174 @@ app.post('/api/ai/predict-risk', (req, res) => {
     }, 1000);
 });
 
-// POST Create Subtask (Activity -> Task)
-app.post('/api/activities/:activityId/tasks', (req, res) => {
-    console.log(`[API] POST /api/activities/${req.params.activityId}/tasks called. Body:`, req.body);
-    const db = readDb();
-    const { activityId } = req.params;
-    const { title, description, assignee_id, due_date, status } = req.body;
+// POST Create Subtask
+apiRouter.post('/activities/:activityId/tasks', async (req, res) => {
+    try {
+        const { activityId } = req.params;
+        const { title, description, assignee_id, due_date, status } = req.body;
 
-    if (title && title.length > 50) {
-        return res.status(400).json({ error: 'Task title cannot exceed 50 characters' });
+        const parent = await azureDb.getActivityById(activityId);
+        if (!parent) return res.status(404).json({ error: "Activity not found" });
+
+        if (title && title.length > 50) return res.status(400).json({ error: 'Task title cannot exceed 50 characters' });
+
+        const newTaskId = await azureDb.generateControlCode('task');
+        const newTask = {
+            id: newTaskId,
+            title,
+            description: description || '',
+            assignee_id,
+            due_date,
+            status: status || 'Todo',
+            project_id: parent.project_id,
+            activity_id: activityId,
+            created_at: new Date().toISOString()
+        };
+
+        const saved = await azureDb.upsertSubtask(newTask);
+
+        io.to(parent.project_id).emit('task_updated', { type: 'SUBTASK_ADDED', activityId, task: saved });
+        res.status(201).json(saved);
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    if (description && description.length > 100) {
-        return res.status(400).json({ error: 'Task description cannot exceed 100 characters' });
-    }
-    const tasks = db.tasks || [];
-    const index = tasks.findIndex(t => t.id === activityId);
-
-    if (index === -1) {
-        return res.status(404).json({ error: "Activity not found" });
-    }
-
-    const activity = tasks[index];
-    const newTaskId = generateControlCode(db, 'task');
-
-    const newTask = {
-        id: newTaskId,
-        title,
-        description: description || '',
-        assignee_id,
-        due_date,
-        status: status || 'Todo',
-        project_id: activity.project_id, // Inherit project_id
-        activity_id: activityId
-    };
-
-    if (!activity.subtasks) activity.subtasks = [];
-    activity.subtasks.push(newTask);
-
-    db.tasks[index] = activity;
-    writeDb(db);
-
-    // Lodge in Azure OpDash database (task_list)
-    ensureTableAndInsertTask(newTask).catch(err => console.error("Azure DB Task Sync Error:", err));
-
-    io.to(activity.project_id).emit('task_updated', { type: 'SUBTASK_ADDED', activityId, task: newTask });
-    res.status(201).json(newTask);
 });
 
-// GET Milestones for Project
-app.get('/api/projects/:id/milestones', (req, res) => {
-    const db = readDb();
-    const projectId = req.params.id;
-    const milestones = (db.milestones || []).filter(m => m.project_id === projectId);
-    res.json(milestones);
+// GET Milestones (Global)
+apiRouter.get('/milestones', async (req, res) => {
+    try {
+        const ms = await azureDb.getMilestones();
+        res.json(ms);
+    } catch (err) {
+    }
+});
+
+// GET Catchups (Global)
+apiRouter.get('/catchups', async (req, res) => {
+    try {
+        const catchups = await azureDb.getCatchups();
+        res.json(catchups);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET Milestones (Project specific)
+apiRouter.get('/projects/:id/milestones', async (req, res) => {
+    try {
+        const ms = await azureDb.getMilestones(req.params.id);
+        res.json(ms);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // POST Create Milestone
-app.post('/api/milestones', (req, res) => {
-    const db = readDb();
-    console.log("POST /api/milestones payload:", req.body); // Debug log
-    const { project_id, title, description, target_date, status, notes, importance } = req.body;
+apiRouter.post('/milestones', async (req, res) => {
+    try {
+        const { project_id, title, description, target_date, status, notes, importance } = req.body;
+        if (!title) return res.status(400).json({ error: 'Title is required' });
 
-    if (!title) {
-        return res.status(400).json({ error: 'Title is required' });
+        const id = await azureDb.generateControlCode('milestone');
+        const newMilestone = {
+            id,
+            project_id,
+            title,
+            description,
+            target_date,
+            status,
+            notes,
+            importance: Number(importance) || 1,
+            created_at: new Date().toISOString()
+        };
+        const saved = await azureDb.upsertMilestone(newMilestone);
+        res.status(201).json(saved);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    if (title.length > 50) {
-        return res.status(400).json({ error: 'Title cannot exceed 50 characters' });
-    }
-    if (description && description.length > 100) {
-        return res.status(400).json({ error: 'Description cannot exceed 100 characters' });
-    }
-
-    const newMilestone = {
-        id: generateControlCode(db, 'milestone'),
-        project_id,
-        title,
-        description: description || '',
-        target_date: target_date || null,
-        status: status || 'Pending',
-        notes: notes || '',
-        importance: Number(importance) || 1, // Default to 1 (White)
-        created_at: new Date().toISOString()
-    };
-
-    if (!db.milestones) db.milestones = [];
-    db.milestones.push(newMilestone);
-    writeDb(db);
-
-    // Sync to Azure
-    ensureTableAndInsertMilestone(newMilestone).catch(err => console.error("Azure DB Milestone Sync Error:", err));
-
-    res.status(201).json(newMilestone);
 });
 
 // PUT Update Milestone
-app.put('/api/milestones/:id', (req, res) => {
-    const db = readDb();
-    const { id } = req.params;
-    console.log(`PUT /api/milestones/${id} payload:`, req.body); // Debug log
-    const { title, description, target_date, status, notes, importance } = req.body;
+apiRouter.put('/milestones/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, target_date, status, notes, importance } = req.body;
 
-    if (title && title.length > 50) return res.status(400).json({ error: 'Title cannot exceed 50 characters' });
-    if (description && description.length > 100) return res.status(400).json({ error: 'Description cannot exceed 100 characters' });
+        const all = await azureDb.getMilestones();
+        const existing = all.find(m => m.id === id);
 
-    if (!db.milestones) return res.status(404).json({ error: 'No milestones found' });
+        if (!existing) return res.status(404).json({ error: "Milestone not found" });
 
-    const index = db.milestones.findIndex(m => m.id === id);
-    if (index === -1) return res.status(404).json({ error: 'Milestone not found' });
+        const updated = {
+            ...existing,
+            title: title || existing.title,
+            description: description !== undefined ? description : existing.description,
+            target_date: target_date || existing.target_date,
+            status: status || existing.status,
+            notes: notes !== undefined ? notes : existing.notes,
+            importance: importance !== undefined ? Number(importance) : existing.importance
+        };
 
-    const updatedMilestone = {
-        ...db.milestones[index],
-        title: title || db.milestones[index].title,
-        description: description !== undefined ? description : db.milestones[index].description,
-        target_date: target_date || db.milestones[index].target_date,
-        status: status || db.milestones[index].status,
-        notes: notes !== undefined ? notes : db.milestones[index].notes,
-        importance: importance !== undefined ? Number(importance) : db.milestones[index].importance // Preserve existing if not provided
-    };
+        const saved = await azureDb.upsertMilestone(updated);
+        res.json(saved);
 
-    db.milestones[index] = updatedMilestone;
-    writeDb(db);
-
-    // Sync to Azure
-    ensureTableAndInsertMilestone(updatedMilestone).catch(err => console.error("Azure DB Milestone Sync Error:", err));
-
-    res.json(updatedMilestone);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-
-
 // GET All Milestones (Global)
-app.get('/api/milestones', (req, res) => {
-    const db = readDb();
-    res.json(db.milestones || []);
+apiRouter.get('/milestones', async (req, res) => {
+    try {
+        const ms = await azureDb.getMilestones();
+        res.json(ms);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // DELETE Milestone
-app.delete('/api/milestones/:id', (req, res) => {
-    const db = readDb();
-    const { id } = req.params;
-
-    if (!db.milestones) return res.status(404).json({ error: 'No milestones found' });
-
-    const initialLength = db.milestones.length;
-    db.milestones = db.milestones.filter(m => m.id !== id);
-
-    if (db.milestones.length === initialLength) {
-        return res.status(404).json({ error: 'Milestone not found' });
+apiRouter.delete('/milestones/:id', async (req, res) => {
+    try {
+        await azureDb.deleteMilestone(req.params.id);
+        res.json({ message: 'Milestone deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-
-    writeDb(db);
-    res.json({ message: 'Milestone deleted successfully' });
 });
 
-// POST Create Catch-up Activity
-app.post('/api/catchups', (req, res) => {
-    console.log("[API] POST /api/catchups called");
-    const db = readDb();
-    const { activity_id, title, description, target_date, reason } = req.body;
+// POST Create Catch-up
+apiRouter.post('/catchups', async (req, res) => {
+    try {
+        const { activity_id, title, description, target_date, reason } = req.body;
+        if (!title) return res.status(400).json({ error: 'Catch-up activity title is required' });
 
-    if (!title) {
-        return res.status(400).json({ error: 'Catch-up activity title is required' });
+        const newCatchUp = {
+            id: uuidv4(),
+            activity_id,
+            title,
+            description: description || '',
+            target_date: target_date || null,
+            status: 'Pending',
+            reason: reason || '',
+            created_at: new Date().toISOString()
+        };
+        const saved = await azureDb.upsertCatchup(newCatchUp);
+        res.status(201).json(saved);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    if (!activity_id) {
-        return res.status(400).json({ error: 'Activity ID is required' });
-    }
-
-    const newCatchUp = {
-        id: uuidv4(),
-        activity_id,
-        title,
-        description: description || '',
-        target_date: target_date || null,
-        status: 'Pending',
-        reason: reason || '',
-        created_at: new Date().toISOString()
-    };
-
-    if (!db.catchups) db.catchups = [];
-    db.catchups.push(newCatchUp);
-    writeDb(db);
-
-    // Sync to Azure
-    ensureTableAndInsertCatchUp(newCatchUp).catch(err => console.error("Azure DB CatchUp Sync Error:", err));
-
-    res.status(201).json(newCatchUp);
 });
 
-// PUT Update Catch-up Activity
-app.put('/api/catchups/:id', (req, res) => {
-    const db = readDb();
-    const { id } = req.params;
-    const { title, description, target_date, status, reason } = req.body;
+// Use the router
+app.use(['/api', '/opdash/api'], apiRouter);
 
-    if (title && title.length > 50) {
-        return res.status(400).json({ error: 'Catch-up activity title cannot exceed 50 characters' });
-    }
-
-    if (!db.catchups) return res.status(404).json({ error: 'No catch-up activities found' });
-
-    const index = db.catchups.findIndex(c => c.id === id);
-    if (index === -1) return res.status(404).json({ error: 'Catch-up activity not found' });
-
-    const updatedCatchUp = {
-        ...db.catchups[index],
-        title: title || db.catchups[index].title,
-        description: description !== undefined ? description : db.catchups[index].description,
-        target_date: target_date || db.catchups[index].target_date,
-        status: status || db.catchups[index].status,
-        reason: reason !== undefined ? reason : db.catchups[index].reason
-    };
-
-    db.catchups[index] = updatedCatchUp;
-    writeDb(db);
-
-    // Sync to Azure
-    ensureTableAndInsertCatchUp(updatedCatchUp).catch(err => console.error("Azure DB CatchUp Sync Error:", err));
-
-    res.json(updatedCatchUp);
-});
-
-// GET Catch-up Activities for an Activity
-app.get('/api/activities/:id/catchups', (req, res) => {
-    const db = readDb();
-    const activityId = req.params.id;
-    const catchups = (db.catchups || []).filter(c => c.activity_id === activityId);
-    res.json(catchups);
-});
-
-// GET Catch-up Activities for a Project
-app.get('/api/projects/:projectId/catchups', (req, res) => {
-    const db = readDb();
-    const projectId = req.params.projectId;
-
-    // 1. Get all activities for this project
-    const projectActivities = (db.tasks || []).filter(a => a.project_id === projectId);
-    const activityIds = new Set(projectActivities.map(a => a.id));
-
-    // 2. Filter catchups that belong to these activities
-    const catchups = (db.catchups || []).filter(c => activityIds.has(c.activity_id));
-
-    res.json(catchups);
-});
-
-// GET All Catch-up Activities (Global)
-app.get('/api/catchups', (req, res) => {
-    const db = readDb();
-    res.json(db.catchups || []);
+// Catch-all for SPA (if not matched by API)
+app.get('/opdash/*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../index.html'));
 });
 
 server.listen(PORT, () => {
-    console.log(`Enterprise Server (Local Mode) running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
 });
-// Server restart trigger - updated 2
