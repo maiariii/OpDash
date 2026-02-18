@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getEmployees, createEmployee, getDivisions, createDivision, updateDivision, deleteEmployee } from '../api';
+import { getEmployees, createEmployee, updateEmployee, getDivisions, createDivision, updateDivision, deleteEmployee } from '../api';
 import { User, Briefcase, Plus, Edit2, Check, X, Trash2 } from 'lucide-react';
 
 const Employees = () => {

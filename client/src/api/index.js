@@ -36,5 +36,7 @@ export const deleteMilestone = (id) => api.delete(`/milestones/${id}`).then(res 
 export const createCatchUp = (data) => api.post('/catchups', data).then(res => res.data);
 export const updateCatchUp = (id, data) => api.put(`/catchups/${id}`, data).then(res => res.data);
 export const getProjectCatchUps = (projectId) => api.get(`/projects/${projectId}/catchups`).then(res => res.data);
+export const getAllCatchUps = () => api.get('/catchups').then(res => res.data);
+export const getAllMilestones = () => api.get('/milestones').then(res => res.data);
 
 export default api;

@@ -77,7 +77,7 @@ const ActivityList = ({ activities = [], employees = [], onActivityClick }) => {
 
                         <div className="flex flex-col items-end gap-2">
                             <span className={clsx("px-2.5 py-1 rounded-full text-xs font-medium border", getStatusColor(activity.status))}>
-                                {activity.status}
+                                {activity.status === 'Todo' ? 'Pending' : activity.status}
                             </span>
                             <div className="text-xs font-mono text-slate-400">
                                 {activity.budget ? `₱${Number(activity.budget).toLocaleString()}` : ''}

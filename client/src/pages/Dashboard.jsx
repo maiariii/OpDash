@@ -1,11 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { getEmployees, getProjects, getProjectTasks, getProjectFinancials, getDivisions } from '../api';
+import { getEmployees, getProjects, getProjectTasks, getProjectFinancials, getDivisions, getAllCatchUps, getAllMilestones } from '../api';
 import DashboardCharts from '../components/DashboardCharts';
 import CalendarView from '../components/CalendarView';
 import CreateTaskModal from '../components/CreateTaskModal';
+import SpilloverTracker from '../components/SpilloverTracker';
 
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
+    const [selectedDivision, setSelectedDivision] = useState('All');
+    const [rawData, setRawData] = useState({
+        projects: [],
+        employees: [],
+        divisions: [],
+        projectDetails: [],
+        catchups: [],
+        milestones: []
+    });
+
     const [stats, setStats] = useState({
         totalProjects: 0,
         totalEmployees: 0,
@@ -14,7 +25,15 @@ const Dashboard = () => {
         accomplishedActivities: 0,
         delayedActivities: 0,
         totalBudget: 0,
-        totalSpent: 0
+        totalSpent: 0,
+        allProjects: [],
+        allEmployees: [],
+        allTasks: [],
+        pendingTasks: [],
+        accomplishedTasks: [],
+        delayedTasks: [],
+        milestonesReached: 0,
+        allMilestones: []
     });
     const [editingTask, setEditingTask] = useState(null);
 
@@ -22,10 +41,12 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [fetchedProjects, fetchedEmployees, fetchedDivisions] = await Promise.all([
+                const [fetchedProjects, fetchedEmployees, fetchedDivisions, fetchedCatchUps, fetchedMilestones] = await Promise.all([
                     getProjects(),
                     getEmployees(),
-                    getDivisions()
+                    getDivisions(),
+                    getAllCatchUps(),
+                    getAllMilestones()
                 ]);
 
                 // Map Division Names to Employees
@@ -45,79 +66,14 @@ const Dashboard = () => {
                     })
                 );
 
-                const allTasks = [];
-                projectDetails.forEach(p => {
-                    if (p.tasks) {
-                        p.tasks.forEach(t => {
-                            allTasks.push({
-                                ...t,
-                                project_name: p.name,
-                                division_name: p.division, // Ensure division context is available if needed
-                                project_id: p.id
-                            });
-                        });
-                    }
+                setRawData({
+                    projects: fetchedProjects,
+                    employees: employeesWithDivision,
+                    divisions: fetchedDivisions,
+                    projectDetails: projectDetails,
+                    catchups: fetchedCatchUps,
+                    milestones: fetchedMilestones
                 });
-
-                // Aggregate Metrics
-                let totalActivities = 0;
-                let pendingActivities = 0;
-                let accomplishedActivities = 0;
-                let delayedActivities = 0;
-                let totalBudget = 0;
-                let totalSpent = 0;
-
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                const pendingTasks = [];
-                const accomplishedTasks = [];
-                const delayedTasks = [];
-
-                allTasks.forEach(t => {
-                    totalActivities++;
-                    if (t.status === 'Done') {
-                        accomplishedActivities++;
-                        accomplishedTasks.push(t);
-                    } else {
-                        pendingActivities++;
-                        pendingTasks.push(t);
-                        // Check for delay (past due and not done)
-                        if (t.due_date && new Date(t.due_date) < today) {
-                            delayedActivities++;
-                            delayedTasks.push(t);
-                        }
-                    }
-                });
-
-                projectDetails.forEach(p => {
-                    // Financial Metrics
-                    totalBudget += Number(p.financials?.total_budget || 0);
-                    totalSpent += Number(p.financials?.actual_cost || 0);
-                });
-
-                setStats({
-                    totalProjects: fetchedProjects.length,
-                    totalEmployees: employeesWithDivision.length,
-                    totalActivities,
-                    pendingActivities,
-                    accomplishedActivities,
-                    delayedActivities,
-                    totalBudget,
-                    totalSpent,
-                    // Detailed Arrays
-                    allProjects: projectDetails.map(p => ({
-                        ...p,
-                        total_budget: p.financials?.total_budget || 0,
-                        actual_cost: p.financials?.actual_cost || 0
-                    })),
-                    allEmployees: employeesWithDivision,
-                    allTasks,
-                    pendingTasks,
-                    accomplishedTasks,
-                    delayedTasks
-                });
-
 
             } catch (error) {
                 console.error("Error loading dashboard data:", error);
@@ -129,13 +85,180 @@ const Dashboard = () => {
         fetchData();
     }, []);
 
+    // Filter and Calculate Stats
+    useEffect(() => {
+        if (loading) return;
+
+        const { projectDetails, employees, projects, catchups, milestones } = rawData;
+
+        // Filter Data based on selectedDivision
+        const filteredProjects = selectedDivision === 'All'
+            ? projectDetails
+            : projectDetails.filter(p => p.division === selectedDivision);
+
+        // For employees, we filter by division_name (mapped earlier)
+        const filteredEmployees = selectedDivision === 'All'
+            ? employees
+            : employees.filter(e => e.division_name === selectedDivision);
+
+        const filteredProjectIds = new Set(filteredProjects.map(p => p.id));
+
+        const projectTasks = [];
+        const activityProjectMap = {}; // activityId -> { projectId, projectName, divisionName }
+
+        filteredProjects.forEach(p => {
+            if (p.tasks) {
+                p.tasks.forEach(t => {
+                    projectTasks.push({
+                        ...t,
+                        project_name: p.name,
+                        division_name: p.division,
+                        project_id: p.id
+                    });
+                    activityProjectMap[t.id] = {
+                        project_id: p.id,
+                        project_name: p.name,
+                        division_name: p.division
+                    };
+                });
+            }
+        });
+
+        // Filter Catchups
+        const filteredCatchups = (catchups || []).filter(c => activityProjectMap[c.activity_id]);
+
+        // Filter Milestones
+        const filteredMilestones = (milestones || []).filter(m => filteredProjectIds.has(m.project_id));
+
+
+        // Aggregate Metrics (Based on Project Tasks Only)
+        let totalActivities = 0;
+        let pendingActivities = 0;
+        let accomplishedActivities = 0;
+        let delayedActivities = 0;
+        let totalBudget = 0;
+        let totalSpent = 0;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const pendingTasks = [];
+        const accomplishedTasks = [];
+        const delayedTasks = [];
+
+        projectTasks.forEach(t => {
+            totalActivities++;
+            if (t.status === 'Done') {
+                accomplishedActivities++;
+                accomplishedTasks.push(t);
+            } else {
+                pendingActivities++;
+                pendingTasks.push(t);
+                // Check for delay (past due and not done)
+                if (t.due_date && new Date(t.due_date) < today) {
+                    delayedActivities++;
+                    delayedTasks.push(t);
+                }
+            }
+        });
+
+        // Calculate Milestones Reached
+        // Calculate Milestones Reached
+        const reachedMilestones = filteredMilestones.filter(m => ['Completed', 'Done', 'Accomplished'].includes(m.status));
+        const milestonesReached = reachedMilestones.length;
+
+        filteredProjects.forEach(p => {
+            // Financial Metrics
+            totalBudget += Number(p.financials?.total_budget || 0);
+            totalSpent += Number(p.financials?.actual_cost || 0);
+        });
+
+        // Prepare Calendar Events (Tasks + Catchups + Milestones)
+        const allCalendarEvents = [...projectTasks];
+
+        // Add Catchups
+        filteredCatchups.forEach(c => {
+            const projectInfo = activityProjectMap[c.activity_id];
+            allCalendarEvents.push({
+                ...c,
+                id: `catchup-${c.id}`,
+                title: `Catch-up: ${c.title}`,
+                status: c.status,
+                target_date: c.target_date,
+                project_name: projectInfo.project_name,
+                is_catchup: true
+            });
+        });
+
+        // Add Milestones
+        filteredMilestones.forEach(m => {
+            // Loose comparison for ID to handle string/number differences
+            const project = filteredProjects.find(p => p.id == m.project_id);
+            allCalendarEvents.push({
+                ...m,
+                id: `milestone-${m.id}`,
+                title: m.title,
+                status: m.status,
+                target_date: m.target_date,
+                project_name: project?.name || 'Unknown Project',
+                division_name: project?.division || 'Unassigned',
+                importance: m.importance, // Ensure importance is passed
+                is_milestone: true
+            });
+        });
+
+        // Use the enriched list for allMilestones state
+        const enrichedMilestones = allCalendarEvents.filter(e => e.is_milestone);
+
+        setStats({
+            totalProjects: filteredProjects.length,
+            totalEmployees: filteredEmployees.length,
+            totalActivities,
+            pendingActivities,
+            accomplishedActivities,
+            delayedActivities,
+            totalBudget,
+            totalSpent,
+            milestonesReached,
+            // Detailed Arrays
+            allProjects: filteredProjects.map(p => ({
+                ...p,
+                total_budget: p.financials?.total_budget || 0,
+                actual_cost: p.financials?.actual_cost || 0
+            })),
+            allEmployees: filteredEmployees,
+            allTasks: allCalendarEvents, // For Calendar & "All Activities" modal
+            pendingTasks,
+            accomplishedTasks,
+            delayedTasks,
+            allMilestones: enrichedMilestones
+        });
+
+    }, [rawData, selectedDivision, loading]);
+
     if (loading) {
         return <div className="p-8 text-center text-slate-500">Loading dashboard data...</div>;
     }
 
     return (
         <div className="space-y-8">
-            <h2 className="text-2xl font-bold text-slate-800">Executive Dashboard</h2>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h2 className="text-2xl font-bold text-slate-800">Executive Dashboard</h2>
+
+                <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+                    <span className="text-sm font-medium text-slate-500 pl-2">Filter by Division:</span>
+                    <select
+                        value={selectedDivision}
+                        onChange={(e) => setSelectedDivision(e.target.value)}
+                        className="form-select text-sm border-none focus:ring-0 bg-transparent font-medium text-slate-800 cursor-pointer min-w-[200px]"
+                    >
+                        <option value="All">All Divisions</option>
+                        {rawData.divisions.map(div => (
+                            <option key={div.id} value={div.name}>{div.name}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
 
             {/* Metrics & Visuals */}
             <DashboardCharts metrics={stats} />
@@ -143,22 +266,24 @@ const Dashboard = () => {
             {/* Activity Calendar */}
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                 <CalendarView
-                    activities={stats.allTasks}
+                    activities={stats.allTasks.filter(t => !t.is_milestone)}
                     title="Executive Activity Calendar"
                     onActivityClick={setEditingTask}
                 />
             </div>
 
+            {/* Spillover Tracker */}
+            <SpilloverTracker tasks={stats.allTasks} />
+
             {editingTask && (
                 <CreateTaskModal
                     projectId={editingTask.project_id}
                     task={editingTask}
-                    members={stats.allEmployees} // Pass all employees or filter if needed
+                    members={stats.allEmployees} // Pass filtered employees
                     onClose={() => setEditingTask(null)}
                     onCreated={() => {
                         setEditingTask(null);
-                        // Trigger reload - dirty way for now is to just define fetchData outside or move it
-                        window.location.reload(); // Simplest for now since refactoring useEffect is larger
+                        window.location.reload();
                     }}
                 />
             )}

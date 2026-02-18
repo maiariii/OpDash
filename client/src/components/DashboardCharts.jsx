@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PieChart, BarChart3, Users, DollarSign, Activity, CheckCircle2, Clock, AlertTriangle, X, LayoutGrid, List } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -12,11 +12,73 @@ const COLORS = {
 
 const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
+    const [selectedItem, setSelectedItem] = useState(null);
+
+    // Reset selected item when modal closes or opens with new data
+    useEffect(() => {
+        setSelectedItem(null);
+    }, [isOpen, data]);
 
     if (!isOpen) return null;
 
+    // Sort milestones by importance desc
+    // For milestones, filter to show ONLY Completed/Done/Accomplished and sort by importance
+    const displayData = type === 'milestone'
+        ? [...data]
+            .filter(item => ['Completed', 'Done', 'Accomplished'].includes(item.status))
+            .sort((a, b) => (Number(b.importance) || 0) - (Number(a.importance) || 0))
+        : data;
+
+    if (selectedItem) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
+                <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50">
+                        <h3 className="text-lg font-bold text-slate-800">Milestone Details</h3>
+                        <button onClick={() => setSelectedItem(null)} className="text-slate-400 hover:text-slate-600 p-1 bg-white rounded-full border border-slate-200 shadow-sm transition-colors">
+                            <X size={18} />
+                        </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="text-xs uppercase font-bold text-slate-400">Title</label>
+                            <p className="text-lg font-semibold text-slate-800">{selectedItem.title}</p>
+                        </div>
+                        <div>
+                            <label className="text-xs uppercase font-bold text-slate-400">Description</label>
+                            <p className="text-sm text-slate-600 whitespace-pre-wrap">{selectedItem.description || "No description provided."}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs uppercase font-bold text-slate-400">Status</label>
+                                <span className={clsx("inline-block px-2 py-0.5 rounded-full text-xs font-bold mt-1",
+                                    ['Completed', 'Done', 'Accomplished'].includes(selectedItem.status) ? 'bg-green-100 text-green-700' :
+                                        selectedItem.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                                )}>{selectedItem.status}</span>
+                            </div>
+                            <div>
+                                <label className="text-xs uppercase font-bold text-slate-400">Target Date</label>
+                                <p className="text-sm font-medium text-slate-700 mt-1">{selectedItem.target_date ? new Date(selectedItem.target_date).toLocaleDateString() : '-'}</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs uppercase font-bold text-slate-400">Project</label>
+                                <p className="text-sm font-medium text-slate-700 mt-1">{selectedItem.project_name || '-'}</p>
+                            </div>
+                            <div>
+                                <label className="text-xs uppercase font-bold text-slate-400">Division</label>
+                                <p className="text-sm font-medium text-slate-700 mt-1">{selectedItem.division_name || '-'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const renderContent = () => {
-        if (data.length === 0) {
+        if (displayData.length === 0) {
             return <div className="p-8 text-center text-slate-500">No records found.</div>;
         }
 
@@ -35,47 +97,100 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                 {type === 'employee' && <th className="px-4 py-3">Division</th>}
                                 {type === 'financial' && <th className="px-4 py-3">Budget</th>}
                                 {type === 'financial' && <th className="px-4 py-3">Spent</th>}
+                                {type === 'milestone' && (
+                                    <>
+                                        <th className="px-4 py-3">Imp.</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3">Target Date</th>
+                                        <th className="px-4 py-3">Project</th>
+                                        <th className="px-4 py-3">Division</th>
+                                    </>
+                                )}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {data.map((item, idx) => (
-                                <tr key={item.id || idx} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-medium text-slate-800">
-                                        {item.name || item.title || item.first_name + ' ' + item.last_name}
-                                    </td>
-                                    {type === 'task' && (
-                                        <>
-                                            <td className="px-4 py-3">
-                                                <span className={clsx("px-2 py-0.5 rounded-full text-xs font-bold",
-                                                    item.status === 'Done' ? 'bg-green-100 text-green-700' :
-                                                        item.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                                                )}>
-                                                    {item.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-slate-500 text-xs">
-                                                {item.start_date ? new Date(item.start_date).toLocaleDateString() : '-'}
-                                            </td>
-                                            <td className="px-4 py-3 text-slate-500 text-xs">
-                                                {item.due_date ? new Date(item.due_date).toLocaleDateString() : '-'}
-                                            </td>
-                                            <td className="px-4 py-3 text-slate-500">{item.project_name || '-'}</td>
-                                        </>
-                                    )}
-                                    {type === 'employee' && (
-                                        <>
-                                            <td className="px-4 py-3 text-slate-500">{item.position || '-'}</td>
-                                            <td className="px-4 py-3 text-slate-500">{item.division_name || 'Unassigned'}</td>
-                                        </>
-                                    )}
-                                    {type === 'financial' && (
-                                        <>
-                                            <td className="px-4 py-3 font-mono">₱{Number(item.total_budget || 0).toLocaleString()}</td>
-                                            <td className="px-4 py-3 font-mono">₱{Number(item.actual_cost || item.cost || 0).toLocaleString()}</td>
-                                        </>
-                                    )}
-                                </tr>
-                            ))}
+                            {displayData.map((item, idx) => {
+                                const getRowColor = () => {
+                                    if (type !== 'milestone') return "hover:bg-slate-50";
+                                    switch (Number(item.importance)) {
+                                        case 5: return 'bg-amber-50/70 hover:bg-amber-100/80';
+                                        case 4: return 'bg-orange-50/70 hover:bg-orange-100/80';
+                                        case 3: return 'bg-green-50/70 hover:bg-green-100/80';
+                                        case 2: return 'bg-blue-50/70 hover:bg-blue-100/80';
+                                        default: return 'hover:bg-slate-50';
+                                    }
+                                };
+                                return (
+                                    <tr
+                                        key={item.id || idx}
+                                        onClick={() => type === 'milestone' && setSelectedItem(item)}
+                                        className={clsx(
+                                            "transition-colors border-b last:border-0 border-slate-100",
+                                            getRowColor(),
+                                            type === 'milestone' && "cursor-pointer active:scale-[0.99] transform transition-transform"
+                                        )}
+                                    >
+                                        <td className="px-4 py-3 font-medium text-slate-800">
+                                            {item.name || item.title || item.first_name + ' ' + item.last_name}
+                                        </td>
+                                        {type === 'task' && (
+                                            <>
+                                                <td className="px-4 py-3">
+                                                    <span className={clsx("px-2 py-0.5 rounded-full text-xs font-bold",
+                                                        item.status === 'Done' ? 'bg-green-100 text-green-700' :
+                                                            item.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                                                    )}>
+                                                        {item.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-500 text-xs">
+                                                    {item.start_date ? new Date(item.start_date).toLocaleDateString() : '-'}
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-500 text-xs">
+                                                    {item.due_date ? new Date(item.due_date).toLocaleDateString() : '-'}
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-500">{item.project_name || '-'}</td>
+                                            </>
+                                        )}
+                                        {type === 'employee' && (
+                                            <>
+                                                <td className="px-4 py-3 text-slate-500">{item.position || '-'}</td>
+                                                <td className="px-4 py-3 text-slate-500">{item.division_name || 'Unassigned'}</td>
+                                            </>
+                                        )}
+                                        {type === 'financial' && (
+                                            <>
+                                                <td className="px-4 py-3 font-mono">₱{Number(item.total_budget || 0).toLocaleString()}</td>
+                                                <td className="px-4 py-3 font-mono">₱{Number(item.actual_cost || item.cost || 0).toLocaleString()}</td>
+                                            </>
+                                        )}
+                                        {type === 'milestone' && (
+                                            <>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex gap-0.5">
+                                                        {[...Array(Number(item.importance) || 0)].map((_, i) => (
+                                                            <Activity key={i} size={12} className={clsx("fill-current", Number(item.importance) === 4 ? "text-orange-500" : "text-amber-500")} />
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={clsx("px-2 py-0.5 rounded-full text-xs font-bold",
+                                                        ['Completed', 'Done', 'Accomplished'].includes(item.status) ? 'bg-green-100 text-green-700' :
+                                                            item.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                                                    )}>
+                                                        {item.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-500 text-xs">
+                                                    {item.target_date ? new Date(item.target_date).toLocaleDateString() : '-'}
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-500">{item.project_name || '-'}</td>
+                                                <td className="px-4 py-3 text-slate-500">{item.division_name || '-'}</td>
+                                            </>
+                                        )}
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -84,7 +199,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
             // Grid View
             return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-slate-50">
-                    {data.map((item, idx) => (
+                    {displayData.map((item, idx) => (
                         <div key={item.id || idx} className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                             <div>
                                 <h4 className="font-bold text-slate-800 mb-2 truncate" title={item.name || item.title || item.first_name + ' ' + item.last_name}>
@@ -142,6 +257,28 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                             <span>Spent:</span>
                                             <span className="font-mono font-bold text-slate-700">₱{Number(item.actual_cost || 0).toLocaleString()}</span>
                                         </div>
+                                    </div>
+                                )}
+
+                                {type === 'milestone' && (
+                                    <div className="text-xs text-slate-500 space-y-1.5">
+                                        <div className="flex justify-between items-center">
+                                            <span>Status:</span>
+                                            <span className={clsx("px-2 py-0.5 rounded-full text-[10px] font-bold",
+                                                item.status === 'Completed' || item.status === 'Done' ? 'bg-green-100 text-green-700' :
+                                                    item.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                                            )}>{item.status}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Project:</span>
+                                            <span className="truncate max-w-[120px]" title={item.project_name}>{item.project_name}</span>
+                                        </div>
+                                        {item.target_date && (
+                                            <div className="flex justify-between">
+                                                <span>Target:</span>
+                                                <span className="font-medium text-slate-700">{new Date(item.target_date).toLocaleDateString()}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -217,7 +354,7 @@ const MetricCard = ({ title, value, subtext, icon: Icon, color, onClick, clickab
     </div>
 );
 
-const SimplePieChart = ({ data }) => {
+const SimplePieChart = ({ data, onSliceClick }) => {
     const total = data.reduce((sum, item) => sum + item.value, 0);
     const [hoveredIndex, setHoveredIndex] = useState(null);
 
@@ -261,13 +398,20 @@ const SimplePieChart = ({ data }) => {
                             className={clsx("transition-opacity cursor-pointer", hoveredIndex === i ? "opacity-100" : (hoveredIndex !== null ? "opacity-50" : "opacity-100"))}
                             onMouseEnter={() => setHoveredIndex(i)}
                             onMouseLeave={() => setHoveredIndex(null)}
+                            onClick={() => onSliceClick && onSliceClick(slice)}
                         />
                     ))}
                 </svg>
             </div>
             <div className="space-y-2">
                 {data.map((item, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm" onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)}>
+                    <div
+                        key={i}
+                        className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-1 rounded"
+                        onMouseEnter={() => setHoveredIndex(i)}
+                        onMouseLeave={() => setHoveredIndex(null)}
+                        onClick={() => onSliceClick && onSliceClick(item)}
+                    >
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                         <span className="font-medium text-slate-700">{item.label}</span>
                         <span className="text-slate-500">({item.value})</span>
@@ -331,10 +475,27 @@ const DashboardCharts = ({ metrics }) => {
     };
 
     const activityData = [
-        { label: 'Pending', value: pendingActivities, color: COLORS.Pending },
-        { label: 'Accomplished', value: accomplishedActivities, color: COLORS.Accomplished },
-        { label: 'Delayed', value: delayedActivities, color: COLORS.Delayed }
+        { label: 'Pending', value: pendingActivities, color: COLORS.Pending, data: pendingTasks },
+        { label: 'Accomplished', value: accomplishedActivities, color: COLORS.Accomplished, data: accomplishedTasks },
+        { label: 'Delayed', value: delayedActivities, color: COLORS.Delayed, data: delayedTasks }
     ];
+
+    const handleSliceClick = (slice) => {
+        const titleMap = {
+            'Pending': 'Pending Activities',
+            'Accomplished': 'Accomplished Activities',
+            'Delayed': 'Delayed Activities'
+        };
+        // Use slice.data if available (from activityData), or switch based on label
+        let data = slice.data;
+        if (!data) {
+            if (slice.label === 'Pending') data = pendingTasks;
+            else if (slice.label === 'Accomplished') data = accomplishedTasks;
+            else if (slice.label === 'Delayed') data = delayedTasks;
+        }
+
+        openModal(titleMap[slice.label] || `${slice.label} Activities`, data, 'task');
+    };
 
     return (
         <div className="space-y-6">
@@ -377,12 +538,12 @@ const DashboardCharts = ({ metrics }) => {
             {/* Metric Cards Row 2 (Financials & People) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <MetricCard
-                    title="Total Employees"
-                    value={totalEmployees}
-                    icon={Users}
-                    color="bg-indigo-500"
+                    title="Milestones Reached"
+                    value={metrics.milestonesReached || 0}
+                    icon={CheckCircle2}
+                    color="bg-emerald-600"
                     clickable
-                    onClick={() => openModal('All Employees', allEmployees, 'employee')}
+                    onClick={() => openModal('Milestones Reached', metrics.allMilestones || [], 'milestone')}
                 />
                 <MetricCard
                     title="Total Budget"
@@ -407,7 +568,7 @@ const DashboardCharts = ({ metrics }) => {
                 {/* Activity Status Pie Chart */}
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                     <h3 className="text-lg font-bold text-slate-800 mb-6">Activity Status</h3>
-                    <SimplePieChart data={activityData} />
+                    <SimplePieChart data={activityData} onSliceClick={handleSliceClick} />
                 </div>
 
                 {/* Financials Bar Chart */}

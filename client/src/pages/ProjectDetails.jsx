@@ -9,6 +9,7 @@ import {
 import clsx from 'clsx';
 import {
     getProjects, getProjectTasks, getProjectFinancials,
+    getProjectMilestones,
     updateTask, createTask, predictRisk,
     updateProject, getDivisions, getEmployees
 } from '../api';
@@ -32,7 +33,7 @@ const TabButton = ({ active, children, onClick, icon: Icon }) => (
         onClick={onClick}
         className={clsx(
             "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors",
-            active ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"
+            active ? "bg-blue-600 text-white" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
         )}
     >
         <Icon size={18} />
@@ -45,6 +46,7 @@ const ProjectDetails = () => {
     const navigate = useNavigate();
     const [project, setProject] = useState(null);
     const [tasks, setTasks] = useState([]);
+    const [milestones, setMilestones] = useState([]); // Added milestones state
     const [financials, setFinancials] = useState(null);
     const [activeTab, setActiveTab] = useState('kanban');
     const [viewMode, setViewMode] = useState('table'); // 'table', 'list', 'gantt', 'kanban'
@@ -69,13 +71,15 @@ const ProjectDetails = () => {
             getProjects(),
             getProjectTasks(id),
             getProjectFinancials(id),
+            getProjectMilestones(id), // Fetch Milestones
             getDivisions(),
             getEmployees()
-        ]).then(([projects, tasks, fin, divs, emps]) => {
+        ]).then(([projects, tasks, fin, ms, divs, emps]) => {
             const p = projects.find(p => p.id === id);
             setProject(p);
             setTasks(tasks);
             setFinancials(fin);
+            setMilestones(ms); // Set Milestones
             setDivisions(divs);
             setEmployees(emps);
 
@@ -241,6 +245,19 @@ const ProjectDetails = () => {
             }
         });
 
+        // Filter valid completed milestones
+        const completedMilestones = milestones.filter(m => ['Completed', 'Done', 'Accomplished'].includes(m.status));
+
+        // Prepare Activity Data for Financial Breakdown
+        // Map tasks to fields compatible with DashboardCharts ('name', 'total_budget', 'actual_cost')
+        // Using 'budget' and 'cost' properties from task objects
+        const activityFinancials = enrichedTasks.map(t => ({
+            ...t,
+            name: t.title, // Map title to name for the card
+            total_budget: t.budget || 0,
+            actual_cost: t.cost || 0
+        })).sort((a, b) => b.total_budget - a.total_budget); // Sort by budget desc
+
         // Mock AI Message construction based on single project
         // (If `aiRisk` exists, we can incorporate it or just let the dashboard use it if we passed it down, 
         // but DashboardCharts currently doesn't render AI risk itself, purely stats).
@@ -254,13 +271,17 @@ const ProjectDetails = () => {
             delayedActivities: delayedCount,
             totalBudget: Number(financials.total_budget || 0),
             totalSpent: Number(financials.actual_cost || 0),
+            milestonesReached: completedMilestones.length,
             // Detailed Arrays
-            allProjects: [{ ...project, total_budget: financials.total_budget, actual_cost: financials.actual_cost }],
+            // IMPORTANT: Passing 'activityFinancials' as 'allProjects' allows the "Total Budget" and "Amount Spent" 
+            // cards to show the breakdown of Activities (Tasks) instead of just the single project.
+            allProjects: activityFinancials,
             allEmployees: filteredEmployees.map(e => ({ ...e, division_name: project.division })),
             allTasks: enrichedTasks,
             pendingTasks: pendingList,
             accomplishedTasks: accomplishedList,
-            delayedTasks: delayedList
+            delayedTasks: delayedList,
+            allMilestones: milestones.map(m => ({ ...m, project_name: project.name, division_name: project.division, importance: m.importance }))
         };
     };
 
@@ -554,9 +575,14 @@ const ProjectDetails = () => {
                                     onChange={e => setEditForm({ ...editForm, total_budget: e.target.value })}
                                 />
                             ) : (
-                                <p className="text-sm font-medium text-slate-800">
-                                    ₱{Number(project.total_budget || 0).toLocaleString()}
-                                </p>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium text-slate-800">
+                                        ₱{Number(financials?.total_budget || 0).toLocaleString()}
+                                    </p>
+                                    {(Number(project.total_budget || 0) <= 0) && (
+                                        <p className="text-xs text-slate-400 italic">Calculated from activities</p>
+                                    )}
+                                </div>
                             )}
                         </div>
 

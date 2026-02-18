@@ -378,19 +378,19 @@ app.get('/api/projects/:id/financials', (req, res) => {
     // If project has an explicit total_budget, use it. Otherwise sum of task budgets.
     const finalBudget = (project.total_budget && Number(project.total_budget) > 0)
         ? Number(project.total_budget)
-        : (dynamicTotalBudget > 0 ? dynamicTotalBudget : 1);
+        : (dynamicTotalBudget > 0 ? dynamicTotalBudget : 0);
 
     // 4. Calculate Metrics
-    const burnRate = (actualCost / finalBudget) * 100;
+    const burnRate = finalBudget > 0 ? (actualCost / finalBudget) * 100 : 0;
 
     // CPI Calculation (Simplified: Earned Value / Actual Cost)
     // EV = (% of tasks done) * Budget
     const completedTasks = projectTasks.filter(t => t.status === 'Done').length;
     const totalTasks = projectTasks.length || 1;
     const percentComplete = completedTasks / totalTasks;
-    const earnedValue = percentComplete * finalBudget;
+    const earnedValue = percentComplete * (finalBudget || 1); // Fallback to 1 for EV calc if budget is 0 to avoid total fail? Actually if budget is 0, EV is 0.
 
-    const cpi = actualCost > 0 ? (earnedValue / actualCost) : 1;
+    const cpi = actualCost > 0 ? ((percentComplete * finalBudget) / actualCost) : 1;
 
     // Remaining Budget
     const remainingBudget = finalBudget - actualCost;
@@ -746,6 +746,14 @@ app.put('/api/milestones/:id', (req, res) => {
     res.json(updatedMilestone);
 });
 
+
+
+// GET All Milestones (Global)
+app.get('/api/milestones', (req, res) => {
+    const db = readDb();
+    res.json(db.milestones || []);
+});
+
 // DELETE Milestone
 app.delete('/api/milestones/:id', (req, res) => {
     const db = readDb();
@@ -852,6 +860,12 @@ app.get('/api/projects/:projectId/catchups', (req, res) => {
     const catchups = (db.catchups || []).filter(c => activityIds.has(c.activity_id));
 
     res.json(catchups);
+});
+
+// GET All Catch-up Activities (Global)
+app.get('/api/catchups', (req, res) => {
+    const db = readDb();
+    res.json(db.catchups || []);
 });
 
 server.listen(PORT, () => {

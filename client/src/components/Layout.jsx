@@ -45,6 +45,11 @@ const Layout = () => {
                         <span className="font-medium">Dashboard</span>
                     </Link>
 
+                    <Link to="/employees" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all whitespace-nowrap group ${location.pathname === '/employees' ? 'bg-[#003d82] text-white' : 'text-slate-300 hover:bg-[#003d82] hover:text-white'}`}>
+                        <Users size={20} className={location.pathname === '/employees' ? 'text-yellow-400' : 'group-hover:text-yellow-400 transition-colors'} />
+                        <span className="font-medium">Staff Registration</span>
+                    </Link>
+
                     <div>
                         <button
                             onClick={() => setIsProjectsOpen(!isProjectsOpen)}
@@ -80,9 +85,11 @@ const Layout = () => {
                             </div>
                         </div>
                     </div>
-                    <Link to="/employees" className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-[#003d82] hover:text-white rounded-lg transition-all whitespace-nowrap group">
-                        <Users size={20} className="group-hover:text-yellow-400 transition-colors" />
-                        <span className="font-medium">Staff Registration</span>
+
+                    <Link to="/basecamp-targets" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all whitespace-nowrap group ${location.pathname === '/basecamp-targets' ? 'bg-[#003d82] text-white' : 'text-slate-300 hover:bg-[#003d82] hover:text-white'}`}>
+                        {/* Using Flag icon for Targets/Goals */}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={location.pathname === '/basecamp-targets' ? 'text-yellow-400' : 'group-hover:text-yellow-400 transition-colors'}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" x2="4" y1="22" y2="15" /></svg>
+                        <span className="font-medium">Basecamp Targets</span>
                     </Link>
                 </nav>
             </aside >

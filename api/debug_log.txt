@@ -810,3 +810,41 @@
 [2026-02-18T04:52:55.512Z] SERVER STARTUP: api/index.js loaded
 [2026-02-18T04:54:41.847Z] [AzureDB] Milestone "LAKSDFKLANS" (ID: HRODI-M0001, Stars: 5) history log saved to OpDash DB.
 [2026-02-18T04:56:49.766Z] [AzureDB] Milestone "LAKSDFKLANS" (ID: HRODI-M0001, Stars: 2) history log saved to OpDash DB.
+[2026-02-18T05:06:21.970Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T05:14:29.849Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T05:14:58.793Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T05:21:23.052Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T05:37:46.837Z] [AzureDB] Milestone "Kickoff for National Learning Camp 2026" (ID: HROD-M83073, Stars: 4) history log saved to OpDash DB.
+[2026-02-18T05:37:54.616Z] [AzureDB] Milestone "Kickoff for Teacher Upskilling Program" (ID: HROD-M62777, Stars: 3) history log saved to OpDash DB.
+[2026-02-18T05:38:20.364Z] [AzureDB] Milestone "Kickoff for DepEd Digi-Transformation" (ID: HROD-M45904, Stars: 5) history log saved to OpDash DB.
+[2026-02-18T05:47:22.739Z] [AzureDB] Attempting to log activity: "Activity 1 for National Learning Camp 2026"(ID: HROD-A31483)
+[2026-02-18T05:47:23.639Z] [AzureDB] Activity "Activity 1 for National Learning Camp 2026" successfully synced to OpDash DB.
+[2026-02-18T05:51:43.138Z] [AzureDB] Attempting to log activity: "Creation of the Dashboard"(ID: HRODI-A001)
+[2026-02-18T05:51:43.331Z] [AzureDB] Activity "Creation of the Dashboard" successfully synced to OpDash DB.
+[2026-02-18T05:52:02.987Z] [AzureDB] Milestone "Created the Dashboard" (ID: HRODI-M0002, Stars: 4) history log saved to OpDash DB.
+[2026-02-18T05:53:08.953Z] [AzureDB] Attempting to log activity: "Creation of the Dashboard"(ID: HRODI-A001)
+[2026-02-18T05:53:10.009Z] [AzureDB] Activity "Creation of the Dashboard" successfully synced to OpDash DB.
+[2026-02-18T06:09:03.857Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T06:24:32.414Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T06:27:41.825Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T06:28:02.072Z] [AzureDB] Attempting to log activity: "Creation of the Dashboard"(ID: HRODI-A001)
+[2026-02-18T06:28:02.741Z] [AzureDB] Activity "Creation of the Dashboard" successfully synced to OpDash DB.
+[2026-02-18T06:28:16.875Z] [AzureDB] Attempting to log activity: "Creation of the Dashboard"(ID: HRODI-A001)
+[2026-02-18T06:28:17.253Z] [AzureDB] Activity "Creation of the Dashboard" successfully synced to OpDash DB.
+[2026-02-18T06:48:22.681Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T06:49:12.556Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T06:50:10.766Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T06:53:31.486Z] [AzureDB] Employee "Noverose  Dadole" synced to OpDash DB.
+[2026-02-18T06:54:57.939Z] [AzureDB] Employee "Raymond Jason Aquino" synced to OpDash DB.
+[2026-02-18T06:56:07.519Z] [AzureDB] Employee "Raymond Oplado" synced to OpDash DB.
+[2026-02-18T06:57:21.937Z] [AzureDB] Attempting to log activity: "Conduct STRIDE Orientation for Region IV-B"(ID: HRODI-A001)
+[2026-02-18T06:57:22.490Z] [AzureDB] Activity "Conduct STRIDE Orientation for Region IV-B" successfully synced to OpDash DB.
+[2026-02-18T07:06:00.244Z] [AzureDB] Attempting to log activity: "Conduct STRIDE Orientation for Region IV-B"(ID: HRODI-A001)
+[2026-02-18T07:06:00.776Z] [AzureDB] Activity "Conduct STRIDE Orientation for Region IV-B" successfully synced to OpDash DB.
+[2026-02-18T07:06:03.576Z] [AzureDB] Attempting to log activity: "Conduct STRIDE Orientation for Region IV-B"(ID: HRODI-A001)
+[2026-02-18T07:06:03.659Z] [AzureDB] Activity "Conduct STRIDE Orientation for Region IV-B" successfully synced to OpDash DB.
+[2026-02-18T07:06:07.696Z] [AzureDB] Attempting to log activity: "Conduct STRIDE Orientation for Region IV-B"(ID: HRODI-A001)
+[2026-02-18T07:06:07.791Z] [AzureDB] Activity "Conduct STRIDE Orientation for Region IV-B" successfully synced to OpDash DB.
+[2026-02-18T07:08:16.824Z] [AzureDB] Attempting to log activity: "Conduct InsightED Phase II Pilot Orientation"(ID: HRODI-A002)
+[2026-02-18T07:08:17.432Z] [AzureDB] Activity "Conduct InsightED Phase II Pilot Orientation" successfully synced to OpDash DB.
+[2026-02-18T07:09:54.916Z] [AzureDB] Milestone "Launching of the STRIDE Dashboard" (ID: HRODI-M0002, Stars: 5) history log saved to OpDash DB.

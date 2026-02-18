@@ -13,15 +13,6 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
         }
     };
 
-    const getPriorityColor = (priority) => {
-        switch (priority) {
-            case 'High': return 'text-red-600 bg-red-50';
-            case 'Medium': return 'text-orange-600 bg-orange-50';
-            case 'Low': return 'text-blue-600 bg-blue-50';
-            default: return 'text-slate-500';
-        }
-    };
-
     const formatDate = (dateStr) => {
         if (!dateStr) return '-';
         return new Date(dateStr).toLocaleDateString('en-US', {
@@ -66,7 +57,7 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
                     bValue = Number(bValue || 0);
                 }
             }
-            // Handle string sorting
+            // Handle string sorting (including status)
             else if (typeof aValue === 'string') {
                 aValue = aValue.toLowerCase();
                 bValue = bValue.toLowerCase();
@@ -78,7 +69,7 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
         });
     };
 
-    // Filter Tasks
+    // Filter Tasks using manual status
     const accomplished = tasks.filter(t => t.status === 'Done');
     const pending = tasks.filter(t => t.status !== 'Done');
 
@@ -121,23 +112,20 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
                             <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('cost')}>
                                 <div className="flex items-center">Actual {getSortIcon('cost')}</div>
                             </th>
-                            <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('division_name')}>
-                                <div className="flex items-center">Division {getSortIcon('division_name')}</div>
-                            </th>
+                            {/* Removed Division Column */}
                             <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('start_date')}>
                                 <div className="flex items-center">Start Date {getSortIcon('start_date')}</div>
                             </th>
                             <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('due_date')}>
                                 <div className="flex items-center">Due Date {getSortIcon('due_date')}</div>
                             </th>
-                            <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('priority')}>
-                                <div className="flex items-center">Priority {getSortIcon('priority')}</div>
-                            </th>
+                            {/* Removed Priority Column */}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {data.map(task => {
                             const overdue = isPending && isOverdue(task.due_date);
+
                             return (
                                 <tr
                                     key={task.id}
@@ -155,7 +143,7 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={clsx("px-2.5 py-1 rounded-full text-xs font-medium border", getStatusColor(task.status))}>
-                                            {task.status}
+                                            {task.status === 'Todo' ? 'Pending' : task.status}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-slate-800 font-mono text-xs">
@@ -169,10 +157,7 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
                                             return displayCost ? `₱${Number(displayCost).toLocaleString()}` : '-';
                                         })()}
                                     </td>
-
-                                    <td className="px-6 py-4 text-slate-600">
-                                        {task.division_name || '-'}
-                                    </td>
+                                    {/* Removed Division Cell */}
                                     <td className="px-6 py-4 text-slate-600 font-mono text-xs">
                                         {formatDate(task.start_date)}
                                     </td>
@@ -181,11 +166,7 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
                                             {formatDate(task.due_date)}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <span className={clsx("px-2 py-1 rounded text-xs font-medium", getPriorityColor(task.priority))}>
-                                            {task.priority || 'Normal'}
-                                        </span>
-                                    </td>
+                                    {/* Removed Priority Cell */}
                                 </tr>
                             );
                         })}

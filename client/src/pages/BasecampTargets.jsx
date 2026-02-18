@@ -1,0 +1,273 @@
+import React, { useState, useEffect } from 'react';
+import { getProjects, getAllMilestones, getDivisions } from '../api';
+import { ChevronDown, ChevronRight, LayoutList, LayoutGrid, Flag, Calendar, CheckCircle2, Clock, AlertTriangle, User, Star } from 'lucide-react';
+import clsx from 'clsx';
+import { Link } from 'react-router-dom';
+
+const BASECAMP_TARGETS = [
+    "Career Progression for DepEd Personnel",
+    "Mental Health Professionals for Schools",
+    "Workforce Plan and Management",
+    "HROD Process Excellence",
+    "Prioritization Index for Education Facilities Allocation",
+    "Career Opportunities in DepEd for SHS Graduates"
+];
+
+const StatusBadge = ({ status }) => {
+    let colorClass = "bg-slate-100 text-slate-600";
+    let icon = Clock;
+
+    if (['Completed', 'Done', 'Accomplished'].includes(status)) {
+        colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
+        icon = CheckCircle2;
+    } else if (['Delayed', 'Overdue'].includes(status)) {
+        colorClass = "bg-red-100 text-red-700 border-red-200";
+        icon = AlertTriangle;
+    } else if (['In Progress', 'Ongoing'].includes(status)) {
+        colorClass = "bg-blue-100 text-blue-700 border-blue-200";
+        icon = Clock;
+    }
+
+    const Icon = icon;
+
+    return (
+        <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass}`}>
+            <Icon size={12} />
+            {status}
+        </span>
+    );
+};
+
+const BasecampTargets = () => {
+    const [loading, setLoading] = useState(true);
+    const [projects, setProjects] = useState([]);
+    const [milestones, setMilestones] = useState([]);
+    const [viewMode, setViewMode] = useState('table'); // 'table' | 'card'
+    const [expandedSections, setExpandedSections] = useState(new Set(BASECAMP_TARGETS)); // Default all open
+
+    useEffect(() => {
+        Promise.all([
+            getProjects(),
+            getAllMilestones()
+        ]).then(([projs, ms]) => {
+            setProjects(projs);
+            setMilestones(ms);
+            setLoading(false);
+        }).catch(err => {
+            console.error("Failed to load basecamp details", err);
+            setLoading(false);
+        });
+    }, []);
+
+    const toggleSection = (target) => {
+        const newSet = new Set(expandedSections);
+        if (newSet.has(target)) {
+            newSet.delete(target);
+        } else {
+            newSet.add(target);
+        }
+        setExpandedSections(newSet);
+    };
+
+    const getMilestonesForBasecamp = (target) => {
+        // 1. Find projects that include this target string in their comma-separated list
+        const relatedProjectIds = new Set(
+            projects
+                .filter(p => p.basecamp_target && p.basecamp_target.includes(target))
+                .map(p => p.id)
+        );
+
+        // 2. Filter milestones for these projects and sort by importance (descending)
+        return milestones
+            .filter(m => relatedProjectIds.has(m.project_id))
+            .map(m => {
+                const proj = projects.find(p => p.id === m.project_id);
+                return {
+                    ...m,
+                    project_name: proj?.name || 'Unknown Project',
+                    division_name: proj?.division || 'Unassigned',
+                    project_id: m.project_id
+                };
+            })
+            .sort((a, b) => (Number(b.importance) || 1) - (Number(a.importance) || 1));
+    };
+
+    const getRowClasses = (importance) => {
+        const rating = Number(importance || 1);
+        switch (rating) {
+            case 2: return "bg-blue-50 hover:bg-blue-100";
+            case 3: return "bg-green-50 hover:bg-green-100";
+            case 4: return "bg-yellow-50 hover:bg-yellow-100";
+            case 5: return "bg-amber-50 hover:bg-amber-100";
+            default: return "bg-white hover:bg-slate-50"; // 1 Star
+        }
+    };
+
+    const renderStars = (importance) => {
+        const rating = Number(importance || 1);
+        let colorClass = "text-slate-400"; // Default 1 star (White/Grey)
+
+        switch (rating) {
+            case 2: colorClass = "text-blue-500 fill-blue-500"; break;
+            case 3: colorClass = "text-green-500 fill-green-500"; break;
+            case 4: colorClass = "text-yellow-400 fill-yellow-400"; break;
+            case 5: colorClass = "text-amber-500 fill-amber-500"; break;
+            default: colorClass = "text-slate-400"; // 1 Star
+        }
+
+        return (
+            <div className="flex gap-0.5" title={`Importance: ${rating}/5`}>
+                {[...Array(rating)].map((_, i) => (
+                    <Star key={i} size={14} className={colorClass} />
+                ))}
+            </div>
+        );
+    };
+
+    if (loading) return <div className="p-8 text-center text-slate-500">Loading Basecamp Targets...</div>;
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        <Flag className="text-blue-600" />
+                        Basecamp Targets
+                    </h1>
+                    <p className="text-slate-500 text-sm mt-1">Track milestones aligned with strategic basecamp goals.</p>
+                </div>
+
+                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                    <button
+                        onClick={() => setViewMode('table')}
+                        className={clsx(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+                            viewMode === 'table' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                        )}
+                    >
+                        <LayoutList size={16} /> Table
+                    </button>
+                    <button
+                        onClick={() => setViewMode('card')}
+                        className={clsx(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+                            viewMode === 'card' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                        )}
+                    >
+                        <LayoutGrid size={16} /> Card
+                    </button>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                {BASECAMP_TARGETS.map(target => {
+                    const targetMilestones = getMilestonesForBasecamp(target);
+                    const isExpanded = expandedSections.has(target);
+
+                    return (
+                        <div key={target} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <button
+                                onClick={() => toggleSection(target)}
+                                className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors border-b border-slate-100"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {isExpanded ? <ChevronDown size={20} className="text-slate-400" /> : <ChevronRight size={20} className="text-slate-400" />}
+                                    <h3 className="font-bold text-slate-800 text-lg">{target}</h3>
+                                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200">
+                                        {targetMilestones.length}
+                                    </span>
+                                </div>
+                            </button>
+
+                            {isExpanded && (
+                                <div className="p-4">
+                                    {targetMilestones.length === 0 ? (
+                                        <div className="text-center py-8 text-slate-400 italic bg-slate-50 rounded-lg border border-slate-100 border-dashed">
+                                            No milestones linked to this target yet.
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {viewMode === 'table' ? (
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-sm text-left border-collapse">
+                                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                                                            <tr>
+                                                                <th className="px-4 py-3 font-semibold w-1/3">Milestone</th>
+                                                                <th className="px-4 py-3 font-semibold w-24">Importance</th>
+                                                                <th className="px-4 py-3 font-semibold">Project</th>
+                                                                <th className="px-4 py-3 font-semibold">Division</th>
+                                                                <th className="px-4 py-3 font-semibold text-center">Status</th>
+                                                                <th className="px-4 py-3 font-semibold text-right">Target Date</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {targetMilestones.map(m => (
+                                                                <tr key={m.id} className={`${getRowClasses(m.importance)} transition-colors`}>
+                                                                    <td className="px-4 py-3 font-medium text-slate-800">{m.title}</td>
+                                                                    <td className="px-4 py-3">
+                                                                        {renderStars(m.importance)}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-slate-600">
+                                                                        <Link to={`/projects/${m.project_id}`} className="hover:text-blue-600 hover:underline">
+                                                                            {m.project_name}
+                                                                        </Link>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-slate-600">{m.division_name}</td>
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        <div className="flex justify-center">
+                                                                            <StatusBadge status={m.status} />
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right font-mono text-slate-600">
+                                                                        {m.target_date ? new Date(m.target_date).toLocaleDateString() : '-'}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {targetMilestones.map(m => (
+                                                        <div key={m.id} className={clsx("p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3", getRowClasses(m.importance).replace('hover:', ''))}>
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <h4 className="font-bold text-slate-800 line-clamp-2" title={m.title}>{m.title}</h4>
+                                                                <StatusBadge status={m.status} />
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {renderStars(m.importance)}
+                                                            </div>
+                                                            {m.description && (
+                                                                <p className="text-sm text-slate-600 line-clamp-3 bg-white/50 p-2 rounded border border-slate-200/50 italic">
+                                                                    {m.description}
+                                                                </p>
+                                                            )}
+                                                            <div className="mt-auto pt-3 border-t border-slate-200/50 text-xs space-y-1.5">
+                                                                <div className="flex items-center gap-2 text-slate-600">
+                                                                    <Calendar size={14} className="text-slate-400" />
+                                                                    <span>Target: {m.target_date ? new Date(m.target_date).toLocaleDateString() : 'N/A'}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 text-slate-600">
+                                                                    <User size={14} className="text-slate-400" />
+                                                                    <Link to={`/projects/${m.project_id}`} className="hover:text-blue-600 hover:underline truncate">
+                                                                        {m.project_name}
+                                                                    </Link>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+export default BasecampTargets;
