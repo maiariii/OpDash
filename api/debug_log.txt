@@ -683,3 +683,123 @@
 [2026-02-17T08:59:37.735Z] SERVER STARTUP: api/index.js loaded
 [2026-02-17T09:00:07.321Z] SERVER STARTUP: api/index.js loaded
 [2026-02-17T09:01:52.428Z] [AzureDB] Catch-up Activity "Conduct session" synced to OpDash DB.
+[2026-02-18T01:05:34.218Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:12:53.090Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:24:45.053Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:25:08.117Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:25:10.138Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:25:33.821Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:30:57.460Z] [AzureDB] Milestone "InsightEd Pilot Testing" synced to OpDash DB.
+[2026-02-18T01:32:58.264Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:33:16.380Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:35:33.136Z] [AzureDB] Milestone "InsightEd Official Launch" synced to OpDash DB.
+[2026-02-18T01:38:07.662Z] [AzureDB] Milestone "InsightEd Pilot Testing" synced to OpDash DB.
+[2026-02-18T01:38:40.621Z] [AzureDB] Milestone "afasdf" synced to OpDash DB.
+[2026-02-18T01:39:18.464Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:39:34.204Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:39:44.035Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:39:57.908Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:40:21.203Z] [AzureDB] Error logging milestone to Azure DB: column "accomplishment" of relation "milestones_list" does not exist 
+[2026-02-18T01:40:39.537Z] [AzureDB] Error logging milestone to Azure DB: column "accomplishment" of relation "milestones_list" does not exist 
+[2026-02-18T01:41:10.490Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:41:43.683Z] [AzureDB] Error logging milestone to Azure DB: column "accomplishment" of relation "milestones_list" does not exist 
+[2026-02-18T01:45:40.190Z] [AzureDB] Error logging milestone to Azure DB: column "accomplishment" of relation "milestones_list" does not exist 
+[2026-02-18T01:46:02.028Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:46:32.336Z] [AzureDB] Error logging milestone to Azure DB: column "accomplishment" of relation "milestones_list" does not exist 
+[2026-02-18T01:47:52.643Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:48:18.827Z] [AzureDB] Milestone "123" synced to OpDash DB.
+[2026-02-18T01:48:34.694Z] [AzureDB] Milestone "123" synced to OpDash DB.
+[2026-02-18T01:51:03.320Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:51:25.504Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:52:55.116Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:53:11.424Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T01:53:13.341Z] [AzureDB] Milestone "History Test Milestone" (ID: HRODI-M0001) history log saved to OpDash DB.
+[2026-02-18T01:53:14.598Z] [AzureDB] Milestone "History Test Milestone" (ID: HRODI-M0001) history log saved to OpDash DB.
+[2026-02-18T01:58:38.951Z] [AzureDB] Milestone "newwwwwwwwwwwwwwww" (ID: HRODI-M0002) history log saved to OpDash DB.
+[2026-02-18T02:01:07.826Z] [AzureDB] Milestone "newwwwwwwwwwwwwwww" (ID: HRODI-M0002) history log saved to OpDash DB.
+[2026-02-18T02:12:58.908Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T02:42:49.021Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T02:46:16.760Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T02:46:18.551Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T02:47:04.346Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T02:49:05.479Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T02:52:46.868Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T02:58:08.794Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:01:01.025Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:04:20.124Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:04:24.679Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:06:36.089Z] [AzureDB] Catch - up Activity "asdfads" synced to OpDash DB.
+[2026-02-18T03:07:48.152Z] [AzureDB] Catch - up Activity "hehehe" synced to OpDash DB.
+[2026-02-18T03:08:45.056Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:11:48.874Z] [AzureDB] Catch - up Activity "Conduct session" synced to OpDash DB.
+[2026-02-18T03:31:05.694Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:31:46.534Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:47:33.381Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:47:46.013Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:47:48.691Z] [AzureDB] All tables truncated successfully.
+[2026-02-18T03:47:48.839Z] [AzureDB] Attempting to log activity: "Activity 1 for National Learning Camp 2026"(ID: HROD-A76603)
+[2026-02-18T03:47:48.933Z] [AzureDB] Activity "Activity 1 for National Learning Camp 2026" successfully synced to OpDash DB.
+[2026-02-18T03:47:49.061Z] [AzureDB] Milestone "Kickoff for National Learning Camp 2026" (ID: HROD-M42985) history log saved to OpDash DB.
+[2026-02-18T03:47:49.062Z] [AzureDB] Attempting to log activity: "Activity 2 for National Learning Camp 2026"(ID: HROD-A64197)
+[2026-02-18T03:47:49.153Z] [AzureDB] Activity "Activity 2 for National Learning Camp 2026" successfully synced to OpDash DB.
+[2026-02-18T03:47:49.154Z] [AzureDB] Attempting to log activity: "Activity 3 for National Learning Camp 2026"(ID: HROD-A23569)
+[2026-02-18T03:47:49.242Z] [AzureDB] Activity "Activity 3 for National Learning Camp 2026" successfully synced to OpDash DB.
+[2026-02-18T03:47:49.394Z] [AzureDB] Catch - up Activity "Catch-up for Activity 3" synced to OpDash DB.
+[2026-02-18T03:47:49.518Z] [AzureDB] Attempting to log activity: "Activity 1 for DepEd Digi-Transformation"(ID: HROD-A82594)
+[2026-02-18T03:47:49.696Z] [AzureDB] Activity "Activity 1 for DepEd Digi-Transformation" successfully synced to OpDash DB.
+[2026-02-18T03:47:49.829Z] [AzureDB] Milestone "Kickoff for DepEd Digi-Transformation" (ID: HROD-M62786) history log saved to OpDash DB.
+[2026-02-18T03:47:49.830Z] [AzureDB] Attempting to log activity: "Activity 2 for DepEd Digi-Transformation"(ID: HROD-A36403)
+[2026-02-18T03:47:49.916Z] [AzureDB] Activity "Activity 2 for DepEd Digi-Transformation" successfully synced to OpDash DB.
+[2026-02-18T03:47:49.917Z] [AzureDB] Attempting to log activity: "Activity 3 for DepEd Digi-Transformation"(ID: HROD-A26341)
+[2026-02-18T03:47:50.003Z] [AzureDB] Activity "Activity 3 for DepEd Digi-Transformation" successfully synced to OpDash DB.
+[2026-02-18T03:47:50.136Z] [AzureDB] Catch - up Activity "Catch-up for Activity 3" synced to OpDash DB.
+[2026-02-18T03:47:50.293Z] [AzureDB] Attempting to log activity: "Activity 1 for Teacher Upskilling Program"(ID: HROD-A22805)
+[2026-02-18T03:47:50.376Z] [AzureDB] Activity "Activity 1 for Teacher Upskilling Program" successfully synced to OpDash DB.
+[2026-02-18T03:47:50.515Z] [AzureDB] Milestone "Kickoff for Teacher Upskilling Program" (ID: HROD-M74408) history log saved to OpDash DB.
+[2026-02-18T03:47:50.690Z] [AzureDB] Catch - up Activity "Catch-up for Activity 1" synced to OpDash DB.
+[2026-02-18T03:47:50.691Z] [AzureDB] Attempting to log activity: "Activity 2 for Teacher Upskilling Program"(ID: HROD-A65983)
+[2026-02-18T03:47:50.778Z] [AzureDB] Activity "Activity 2 for Teacher Upskilling Program" successfully synced to OpDash DB.
+[2026-02-18T03:47:50.779Z] [AzureDB] Attempting to log activity: "Activity 3 for Teacher Upskilling Program"(ID: HROD-A19629)
+[2026-02-18T03:47:50.872Z] [AzureDB] Activity "Activity 3 for Teacher Upskilling Program" successfully synced to OpDash DB.
+[2026-02-18T03:47:50.873Z] [AzureDB] Attempting to log activity: "Activity 4 for Teacher Upskilling Program"(ID: HROD-A95987)
+[2026-02-18T03:47:50.972Z] [AzureDB] Activity "Activity 4 for Teacher Upskilling Program" successfully synced to OpDash DB.
+[2026-02-18T03:47:51.127Z] [AzureDB] Catch - up Activity "Catch-up for Activity 4" synced to OpDash DB.
+[2026-02-18T03:47:51.128Z] [AzureDB] Attempting to log activity: "Activity 5 for Teacher Upskilling Program"(ID: HROD-A54259)
+[2026-02-18T03:47:51.293Z] [AzureDB] Activity "Activity 5 for Teacher Upskilling Program" successfully synced to OpDash DB.
+[2026-02-18T03:51:18.593Z] [AzureDB] All tables truncated successfully.
+[2026-02-18T03:51:18.729Z] [AzureDB] Attempting to log activity: "Activity 1 for National Learning Camp 2026"(ID: HROD-A31483)
+[2026-02-18T03:51:18.810Z] [AzureDB] Activity "Activity 1 for National Learning Camp 2026" successfully synced to OpDash DB.
+[2026-02-18T03:51:18.940Z] [AzureDB] Milestone "Kickoff for National Learning Camp 2026" (ID: HROD-M83073) history log saved to OpDash DB.
+[2026-02-18T03:51:18.941Z] [AzureDB] Attempting to log activity: "Activity 2 for National Learning Camp 2026"(ID: HROD-A97404)
+[2026-02-18T03:51:19.019Z] [AzureDB] Activity "Activity 2 for National Learning Camp 2026" successfully synced to OpDash DB.
+[2026-02-18T03:51:19.020Z] [AzureDB] Attempting to log activity: "Activity 3 for National Learning Camp 2026"(ID: HROD-A84159)
+[2026-02-18T03:51:19.099Z] [AzureDB] Activity "Activity 3 for National Learning Camp 2026" successfully synced to OpDash DB.
+[2026-02-18T03:51:19.100Z] [AzureDB] Attempting to log activity: "Activity 4 for National Learning Camp 2026"(ID: HROD-A97063)
+[2026-02-18T03:51:19.179Z] [AzureDB] Activity "Activity 4 for National Learning Camp 2026" successfully synced to OpDash DB.
+[2026-02-18T03:51:19.301Z] [AzureDB] Attempting to log activity: "Activity 1 for DepEd Digi-Transformation"(ID: HROD-A29056)
+[2026-02-18T03:51:19.383Z] [AzureDB] Activity "Activity 1 for DepEd Digi-Transformation" successfully synced to OpDash DB.
+[2026-02-18T03:51:19.509Z] [AzureDB] Milestone "Kickoff for DepEd Digi-Transformation" (ID: HROD-M45904) history log saved to OpDash DB.
+[2026-02-18T03:51:19.510Z] [AzureDB] Attempting to log activity: "Activity 2 for DepEd Digi-Transformation"(ID: HROD-A69934)
+[2026-02-18T03:51:19.591Z] [AzureDB] Activity "Activity 2 for DepEd Digi-Transformation" successfully synced to OpDash DB.
+[2026-02-18T03:51:19.709Z] [AzureDB] Catch - up Activity "Catch-up for Activity 2" synced to OpDash DB.
+[2026-02-18T03:51:19.710Z] [AzureDB] Attempting to log activity: "Activity 3 for DepEd Digi-Transformation"(ID: HROD-A45842)
+[2026-02-18T03:51:19.791Z] [AzureDB] Activity "Activity 3 for DepEd Digi-Transformation" successfully synced to OpDash DB.
+[2026-02-18T03:51:19.792Z] [AzureDB] Attempting to log activity: "Activity 4 for DepEd Digi-Transformation"(ID: HROD-A55347)
+[2026-02-18T03:51:19.873Z] [AzureDB] Activity "Activity 4 for DepEd Digi-Transformation" successfully synced to OpDash DB.
+[2026-02-18T03:51:19.995Z] [AzureDB] Attempting to log activity: "Activity 1 for Teacher Upskilling Program"(ID: HROD-A23173)
+[2026-02-18T03:51:20.081Z] [AzureDB] Activity "Activity 1 for Teacher Upskilling Program" successfully synced to OpDash DB.
+[2026-02-18T03:51:20.215Z] [AzureDB] Milestone "Kickoff for Teacher Upskilling Program" (ID: HROD-M62777) history log saved to OpDash DB.
+[2026-02-18T03:51:20.335Z] [AzureDB] Catch - up Activity "Catch-up for Activity 1" synced to OpDash DB.
+[2026-02-18T03:51:20.336Z] [AzureDB] Attempting to log activity: "Activity 2 for Teacher Upskilling Program"(ID: HROD-A67451)
+[2026-02-18T03:51:20.422Z] [AzureDB] Activity "Activity 2 for Teacher Upskilling Program" successfully synced to OpDash DB.
+[2026-02-18T03:51:20.423Z] [AzureDB] Attempting to log activity: "Activity 3 for Teacher Upskilling Program"(ID: HROD-A35360)
+[2026-02-18T03:51:20.503Z] [AzureDB] Activity "Activity 3 for Teacher Upskilling Program" successfully synced to OpDash DB.
+[2026-02-18T03:54:12.429Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:55:09.536Z] [AzureDB] Attempting to log activity: "Activity 2 for DepEd Digi-Transformation"(ID: HROD-A69934)
+[2026-02-18T03:55:10.041Z] [AzureDB] Activity "Activity 2 for DepEd Digi-Transformation" successfully synced to OpDash DB.
+[2026-02-18T03:58:42.478Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T03:59:20.291Z] SERVER STARTUP: api/index.js loaded
+[2026-02-18T04:02:47.260Z] [AzureDB] Attempting to log activity: "Activity 2 for DepEd Digi-Transformation"(ID: HROD-A69934)
+[2026-02-18T04:02:48.336Z] [AzureDB] Activity "Activity 2 for DepEd Digi-Transformation" successfully synced to OpDash DB.
+[2026-02-18T04:03:59.136Z] [AzureDB] Milestone "Kickoff for DepEd Digi-Transformation" (ID: HROD-M45904) history log saved to OpDash DB.
+[2026-02-18T04:04:18.250Z] [AzureDB] Milestone "LAKSDFKLANS" (ID: HRODI-M0001) history log saved to OpDash DB.

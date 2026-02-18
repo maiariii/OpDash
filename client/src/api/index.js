@@ -9,6 +9,7 @@ const api = axios.create({
 export const getEmployees = () => api.get('/employees').then(res => res.data);
 export const createEmployee = (data) => api.post('/employees', data).then(res => res.data);
 export const deleteEmployee = (id) => api.delete(`/employees/${id}`).then(res => res.data);
+export const updateEmployee = (id, data) => api.put(`/employees/${id}`, data).then(res => res.data);
 
 export const getDivisions = () => api.get('/divisions').then(res => res.data);
 export const createDivision = (data) => api.post('/divisions', data).then(res => res.data);
@@ -27,10 +28,13 @@ export const createSubtask = (activityId, data) => api.post(`/activities/${activ
 export const updateTask = (taskId, data) => api.put(`/tasks/${taskId}`, data).then(res => res.data);
 export const predictRisk = (data) => api.post('/ai/predict-risk', data).then(res => res.data);
 
-// Indicators
-export const getProjectIndicators = (projectId) => api.get(`/projects/${projectId}/indicators`).then(res => res.data);
-export const createIndicator = (data) => api.post('/indicators', data).then(res => res.data);
+// Milestones
+export const getProjectMilestones = (projectId) => api.get(`/projects/${projectId}/milestones`).then(res => res.data);
+export const createMilestone = (data) => api.post('/milestones', data).then(res => res.data);
+export const updateMilestone = (id, data) => api.put(`/milestones/${id}`, data).then(res => res.data);
+export const deleteMilestone = (id) => api.delete(`/milestones/${id}`).then(res => res.data);
 export const createCatchUp = (data) => api.post('/catchups', data).then(res => res.data);
+export const updateCatchUp = (id, data) => api.put(`/catchups/${id}`, data).then(res => res.data);
 export const getProjectCatchUps = (projectId) => api.get(`/projects/${projectId}/catchups`).then(res => res.data);
 
 export default api;

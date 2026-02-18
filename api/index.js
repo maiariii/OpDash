@@ -4,7 +4,7 @@ const { readDb, writeDb } = require('./db');
 const http = require('http');
 const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
-const { ensureTableAndInsertProject, ensureTableAndInsertActivity, ensureTableAndInsertTask, ensureTableAndInsertEmployee, ensureTableAndInsertIndicator, ensureTableAndInsertCatchUp } = require('./azureDb');
+const { ensureTableAndInsertProject, ensureTableAndInsertActivity, ensureTableAndInsertTask, ensureTableAndInsertEmployee, ensureTableAndInsertMilestone, ensureTableAndInsertCatchUp } = require('./azureDb');
 const fs = require('fs');
 const path = require('path');
 
@@ -59,11 +59,14 @@ const generateControlCode = (db, type) => {
     } else if (type === 'employee') {
         prefix = 'HRODI-E';
         list = db.users || [];
+    } else if (type === 'milestone') {
+        prefix = 'HRODI-M';
+        list = db.milestones || [];
     }
 
     let maxNum = 0;
-    // Projects/Tasks use 3 digits, Employees use 4 digits
-    const digits = type === 'employee' ? 4 : 3;
+    // Projects/Tasks use 3 digits, Employees use 4 digits, Milestones use 4 digits
+    const digits = (type === 'employee' || type === 'milestone') ? 4 : 3;
     const regex = new RegExp(`^${prefix}(\\d{${digits}})$`);
 
     list.forEach(item => {
@@ -87,13 +90,28 @@ const generateControlCode = (db, type) => {
 // GET All Projects
 app.get('/api/projects', (req, res) => {
     const db = readDb();
-    res.json(db.projects || []);
+    const projectsWithBudget = (db.projects || []).map(p => {
+        // Calculate fallback budget from tasks if explicit budget is missing/zero
+        let calculatedBudget = 0;
+        if (!p.total_budget || Number(p.total_budget) <= 0) {
+            const projectTasks = (db.tasks || []).filter(t => t.project_id === p.id);
+            calculatedBudget = projectTasks.reduce((sum, t) => sum + (Number(t.budget) || 0), 0);
+        }
+
+        return {
+            ...p,
+            total_budget: (p.total_budget && Number(p.total_budget) > 0)
+                ? Number(p.total_budget)
+                : (calculatedBudget > 0 ? calculatedBudget : 0) // Default to 0 if no tasks budget either
+        };
+    });
+    res.json(projectsWithBudget);
 });
 
 // POST Create Project
 app.post('/api/projects', (req, res) => {
     const db = readDb();
-    const { name, description, division, lead_personnel, supervising_officer, assisting_personnel } = req.body;
+    const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, total_budget, basecamp_target } = req.body;
 
     if (!name) {
         return res.status(400).json({ error: 'Project Name is required' });
@@ -113,6 +131,8 @@ app.post('/api/projects', (req, res) => {
         lead_personnel: lead_personnel || 'N/A',
         supervising_officer: supervising_officer || 'N/A',
         assisting_personnel: assisting_personnel || 'N/A',
+        total_budget: Number(total_budget) || 0,
+        basecamp_target: basecamp_target || '', // Store as comma-separated string
         status: 'Planning',
         created_at: new Date().toISOString()
     };
@@ -131,7 +151,7 @@ app.post('/api/projects', (req, res) => {
 app.put('/api/projects/:id', (req, res) => {
     const db = readDb();
     const { id } = req.params;
-    const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, status } = req.body;
+    const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, status, total_budget, basecamp_target } = req.body;
 
     if (name && name.length > 50) {
         return res.status(400).json({ error: 'Project Name cannot exceed 50 characters' });
@@ -152,11 +172,17 @@ app.put('/api/projects/:id', (req, res) => {
         lead_personnel: lead_personnel || db.projects[index].lead_personnel,
         supervising_officer: supervising_officer || db.projects[index].supervising_officer,
         assisting_personnel: assisting_personnel || db.projects[index].assisting_personnel,
+        total_budget: total_budget !== undefined ? Number(total_budget) : db.projects[index].total_budget,
+        basecamp_target: basecamp_target !== undefined ? basecamp_target : db.projects[index].basecamp_target,
         status: status || db.projects[index].status
     };
 
     db.projects[index] = updatedProject;
     writeDb(db);
+
+    // Sync to Azure
+    ensureTableAndInsertProject(updatedProject).catch(err => console.error("Azure DB Sync Error:", err));
+
     res.json(updatedProject);
 });
 
@@ -247,6 +273,46 @@ app.post('/api/employees', (req, res) => {
     });
 });
 
+// PUT Update Employee
+app.put('/api/employees/:id', (req, res) => {
+    const db = readDb();
+    const { id } = req.params;
+    const { first_name, middle_name, last_name, division_id, position } = req.body;
+
+    if (!db.users) return res.status(404).json({ error: 'No users found' });
+
+    const index = db.users.findIndex(u => u.id === id);
+    if (index === -1) return res.status(404).json({ error: 'Employee not found' });
+
+    // Find division name if division changed
+    let divisionName = db.users[index].division;
+    if (division_id && division_id !== db.users[index].division_id) {
+        const division = (db.divisions || []).find(d => d.id === division_id);
+        divisionName = division ? division.name : 'Unknown';
+    }
+
+    const updatedUser = {
+        ...db.users[index],
+        first_name: first_name || db.users[index].first_name,
+        middle_name: middle_name !== undefined ? middle_name : db.users[index].middle_name,
+        last_name: last_name || db.users[index].last_name,
+        division_id: division_id || db.users[index].division_id,
+        division: divisionName,
+        position: position || db.users[index].position
+    };
+
+    db.users[index] = updatedUser;
+    writeDb(db);
+
+    // Sync to Azure
+    ensureTableAndInsertEmployee(updatedUser).catch(err => console.error("Azure DB Employee Sync Error:", err));
+
+    res.json({
+        ...updatedUser,
+        name: `${updatedUser.first_name} ${updatedUser.middle_name || ''} ${updatedUser.last_name}`.trim().replace(/\s+/g, ' ')
+    });
+});
+
 // DELETE Employee
 app.delete('/api/employees/:id', (req, res) => {
     const db = readDb();
@@ -309,8 +375,10 @@ app.get('/api/projects/:id/financials', (req, res) => {
         }
     });
 
-    // If no task budgets, fallback to project's static budget or 1
-    const finalBudget = dynamicTotalBudget > 0 ? dynamicTotalBudget : (project.total_budget || 1);
+    // If project has an explicit total_budget, use it. Otherwise sum of task budgets.
+    const finalBudget = (project.total_budget && Number(project.total_budget) > 0)
+        ? Number(project.total_budget)
+        : (dynamicTotalBudget > 0 ? dynamicTotalBudget : 1);
 
     // 4. Calculate Metrics
     const burnRate = (actualCost / finalBudget) * 100;
@@ -469,6 +537,9 @@ app.put('/api/tasks/:id', (req, res) => {
         db.tasks[index] = updatedTask;
         writeDb(db);
 
+        // Sync to Azure (Activity)
+        ensureTableAndInsertActivity(updatedTask).catch(err => console.error("Azure DB Activity Sync Error:", err));
+
         // Notify with full task data
         io.to(updatedTask.project_id).emit('task_updated', { type: 'UPDATED', task: updatedTask });
         res.json(updatedTask);
@@ -595,66 +666,105 @@ app.post('/api/activities/:activityId/tasks', (req, res) => {
     res.status(201).json(newTask);
 });
 
-// GET Indicators for Project
-app.get('/api/projects/:id/indicators', (req, res) => {
+// GET Milestones for Project
+app.get('/api/projects/:id/milestones', (req, res) => {
     const db = readDb();
     const projectId = req.params.id;
-    const indicators = (db.indicators || []).filter(i => i.project_id === projectId);
-    res.json(indicators);
+    const milestones = (db.milestones || []).filter(m => m.project_id === projectId);
+    res.json(milestones);
 });
 
-// POST Create Indicator
-app.post('/api/indicators', (req, res) => {
+// POST Create Milestone
+app.post('/api/milestones', (req, res) => {
     const db = readDb();
-    const { project_id, activity_id, indicator, target } = req.body;
+    const { project_id, title, description, target_date, status, notes } = req.body;
 
-    if (!indicator || indicator.trim().length === 0) {
-        return res.status(400).json({ error: 'Indicator name is required' });
+    if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
     }
-    if (indicator.length > 30) {
-        return res.status(400).json({ error: 'Indicator cannot exceed 30 characters' });
+    if (title.length > 50) {
+        return res.status(400).json({ error: 'Title cannot exceed 50 characters' });
     }
-    // Check for Proper Case (simple check: first letter should be uppercase)
-    // Actually, user said "Proper Case". I'll enforce it purely via code if I wanted, 
-    // but usually validation means rejecting it. 
-    // Let's implement a quick regex or logic?
-    // "Proper Case" usually means "First Letter Uppercase, rest lowercase" or "Title Case".
-    // Given the request "Proper Case max 30 characters", I will assume Title Case or Sentence Case.
-    // Let's just validate length for now and maybe basic capitalization?
-    // The prompt says "Allow them to add indicators", implies inputs.
-    // I'll stick to length validation here and trust frontend to guide formatting, 
-    // but since I'm the backend I should probably enforce it?
-    // Let's just do length and required for now to be safe, filtering logic is better in frontend?
-    // Actually, I can just save exactly what is sent. Frontend handles input masking/validation.
-
-    if (isNaN(target)) {
-        return res.status(400).json({ error: 'Target must be a number' });
+    if (description && description.length > 100) {
+        return res.status(400).json({ error: 'Description cannot exceed 100 characters' });
     }
 
-    const newIndicator = {
-        id: uuidv4(),
+    const newMilestone = {
+        id: generateControlCode(db, 'milestone'),
         project_id,
-        activity_id,
-        indicator, // Frontend should ensure Proper Case
-        target: Number(target),
+        title,
+        description: description || '',
+        target_date: target_date || null,
+        status: status || 'Pending',
+        notes: notes || '',
         created_at: new Date().toISOString()
     };
 
-    if (!db.indicators) db.indicators = [];
-    db.indicators.push(newIndicator);
+    if (!db.milestones) db.milestones = [];
+    db.milestones.push(newMilestone);
     writeDb(db);
 
     // Sync to Azure
-    ensureTableAndInsertIndicator(newIndicator).catch(err => console.error("Azure DB Indicator Sync Error:", err));
+    ensureTableAndInsertMilestone(newMilestone).catch(err => console.error("Azure DB Milestone Sync Error:", err));
 
-    res.status(201).json(newIndicator);
+    res.status(201).json(newMilestone);
+});
+
+// PUT Update Milestone
+app.put('/api/milestones/:id', (req, res) => {
+    const db = readDb();
+    const { id } = req.params;
+    const { title, description, target_date, status, notes } = req.body;
+
+    if (title && title.length > 50) return res.status(400).json({ error: 'Title cannot exceed 50 characters' });
+    if (description && description.length > 100) return res.status(400).json({ error: 'Description cannot exceed 100 characters' });
+
+    if (!db.milestones) return res.status(404).json({ error: 'No milestones found' });
+
+    const index = db.milestones.findIndex(m => m.id === id);
+    if (index === -1) return res.status(404).json({ error: 'Milestone not found' });
+
+    const updatedMilestone = {
+        ...db.milestones[index],
+        title: title || db.milestones[index].title,
+        description: description !== undefined ? description : db.milestones[index].description,
+        target_date: target_date || db.milestones[index].target_date,
+        status: status || db.milestones[index].status,
+        notes: notes !== undefined ? notes : db.milestones[index].notes
+    };
+
+    db.milestones[index] = updatedMilestone;
+    writeDb(db);
+
+    // Sync to Azure
+    ensureTableAndInsertMilestone(updatedMilestone).catch(err => console.error("Azure DB Milestone Sync Error:", err));
+
+    res.json(updatedMilestone);
+});
+
+// DELETE Milestone
+app.delete('/api/milestones/:id', (req, res) => {
+    const db = readDb();
+    const { id } = req.params;
+
+    if (!db.milestones) return res.status(404).json({ error: 'No milestones found' });
+
+    const initialLength = db.milestones.length;
+    db.milestones = db.milestones.filter(m => m.id !== id);
+
+    if (db.milestones.length === initialLength) {
+        return res.status(404).json({ error: 'Milestone not found' });
+    }
+
+    writeDb(db);
+    res.json({ message: 'Milestone deleted successfully' });
 });
 
 // POST Create Catch-up Activity
 app.post('/api/catchups', (req, res) => {
     console.log("[API] POST /api/catchups called");
     const db = readDb();
-    const { activity_id, title, description, target_date } = req.body;
+    const { activity_id, title, description, target_date, reason } = req.body;
 
     if (!title) {
         return res.status(400).json({ error: 'Catch-up activity title is required' });
@@ -670,6 +780,7 @@ app.post('/api/catchups', (req, res) => {
         description: description || '',
         target_date: target_date || null,
         status: 'Pending',
+        reason: reason || '',
         created_at: new Date().toISOString()
     };
 
@@ -681,6 +792,39 @@ app.post('/api/catchups', (req, res) => {
     ensureTableAndInsertCatchUp(newCatchUp).catch(err => console.error("Azure DB CatchUp Sync Error:", err));
 
     res.status(201).json(newCatchUp);
+});
+
+// PUT Update Catch-up Activity
+app.put('/api/catchups/:id', (req, res) => {
+    const db = readDb();
+    const { id } = req.params;
+    const { title, description, target_date, status, reason } = req.body;
+
+    if (title && title.length > 50) {
+        return res.status(400).json({ error: 'Catch-up activity title cannot exceed 50 characters' });
+    }
+
+    if (!db.catchups) return res.status(404).json({ error: 'No catch-up activities found' });
+
+    const index = db.catchups.findIndex(c => c.id === id);
+    if (index === -1) return res.status(404).json({ error: 'Catch-up activity not found' });
+
+    const updatedCatchUp = {
+        ...db.catchups[index],
+        title: title || db.catchups[index].title,
+        description: description !== undefined ? description : db.catchups[index].description,
+        target_date: target_date || db.catchups[index].target_date,
+        status: status || db.catchups[index].status,
+        reason: reason !== undefined ? reason : db.catchups[index].reason
+    };
+
+    db.catchups[index] = updatedCatchUp;
+    writeDb(db);
+
+    // Sync to Azure
+    ensureTableAndInsertCatchUp(updatedCatchUp).catch(err => console.error("Azure DB CatchUp Sync Error:", err));
+
+    res.json(updatedCatchUp);
 });
 
 // GET Catch-up Activities for an Activity

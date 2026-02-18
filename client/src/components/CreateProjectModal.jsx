@@ -37,14 +37,45 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
     const availableEmployees = formData.division ? getEmployeesInDivision() : employees;
 
+    const handleAssistingChange = (name) => {
+        setFormData(prev => {
+            const current = prev.assisting_personnel;
+            if (current.includes(name)) {
+                return { ...prev, assisting_personnel: current.filter(n => n !== name) };
+            } else {
+                return { ...prev, assisting_personnel: [...current, name] };
+            }
+        });
+    };
+
+    const basecampOptions = [
+        "Career Progression for DepEd Personnel",
+        "Mental Health Professionals for Schools",
+        "Workforce Plan and Management",
+        "HROD Process Excellence",
+        "Prioritization Index for Education Facilities Allocation",
+        "Career Opportunities in DepEd for SHS Graduates"
+    ];
+
+    const [selectedBasecamp, setSelectedBasecamp] = useState([]);
+
+    const handleBasecampChange = (option) => {
+        if (selectedBasecamp.includes(option)) {
+            setSelectedBasecamp(selectedBasecamp.filter(o => o !== option));
+        } else {
+            setSelectedBasecamp([...selectedBasecamp, option]);
+        }
+    };
+
+    // Update handleSubmit to include basecamp_target
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            // Convert array to string for assisting_personnel as per current schema text field
             const projectData = {
                 ...formData,
-                assisting_personnel: formData.assisting_personnel.join(', ')
+                assisting_personnel: formData.assisting_personnel.join(', '),
+                basecamp_target: selectedBasecamp.join(', ')
             };
 
             const newProject = await createProject(projectData);
@@ -58,20 +89,9 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
         }
     };
 
-    const handleAssistingChange = (name) => {
-        setFormData(prev => {
-            const current = prev.assisting_personnel;
-            if (current.includes(name)) {
-                return { ...prev, assisting_personnel: current.filter(n => n !== name) };
-            } else {
-                return { ...prev, assisting_personnel: [...current, name] };
-            }
-        });
-    };
-
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-10">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative my-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-10 animate-fade-in backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative my-auto animate-scale-in transition-all">
                 <button
                     onClick={onClose}
                     className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
@@ -109,6 +129,19 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                             placeholder="Brief project summary..."
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Total Budget (₱)</label>
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="0.00"
+                            value={formData.total_budget || ''}
+                            onChange={e => setFormData({ ...formData, total_budget: e.target.value })}
                         />
                     </div>
 
@@ -174,6 +207,25 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                                     />
                                     <span className="text-sm text-slate-700">{e.name}</span>
                                     <span className="text-xs text-slate-400">({e.position})</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Basecamp Target (Select Multiple)
+                        </label>
+                        <div className="border border-slate-300 rounded-lg p-3 max-h-40 overflow-y-auto bg-slate-50">
+                            {basecampOptions.map((option, idx) => (
+                                <label key={idx} className="flex items-start gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedBasecamp.includes(option)}
+                                        onChange={() => handleBasecampChange(option)}
+                                        className="mt-1 rounded text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-slate-700 leading-snug">{option}</span>
                                 </label>
                             ))}
                         </div>

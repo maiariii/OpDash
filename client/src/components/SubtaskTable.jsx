@@ -1,9 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import clsx from 'clsx';
-
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2, Circle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const SubtaskTable = ({ activities = [], employees = [], onSubtaskClick, onToggleStatus }) => {
+    const [sortConfig, setSortConfig] = useState({ key: 'due_date', direction: 'asc' });
 
     const allSubtasks = useMemo(() => {
         const flattened = [];
@@ -22,8 +22,51 @@ const SubtaskTable = ({ activities = [], employees = [], onSubtaskClick, onToggl
         return flattened;
     }, [activities]);
 
-    const activeTasks = allSubtasks.filter(t => t.status !== 'Done');
-    const accomplishedTasks = allSubtasks.filter(t => t.status === 'Done');
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortIcon = (columnKey) => {
+        if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} className="ml-1 text-slate-400" />;
+        return sortConfig.direction === 'asc' ?
+            <ArrowUp size={14} className="ml-1 text-blue-600" /> :
+            <ArrowDown size={14} className="ml-1 text-blue-600" />;
+    };
+
+    const sortData = (data) => {
+        return [...data].sort((a, b) => {
+            let aValue = a[sortConfig.key];
+            let bValue = b[sortConfig.key];
+
+            // Handle date sorting
+            if (sortConfig.key === 'due_date') {
+                aValue = aValue ? new Date(aValue).getTime() : 0;
+                bValue = bValue ? new Date(bValue).getTime() : 0;
+            }
+            // Handle assignee sorting (by ID for now, could map to name)
+            else if (sortConfig.key === 'assignee_id') {
+                aValue = getAssigneeName(aValue) || '';
+                bValue = getAssigneeName(bValue) || '';
+            }
+            // Handle string sorting
+            else if (typeof aValue === 'string') {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+
+            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    };
+
+    // Split and Sort
+    const activeTasks = sortData(allSubtasks.filter(t => t.status !== 'Done'));
+    const accomplishedTasks = sortData(allSubtasks.filter(t => t.status === 'Done'));
 
 
     const getStatusColor = (status) => {
@@ -68,11 +111,21 @@ const SubtaskTable = ({ activities = [], employees = [], onSubtaskClick, onToggl
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-xs font-bold">
                         <tr>
                             <th className="px-6 py-4 w-10"></th>
-                            <th className="px-6 py-4">Task Title</th>
-                            <th className="px-6 py-4">Activity (Parent)</th>
-                            <th className="px-6 py-4">Assigned To</th>
-                            <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4">Due Date</th>
+                            <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('title')}>
+                                <div className="flex items-center">Task Title {getSortIcon('title')}</div>
+                            </th>
+                            <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('parentActivity')}>
+                                <div className="flex items-center">Activity (Parent) {getSortIcon('parentActivity')}</div>
+                            </th>
+                            <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('assignee_id')}>
+                                <div className="flex items-center">Assigned To {getSortIcon('assignee_id')}</div>
+                            </th>
+                            <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('status')}>
+                                <div className="flex items-center">Status {getSortIcon('status')}</div>
+                            </th>
+                            <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('due_date')}>
+                                <div className="flex items-center">Due Date {getSortIcon('due_date')}</div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -145,11 +198,10 @@ const SubtaskTable = ({ activities = [], employees = [], onSubtaskClick, onToggl
 
     return (
         <div className="space-y-8">
-            {activeTasks.length > 0 && renderTable('Active Tasks', activeTasks, false)}
+            {activeTasks.length > 0 && renderTable('Pending Tasks', activeTasks, false)}
             {accomplishedTasks.length > 0 && renderTable('Accomplished Tasks', accomplishedTasks, true)}
         </div>
     );
 };
-
 
 export default SubtaskTable;

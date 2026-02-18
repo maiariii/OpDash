@@ -13,16 +13,18 @@ import {
     updateProject, getDivisions, getEmployees
 } from '../api';
 
-// import KanbanBoard from '../components/KanbanBoard';
+import KanbanBoard from '../components/KanbanBoard';
 import GanttChart from '../components/GanttChart';
 import CreateTaskModal from '../components/CreateTaskModal';
 import EditSubtaskModal from '../components/EditSubtaskModal';
 import TaskTable from '../components/TaskTable';
+import ActivityList from '../components/ActivityList';
 import SubtaskTable from '../components/SubtaskTable';
 import CreateSubtaskModal from '../components/CreateSubtaskModal';
-import IndicatorsTab from '../components/IndicatorsTab';
+import MilestonesTab from '../components/MilestonesTab';
 import SpilloversTab from '../components/SpilloversTab';
 import DashboardCharts from '../components/DashboardCharts';
+import CalendarView from '../components/CalendarView';
 
 
 const TabButton = ({ active, children, onClick, icon: Icon }) => (
@@ -45,6 +47,7 @@ const ProjectDetails = () => {
     const [tasks, setTasks] = useState([]);
     const [financials, setFinancials] = useState(null);
     const [activeTab, setActiveTab] = useState('kanban');
+    const [viewMode, setViewMode] = useState('table'); // 'table', 'list', 'gantt', 'kanban'
     const [aiRisk, setAiRisk] = useState(null);
 
     // Edit Mode State
@@ -148,6 +151,27 @@ const ProjectDetails = () => {
             currentMembers.push(empName);
         }
         setEditForm({ ...editForm, assisting_personnel: currentMembers.join(', ') });
+    };
+
+    const basecampOptions = [
+        "Career Progression for DepEd Personnel",
+        "Mental Health Professionals for Schools",
+        "Workforce Plan and Management",
+        "HROD Process Excellence",
+        "Prioritization Index for Education Facilities Allocation",
+        "Career Opportunities in DepEd for SHS Graduates"
+    ];
+
+    const toggleBasecamp = (option) => {
+        let current = editForm.basecamp_target ? editForm.basecamp_target.split(',').map(s => s.trim()) : [];
+        current = current.filter(c => c); // Clean empty
+
+        if (current.includes(option)) {
+            current = current.filter(c => c !== option);
+        } else {
+            current.push(option);
+        }
+        setEditForm({ ...editForm, basecamp_target: current.join(', ') });
     };
 
     const handleSubtaskToggle = async (subtask) => {
@@ -266,20 +290,52 @@ const ProjectDetails = () => {
                         {/* Renamed Kanban to Dashboard */}
                         <TabButton active={activeTab === 'kanban'} onClick={() => setActiveTab('kanban')} icon={Layout}>Dashboard</TabButton>
                         <TabButton active={activeTab === 'table'} onClick={() => setActiveTab('table')} icon={Table}>Activity List</TabButton>
-                        <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={List}>Tasks</TabButton>
-                        <TabButton active={activeTab === 'gantt'} onClick={() => setActiveTab('gantt')} icon={Calendar}>Timeline</TabButton>
-                        <TabButton active={activeTab === 'indicators'} onClick={() => setActiveTab('indicators')} icon={Target}>Indicators</TabButton>
+                        <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={CheckSquare}>Tasks</TabButton>
+                        {/* Removed standalone Timeline tab */}
+                        <TabButton active={activeTab === 'milestones'} onClick={() => setActiveTab('milestones')} icon={Target}>Milestones</TabButton>
                         <TabButton active={activeTab === 'financials'} onClick={() => setActiveTab('financials')} icon={PieChart}>Financials</TabButton>
                         <TabButton active={activeTab === 'spillovers'} onClick={() => setActiveTab('spillovers')} icon={Layers}>Spillovers</TabButton>
                     </div>
 
                     {activeTab === 'table' && (
-                        <button
-                            onClick={() => setIsCreatingTask(true)}
-                            className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm transition-colors mb-1"
-                        >
-                            <Plus size={16} /> Add Activity
-                        </button>
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-1 mr-2">
+                                <button
+                                    onClick={() => setViewMode('table')}
+                                    className={clsx("p-1.5 rounded-md transition-all", viewMode === 'table' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
+                                    title="Table View"
+                                >
+                                    <Table size={16} />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={clsx("p-1.5 rounded-md transition-all", viewMode === 'list' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
+                                    title="List View"
+                                >
+                                    <List size={16} />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('gantt')}
+                                    className={clsx("p-1.5 rounded-md transition-all", viewMode === 'gantt' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
+                                    title="Timeline View"
+                                >
+                                    <Calendar size={16} />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('kanban')}
+                                    className={clsx("p-1.5 rounded-md transition-all", viewMode === 'kanban' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
+                                    title="Kanban View"
+                                >
+                                    <Layout size={16} />
+                                </button>
+                            </div>
+                            <button
+                                onClick={() => setIsCreatingTask(true)}
+                                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm transition-colors"
+                            >
+                                <Plus size={16} /> Add Activity
+                            </button>
+                        </div>
                     )}
 
                     {activeTab === 'tasks' && (
@@ -299,8 +355,17 @@ const ProjectDetails = () => {
                 {/* Center Workspace (3/4) */}
                 <div className="xl:col-span-3 overflow-y-auto p-6">
                     {activeTab === 'kanban' && dashboardMetrics && (
-                        <div className="max-w-6xl mx-auto">
+                        <div className="max-w-6xl mx-auto space-y-8">
                             <DashboardCharts metrics={dashboardMetrics} />
+
+                            {/* Project Activity Calendar */}
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                                <CalendarView
+                                    activities={tasks}
+                                    title="Project Activity Calendar"
+                                    onActivityClick={setEditingTask}
+                                />
+                            </div>
                         </div>
                     )}
 
@@ -312,11 +377,44 @@ const ProjectDetails = () => {
                     )}
 
                     {activeTab === 'table' && (
-                        <TaskTable
-                            tasks={tasks}
-                            employees={employees}
-                            onTaskClick={setEditingTask}
-                        />
+                        <div className="h-full flex flex-col">
+                            {viewMode === 'table' && (
+                                <TaskTable
+                                    tasks={tasks}
+                                    employees={employees}
+                                    onTaskClick={setEditingTask}
+                                />
+                            )}
+                            {viewMode === 'list' && (
+                                <ActivityList
+                                    activities={tasks}
+                                    employees={employees}
+                                    onActivityClick={setEditingTask}
+                                />
+                            )}
+                            {viewMode === 'gantt' && (
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[600px] overflow-hidden">
+                                    <GanttChart
+                                        tasks={tasks}
+                                        onTaskClick={(ganttTask) => {
+                                            const originalTask = tasks.find(t => t.id === ganttTask.id);
+                                            if (originalTask) setEditingTask(originalTask);
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            {viewMode === 'kanban' && (
+                                <div className="h-full">
+                                    <KanbanBoard
+                                        tasks={tasks}
+                                        members={employees}
+                                        onTaskUpdate={handleTaskUpdate}
+                                        onTaskClick={setEditingTask}
+                                        onAddTask={() => setIsCreatingTask(true)}
+                                    />
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     {activeTab === 'tasks' && (
@@ -328,20 +426,10 @@ const ProjectDetails = () => {
                         />
                     )}
 
-                    {activeTab === 'gantt' && (
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[600px]">
-                            <GanttChart
-                                tasks={tasks}
-                                onTaskClick={(ganttTask) => {
-                                    const originalTask = tasks.find(t => t.id === ganttTask.id);
-                                    if (originalTask) setEditingTask(originalTask);
-                                }}
-                            />
-                        </div>
-                    )}
+                    {/* Old Gantt tab location removed */}
 
-                    {activeTab === 'indicators' && (
-                        <IndicatorsTab projectId={id} />
+                    {activeTab === 'milestones' && (
+                        <MilestonesTab projectId={id} />
                     )}
 
                     {activeTab === 'financials' && financials && (
@@ -361,7 +449,7 @@ const ProjectDetails = () => {
                                     </p>
                                 </div>
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Remaining Cost</h3>
+                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Remaining Budget</h3>
                                     <p className={`text-3xl font-bold tracking-tight mt-1 ${(financials?.remaining_budget || 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                                         ₱{Number(financials?.remaining_budget || 0).toLocaleString()}
                                     </p>
@@ -370,7 +458,7 @@ const ProjectDetails = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Burn Rate</h3>
+                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Consumption Rate</h3>
                                     <p className="text-3xl font-bold text-orange-500 tracking-tight">
                                         {financials?.burn_rate_percent?.toFixed(1) || 0}%
                                     </p>
@@ -454,6 +542,24 @@ const ProjectDetails = () => {
                             )}
                         </div>
 
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Total Budget</label>
+                            {isEditing ? (
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={editForm.total_budget || 0}
+                                    onChange={e => setEditForm({ ...editForm, total_budget: e.target.value })}
+                                />
+                            ) : (
+                                <p className="text-sm font-medium text-slate-800">
+                                    ₱{Number(project.total_budget || 0).toLocaleString()}
+                                </p>
+                            )}
+                        </div>
+
                         <div className="pt-4 border-t border-slate-100">
                             <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                                 <Users size={18} /> Team
@@ -525,6 +631,40 @@ const ProjectDetails = () => {
                                 </div>
                             </div>
                         </div>
+
+                        <div className="pt-4 border-t border-slate-100">
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Basecamp Target</label>
+                            {isEditing ? (
+                                <div className="border border-slate-300 rounded-lg p-2 max-h-60 overflow-y-auto space-y-2">
+                                    {basecampOptions.map((option, idx) => {
+                                        const isSelected = editForm.basecamp_target?.includes(option);
+                                        return (
+                                            <div key={idx} onClick={() => toggleBasecamp(option)} className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                {isSelected ?
+                                                    <CheckSquare size={16} className="text-blue-600 mt-0.5 flex-shrink-0" /> :
+                                                    <Square size={16} className="text-slate-300 mt-0.5 flex-shrink-0" />
+                                                }
+                                                <span className={clsx("text-sm select-none leading-tight", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
+                                                    {option}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {project.basecamp_target ? (
+                                        project.basecamp_target.split(',').map((target, i) => (
+                                            <div key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-1.5 rounded-md border border-blue-100 font-medium leading-snug">
+                                                {target.trim()}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-slate-400 italic">No targets selected</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div >
@@ -572,5 +712,6 @@ const ProjectDetails = () => {
         </div >
     );
 };
+
 
 export default ProjectDetails;

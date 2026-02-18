@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { getEmployees, getProjects, getProjectTasks, getProjectFinancials, getDivisions } from '../api';
 import DashboardCharts from '../components/DashboardCharts';
+import CalendarView from '../components/CalendarView';
+import CreateTaskModal from '../components/CreateTaskModal';
 
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
@@ -14,6 +16,7 @@ const Dashboard = () => {
         totalBudget: 0,
         totalSpent: 0
     });
+    const [editingTask, setEditingTask] = useState(null);
 
 
     useEffect(() => {
@@ -49,7 +52,8 @@ const Dashboard = () => {
                             allTasks.push({
                                 ...t,
                                 project_name: p.name,
-                                division_name: p.division // Ensure division context is available if needed
+                                division_name: p.division, // Ensure division context is available if needed
+                                project_id: p.id
                             });
                         });
                     }
@@ -136,6 +140,28 @@ const Dashboard = () => {
             {/* Metrics & Visuals */}
             <DashboardCharts metrics={stats} />
 
+            {/* Activity Calendar */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <CalendarView
+                    activities={stats.allTasks}
+                    title="Executive Activity Calendar"
+                    onActivityClick={setEditingTask}
+                />
+            </div>
+
+            {editingTask && (
+                <CreateTaskModal
+                    projectId={editingTask.project_id}
+                    task={editingTask}
+                    members={stats.allEmployees} // Pass all employees or filter if needed
+                    onClose={() => setEditingTask(null)}
+                    onCreated={() => {
+                        setEditingTask(null);
+                        // Trigger reload - dirty way for now is to just define fetchData outside or move it
+                        window.location.reload(); // Simplest for now since refactoring useEffect is larger
+                    }}
+                />
+            )}
 
         </div>
     );

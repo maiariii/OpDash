@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getProjects, getDivisions } from '../api';
 import { Folder, ArrowRight, Filter } from 'lucide-react';
 import CreateProjectModal from '../components/CreateProjectModal';
@@ -7,8 +7,23 @@ import CreateProjectModal from '../components/CreateProjectModal';
 const Projects = () => {
     const [projects, setProjects] = useState([]);
     const [divisions, setDivisions] = useState([]);
-    const [selectedDivision, setSelectedDivision] = useState('');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const divisionParam = searchParams.get('division') || '';
+    const [selectedDivision, setSelectedDivision] = useState(divisionParam);
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    useEffect(() => {
+        setSelectedDivision(divisionParam);
+    }, [divisionParam]);
+
+    const handleDivisionChange = (newDivision) => {
+        setSelectedDivision(newDivision);
+        if (newDivision) {
+            setSearchParams({ division: newDivision });
+        } else {
+            setSearchParams({});
+        }
+    };
 
     useEffect(() => {
         getProjects().then(setProjects).catch(console.error);
@@ -33,7 +48,7 @@ const Projects = () => {
                         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <select
                             value={selectedDivision}
-                            onChange={(e) => setSelectedDivision(e.target.value)}
+                            onChange={(e) => handleDivisionChange(e.target.value)}
                             className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white"
                         >
                             <option value="">All Divisions</option>
@@ -53,11 +68,12 @@ const Projects = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProjects.map(project => (
+                {filteredProjects.map((project, index) => (
                     <Link
                         key={project.id}
                         to={`/projects/${project.id}`}
-                        className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group block"
+                        className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all group block animate-slide-in"
+                        style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
                     >
                         <div className="flex justify-between items-start mb-4">
                             <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
@@ -77,16 +93,23 @@ const Projects = () => {
                         <h3 className="font-bold text-lg text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">
                             {project.name}
                         </h3>
-                        <p className="text-sm text-slate-500 mb-4">
-                            Budget: ₱{Number(project.total_budget).toLocaleString()}
+                        <p className="text-sm text-slate-500 mb-4 line-clamp-2 min-h-[40px]">
+                            {project.description || 'No description provided.'}
                         </p>
+                        <div className="text-sm text-slate-500 mb-4 flex items-center gap-1">
+                            Budget: <span className="font-medium text-slate-700">
+                                {project.total_budget && !isNaN(project.total_budget)
+                                    ? `₱${Number(project.total_budget).toLocaleString()}`
+                                    : 'N/A'}
+                            </span>
+                        </div>
 
                         <div className="flex items-center text-blue-600 text-sm font-medium gap-1">
                             Open Workspace <ArrowRight size={16} />
                         </div>
                     </Link>
                 ))}
-            </div>
+            </div >
 
             {isModalOpen && (
                 <CreateProjectModal
@@ -94,7 +117,7 @@ const Projects = () => {
                     onProjectCreated={handleProjectCreated}
                 />
             )}
-        </div>
+        </div >
     );
 };
 
