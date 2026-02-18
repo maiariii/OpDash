@@ -102,7 +102,7 @@ async function ensureTableAndInsertMilestone(milestoneData) {
     try {
         await client.query(ensureTableExistsQuery); // Ensure milestones_list exists
 
-        // Migration: Add status/notes/milestone_id if missing, drop accomplishment if exists
+        // Migration: Add status/notes/milestone_id/importance if missing, drop accomplishment if exists
         await client.query(`
             DO $$ 
             BEGIN 
@@ -117,6 +117,10 @@ async function ensureTableAndInsertMilestone(milestoneData) {
                 -- Add milestone_id column (Control Number)
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='milestones_list' AND column_name='milestone_id') THEN 
                     ALTER TABLE milestones_list ADD COLUMN milestone_id TEXT; 
+                END IF;
+                -- Add importance column (1-5 stars)
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='milestones_list' AND column_name='importance') THEN 
+                    ALTER TABLE milestones_list ADD COLUMN importance INTEGER DEFAULT 1; 
                 END IF;
                 -- Drop accomplishment column
                 IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='milestones_list' AND column_name='accomplishment') THEN 
@@ -134,8 +138,8 @@ async function ensureTableAndInsertMilestone(milestoneData) {
 
         const insertQuery = `
             INSERT INTO milestones_list (
-                id, milestone_id, project_id, title, description, target_date, status, notes, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+                id, milestone_id, project_id, title, description, target_date, status, notes, importance, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
         `;
 
         const targetDate = (milestoneData.target_date && milestoneData.target_date.trim() !== '') ? milestoneData.target_date : null;
@@ -148,11 +152,12 @@ async function ensureTableAndInsertMilestone(milestoneData) {
             milestoneData.description || '',
             targetDate,
             milestoneData.status || 'Pending',
-            milestoneData.notes || ''
+            milestoneData.notes || '',
+            Number(milestoneData.importance) || 1
         ];
 
         await client.query(insertQuery, values);
-        log(`Milestone "${milestoneData.title}" (ID: ${milestoneData.id}) history log saved to OpDash DB.`);
+        log(`Milestone "${milestoneData.title}" (ID: ${milestoneData.id}, Stars: ${milestoneData.importance}) history log saved to OpDash DB.`);
     } catch (err) {
         log(`Error logging milestone to Azure DB: ${err.message}`);
     } finally {

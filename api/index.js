@@ -677,7 +677,8 @@ app.get('/api/projects/:id/milestones', (req, res) => {
 // POST Create Milestone
 app.post('/api/milestones', (req, res) => {
     const db = readDb();
-    const { project_id, title, description, target_date, status, notes } = req.body;
+    console.log("POST /api/milestones payload:", req.body); // Debug log
+    const { project_id, title, description, target_date, status, notes, importance } = req.body;
 
     if (!title) {
         return res.status(400).json({ error: 'Title is required' });
@@ -697,6 +698,7 @@ app.post('/api/milestones', (req, res) => {
         target_date: target_date || null,
         status: status || 'Pending',
         notes: notes || '',
+        importance: Number(importance) || 1, // Default to 1 (White)
         created_at: new Date().toISOString()
     };
 
@@ -714,7 +716,8 @@ app.post('/api/milestones', (req, res) => {
 app.put('/api/milestones/:id', (req, res) => {
     const db = readDb();
     const { id } = req.params;
-    const { title, description, target_date, status, notes } = req.body;
+    console.log(`PUT /api/milestones/${id} payload:`, req.body); // Debug log
+    const { title, description, target_date, status, notes, importance } = req.body;
 
     if (title && title.length > 50) return res.status(400).json({ error: 'Title cannot exceed 50 characters' });
     if (description && description.length > 100) return res.status(400).json({ error: 'Description cannot exceed 100 characters' });
@@ -730,7 +733,8 @@ app.put('/api/milestones/:id', (req, res) => {
         description: description !== undefined ? description : db.milestones[index].description,
         target_date: target_date || db.milestones[index].target_date,
         status: status || db.milestones[index].status,
-        notes: notes !== undefined ? notes : db.milestones[index].notes
+        notes: notes !== undefined ? notes : db.milestones[index].notes,
+        importance: importance !== undefined ? Number(importance) : db.milestones[index].importance // Preserve existing if not provided
     };
 
     db.milestones[index] = updatedMilestone;

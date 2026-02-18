@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Flag, Calendar, Trash2, Edit2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Flag, Calendar, Trash2, Edit2, ArrowUpDown, ArrowUp, ArrowDown, Star } from 'lucide-react';
 import { getProjectMilestones, deleteMilestone } from '../api';
 import MilestoneModal from './MilestoneModal';
 import clsx from 'clsx';
@@ -23,6 +23,12 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
         if (sortConfig.key === 'target_date') {
             aValue = aValue ? new Date(aValue).getTime() : 0;
             bValue = bValue ? new Date(bValue).getTime() : 0;
+        }
+        // Handle sorting for importance (numeric)
+        else if (sortConfig.key === 'importance') {
+            // Default to 1 if undefined
+            aValue = Number(aValue || 1);
+            bValue = Number(bValue || 1);
         }
         // Handle string sorting (case-insensitive)
         else if (typeof aValue === 'string') {
@@ -49,6 +55,27 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
         });
     };
 
+    const renderStars = (importance) => {
+        const rating = Number(importance || 1);
+        let colorClass = "text-slate-400"; // Default 1 star (White/Grey)
+
+        switch (rating) {
+            case 2: colorClass = "text-blue-500 fill-blue-500"; break;
+            case 3: colorClass = "text-green-500 fill-green-500"; break;
+            case 4: colorClass = "text-yellow-400 fill-yellow-400"; break;
+            case 5: colorClass = "text-amber-500 fill-amber-500"; break;
+            default: colorClass = "text-slate-400"; // 1 Star
+        }
+
+        return (
+            <div className="flex gap-0.5" title={`Importance: ${rating}/5`}>
+                {[...Array(rating)].map((_, i) => (
+                    <Star key={i} size={14} className={colorClass} />
+                ))}
+            </div>
+        );
+    };
+
     if (milestones.length === 0) {
         return (
             <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 mb-8">
@@ -56,6 +83,17 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
             </div>
         );
     }
+
+    const getRowClasses = (importance) => {
+        const rating = Number(importance || 1);
+        switch (rating) {
+            case 2: return "bg-blue-50 hover:bg-blue-100";
+            case 3: return "bg-green-50 hover:bg-green-100";
+            case 4: return "bg-yellow-50 hover:bg-yellow-100";
+            case 5: return "bg-amber-50 hover:bg-amber-100";
+            default: return "bg-white hover:bg-slate-50"; // 1 Star
+        }
+    };
 
     return (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm mb-8">
@@ -74,6 +112,14 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
                             </div>
                         </th>
                         <th
+                            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors w-1/6"
+                            onClick={() => handleSort('importance')}
+                        >
+                            <div className="flex items-center">
+                                Importance {getSortIcon('importance')}
+                            </div>
+                        </th>
+                        <th
                             className="p-4 cursor-pointer hover:bg-slate-50 transition-colors w-1/4"
                             onClick={() => handleSort('target_date')}
                         >
@@ -82,7 +128,7 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
                             </div>
                         </th>
                         <th
-                            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors w-1/4"
+                            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors w-1/6"
                             onClick={() => handleSort('status')}
                         >
                             <div className="flex items-center">
@@ -94,10 +140,13 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {sortedMilestones.map(milestone => (
-                        <tr key={milestone.id} className="hover:bg-slate-50 transition-colors group">
+                        <tr key={milestone.id} className={`${getRowClasses(milestone.importance)} transition-colors group`}>
                             <td className="p-4">
                                 <div className="font-semibold text-slate-800">{milestone.title}</div>
                                 <div className="text-xs text-slate-400 mt-0.5">{milestone.id}</div>
+                            </td>
+                            <td className="p-4">
+                                {renderStars(milestone.importance)}
                             </td>
                             <td className="p-4">
                                 <div className="text-sm text-slate-600 flex items-center gap-2">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Flag } from 'lucide-react';
+import { X, Calendar, Flag, Star } from 'lucide-react';
 import { createMilestone, updateMilestone } from '../api';
 
 const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
@@ -8,6 +8,7 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
     const [targetDate, setTargetDate] = useState('');
     const [status, setStatus] = useState('Pending');
     const [notes, setNotes] = useState('');
+    const [importance, setImportance] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -26,6 +27,7 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
             }
             setStatus(milestone.status || 'Pending');
             setNotes(milestone.notes || '');
+            setImportance(milestone.importance !== undefined ? milestone.importance : 1);
         }
     }, [milestone]);
 
@@ -52,7 +54,8 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
                 description,
                 target_date: targetDate,
                 status,
-                notes
+                notes,
+                importance
             };
 
             if (isEditing) {
@@ -68,6 +71,21 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
             setError(err.message);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const getStarColor = (starIndex, currentRating) => {
+        // Only color stars up to the current rating
+        if (starIndex > currentRating) return "text-slate-200 fill-slate-200";
+
+        // Color based on the rating value
+        switch (currentRating) {
+            case 1: return "text-slate-400"; // White/Grey
+            case 2: return "text-blue-500 fill-blue-500";
+            case 3: return "text-green-500 fill-green-500";
+            case 4: return "text-yellow-400 fill-yellow-400";
+            case 5: return "text-amber-500 fill-amber-500";
+            default: return "text-slate-400";
         }
     };
 
@@ -148,17 +166,38 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Status
+                                Importance
                             </label>
-                            <select
-                                className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                value={status}
-                                onChange={(e) => setStatus(e.target.value)}
-                            >
-                                <option value="Pending">Pending</option>
-                                <option value="Accomplished">Accomplished</option>
-                            </select>
+                            <div className="flex gap-1 items-center h-[42px]">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        onClick={() => setImportance(star)}
+                                        className="focus:outline-none transition-transform hover:scale-110"
+                                    >
+                                        <Star
+                                            size={20}
+                                            className={getStarColor(star, importance)}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Status
+                        </label>
+                        <select
+                            className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value)}
+                        >
+                            <option value="Pending">Pending</option>
+                            <option value="Accomplished">Accomplished</option>
+                        </select>
                     </div>
 
                     <div>
