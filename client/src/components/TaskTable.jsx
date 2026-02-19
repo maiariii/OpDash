@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
-import { Calendar, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Calendar, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
+import { deleteTask } from '../api';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
-const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
+const TaskTable = ({ tasks = [], employees = [], onTaskClick, onTaskDeleted }) => {
     const [sortConfig, setSortConfig] = useState({ key: 'due_date', direction: 'asc' });
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'Done': return 'bg-green-100 text-green-700 border-green-200';
+            case 'Accomplished': return 'bg-green-100 text-green-700 border-green-200';
             case 'In Progress': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'Continuing': return 'bg-sky-100 text-sky-700 border-sky-200';
+            case 'Deferred': return 'bg-amber-100 text-amber-700 border-amber-200';
+            case 'Cancelled': return 'bg-red-100 text-red-700 border-red-200';
             default: return 'bg-slate-100 text-slate-600 border-slate-200';
         }
     };
@@ -26,6 +34,28 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
             direction = 'desc';
         }
         setSortConfig({ key, direction });
+    };
+
+    const handleDeleteClick = (e, task) => {
+        e.stopPropagation();
+        setTaskToDelete(task);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!taskToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteTask(taskToDelete.id);
+            if (onTaskDeleted) onTaskDeleted(taskToDelete.id);
+            setDeleteModalOpen(false);
+            setTaskToDelete(null);
+        } catch (err) {
+            console.error("Failed to delete task", err);
+            alert("Failed to delete task");
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const getSortIcon = (columnKey) => {
@@ -70,8 +100,8 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
     };
 
     // Filter Tasks using manual status
-    const accomplished = tasks.filter(t => t.status === 'Done');
-    const pending = tasks.filter(t => t.status !== 'Done');
+    const accomplished = tasks.filter(t => t.status === 'Accomplished');
+    const pending = tasks.filter(t => t.status !== 'Accomplished');
 
     const sortedPending = sortData(pending);
     const sortedAccomplished = sortData(accomplished);
@@ -119,6 +149,7 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
                             <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('due_date')}>
                                 <div className="flex items-center">Due Date {getSortIcon('due_date')}</div>
                             </th>
+                            <th className="px-6 py-4 w-12 text-center"></th>
                             {/* Removed Priority Column */}
                         </tr>
                     </thead>
@@ -166,6 +197,15 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
                                             {formatDate(task.due_date)}
                                         </span>
                                     </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button
+                                            onClick={(e) => handleDeleteClick(e, task)}
+                                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Delete Activity"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </td>
                                     {/* Removed Priority Cell */}
                                 </tr>
                             );
@@ -180,6 +220,16 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick }) => {
         <div className="space-y-8">
             {sortedPending.length > 0 && renderTable('Pending Activities', sortedPending, true)}
             {sortedAccomplished.length > 0 && renderTable('Accomplished Activities', sortedAccomplished, false)}
+
+            <DeleteConfirmationModal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Activity"
+                itemName={taskToDelete?.title}
+                message="Are you sure you want to delete this activity? This will also delete all subtasks, expenses, and catch-up plans associated with it."
+                isDeleting={isDeleting}
+            />
         </div>
     );
 };

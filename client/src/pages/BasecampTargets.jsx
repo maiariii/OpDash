@@ -10,33 +10,11 @@ const BASECAMP_TARGETS = [
     "Workforce Plan and Management",
     "HROD Process Excellence",
     "Prioritization Index for Education Facilities Allocation",
-    "Career Opportunities in DepEd for SHS Graduates"
+    "Career Opportunities in DepEd for SHS Graduates",
+    "Others"
 ];
 
-const StatusBadge = ({ status }) => {
-    let colorClass = "bg-slate-100 text-slate-600";
-    let icon = Clock;
 
-    if (['Completed', 'Done', 'Accomplished'].includes(status)) {
-        colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
-        icon = CheckCircle2;
-    } else if (['Delayed', 'Overdue'].includes(status)) {
-        colorClass = "bg-red-100 text-red-700 border-red-200";
-        icon = AlertTriangle;
-    } else if (['In Progress', 'Ongoing'].includes(status)) {
-        colorClass = "bg-blue-100 text-blue-700 border-blue-200";
-        icon = Clock;
-    }
-
-    const Icon = icon;
-
-    return (
-        <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass}`}>
-            <Icon size={12} />
-            {status}
-        </span>
-    );
-};
 
 const BasecampTargets = () => {
     const [loading, setLoading] = useState(true);
@@ -77,7 +55,7 @@ const BasecampTargets = () => {
                 .map(p => p.id)
         );
 
-        // 2. Filter milestones for these projects and sort by importance (descending)
+        // 2. Filter milestones for these projects and sort by progress (descending)
         return milestones
             .filter(m => relatedProjectIds.has(m.project_id))
             .map(m => {
@@ -89,40 +67,10 @@ const BasecampTargets = () => {
                     project_id: m.project_id
                 };
             })
-            .sort((a, b) => (Number(b.importance) || 1) - (Number(a.importance) || 1));
+            .sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
     };
 
-    const getRowClasses = (importance) => {
-        const rating = Number(importance || 1);
-        switch (rating) {
-            case 2: return "bg-blue-50 hover:bg-blue-100";
-            case 3: return "bg-green-50 hover:bg-green-100";
-            case 4: return "bg-yellow-50 hover:bg-yellow-100";
-            case 5: return "bg-amber-50 hover:bg-amber-100";
-            default: return "bg-white hover:bg-slate-50"; // 1 Star
-        }
-    };
 
-    const renderStars = (importance) => {
-        const rating = Number(importance || 1);
-        let colorClass = "text-slate-400"; // Default 1 star (White/Grey)
-
-        switch (rating) {
-            case 2: colorClass = "text-blue-500 fill-blue-500"; break;
-            case 3: colorClass = "text-green-500 fill-green-500"; break;
-            case 4: colorClass = "text-yellow-400 fill-yellow-400"; break;
-            case 5: colorClass = "text-amber-500 fill-amber-500"; break;
-            default: colorClass = "text-slate-400"; // 1 Star
-        }
-
-        return (
-            <div className="flex gap-0.5" title={`Importance: ${rating}/5`}>
-                {[...Array(rating)].map((_, i) => (
-                    <Star key={i} size={14} className={colorClass} />
-                ))}
-            </div>
-        );
-    };
 
     if (loading) return <div className="p-8 text-center text-slate-500">Loading Basecamp Targets...</div>;
 
@@ -193,19 +141,29 @@ const BasecampTargets = () => {
                                                         <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                                                             <tr>
                                                                 <th className="px-4 py-3 font-semibold w-1/3">Milestone</th>
-                                                                <th className="px-4 py-3 font-semibold w-24">Importance</th>
+                                                                <th className="px-4 py-3 font-semibold w-32">Progress</th>
                                                                 <th className="px-4 py-3 font-semibold">Project</th>
                                                                 <th className="px-4 py-3 font-semibold">Division</th>
-                                                                <th className="px-4 py-3 font-semibold text-center">Status</th>
+
                                                                 <th className="px-4 py-3 font-semibold text-right">Target Date</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-slate-100">
                                                             {targetMilestones.map(m => (
-                                                                <tr key={m.id} className={`${getRowClasses(m.importance)} transition-colors`}>
+                                                                <tr key={m.id} className="bg-white hover:bg-slate-50 transition-colors border-b border-slate-100">
                                                                     <td className="px-4 py-3 font-medium text-slate-800">{m.title}</td>
                                                                     <td className="px-4 py-3">
-                                                                        {renderStars(m.importance)}
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden w-full max-w-[80px]">
+                                                                                <div
+                                                                                    className={clsx("h-full rounded-full",
+                                                                                        m.progress === 100 ? "bg-green-500" : "bg-blue-500"
+                                                                                    )}
+                                                                                    style={{ width: `${m.progress || 0}%` }}
+                                                                                />
+                                                                            </div>
+                                                                            <span className="text-xs font-medium text-slate-600">{m.progress || 0}%</span>
+                                                                        </div>
                                                                     </td>
                                                                     <td className="px-4 py-3 text-slate-600">
                                                                         <Link to={`/projects/${m.project_id}`} className="hover:text-blue-600 hover:underline">
@@ -213,11 +171,7 @@ const BasecampTargets = () => {
                                                                         </Link>
                                                                     </td>
                                                                     <td className="px-4 py-3 text-slate-600">{m.division_name}</td>
-                                                                    <td className="px-4 py-3 text-center">
-                                                                        <div className="flex justify-center">
-                                                                            <StatusBadge status={m.status} />
-                                                                        </div>
-                                                                    </td>
+
                                                                     <td className="px-4 py-3 text-right font-mono text-slate-600">
                                                                         {m.target_date ? new Date(m.target_date).toLocaleDateString() : '-'}
                                                                     </td>
@@ -229,13 +183,21 @@ const BasecampTargets = () => {
                                             ) : (
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                                     {targetMilestones.map(m => (
-                                                        <div key={m.id} className={clsx("p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3", getRowClasses(m.importance).replace('hover:', ''))}>
+                                                        <div key={m.id} className="p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3 bg-white hover:bg-slate-50">
                                                             <div className="flex justify-between items-start gap-2">
                                                                 <h4 className="font-bold text-slate-800 line-clamp-2" title={m.title}>{m.title}</h4>
-                                                                <StatusBadge status={m.status} />
+
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {renderStars(m.importance)}
+                                                            <div className="flex items-center gap-2 w-full">
+                                                                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className={clsx("h-full rounded-full",
+                                                                            m.progress === 100 ? "bg-green-500" : "bg-blue-500"
+                                                                        )}
+                                                                        style={{ width: `${m.progress || 0}%` }}
+                                                                    />
+                                                                </div>
+                                                                <span className="text-xs font-bold text-slate-600 min-w-[30px] text-right">{m.progress || 0}%</span>
                                                             </div>
                                                             {m.description && (
                                                                 <p className="text-sm text-slate-600 line-clamp-3 bg-white/50 p-2 rounded border border-slate-200/50 italic">

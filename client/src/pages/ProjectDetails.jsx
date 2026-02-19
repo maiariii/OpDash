@@ -25,18 +25,22 @@ import CreateSubtaskModal from '../components/CreateSubtaskModal';
 import MilestonesTab from '../components/MilestonesTab';
 import SpilloversTab from '../components/SpilloversTab';
 import DashboardCharts from '../components/DashboardCharts';
+
 import CalendarView from '../components/CalendarView';
+import Loader from '../components/Loader';
 
 
 const TabButton = ({ active, children, onClick, icon: Icon }) => (
     <button
         onClick={onClick}
         className={clsx(
-            "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors",
-            active ? "bg-blue-600 text-white" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border",
+            active
+                ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                : "bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
         )}
     >
-        <Icon size={18} />
+        <Icon size={16} />
         {children}
     </button>
 );
@@ -60,6 +64,8 @@ const ProjectDetails = () => {
     const [isCreatingTask, setIsCreatingTask] = useState(false); // For Creating New Task
     const [showCreateSubtask, setShowCreateSubtask] = useState(false); // For New Subtask Modal
     const [editingSubtask, setEditingSubtask] = useState(null); // For Subtask Modal
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Sidebar State
+    const [initialTaskDate, setInitialTaskDate] = useState(null); // Initial Date for New Task
 
     // Dropdown Data
     const [divisions, setDivisions] = useState([]);
@@ -92,7 +98,7 @@ const ProjectDetails = () => {
         });
 
         // Socket setup
-        const socket = io('http://localhost:3000');
+        const socket = io({ path: '/opdash/socket.io' });
         socket.emit('join_project', id);
 
         socket.on('task_updated', (event) => {
@@ -105,6 +111,11 @@ const ProjectDetails = () => {
 
     const handleTaskUpdate = (task) => {
         setTasks(prev => prev.map(t => t.id === task.id ? task : t));
+    };
+
+    const handleTaskDeleted = () => {
+        getProjectTasks(id).then(setTasks);
+        getProjectFinancials(id).then(setFinancials);
     };
 
     const handleSaveProject = async () => {
@@ -185,7 +196,7 @@ const ProjectDetails = () => {
             if (!parentActivity) return;
 
             // 2. Toggle status
-            const newStatus = subtask.status === 'Done' ? 'Todo' : 'Done';
+            const newStatus = subtask.status === 'Accomplished' ? 'Pending' : 'Accomplished';
 
             // 3. Update the specific subtask in the array
             const updatedSubtasks = parentActivity.subtasks.map(st => {
@@ -208,7 +219,7 @@ const ProjectDetails = () => {
         }
     };
 
-    if (!project) return <div className="p-8">Loading...</div>;
+    if (!project) return <div className="p-8 flex justify-center"><Loader text="Loading project details..." /></div>;
 
     const filteredEmployees = getDivisionEmployees();
 
@@ -232,7 +243,7 @@ const ProjectDetails = () => {
         }));
 
         enrichedTasks.forEach(t => {
-            if (t.status === 'Done') {
+            if (t.status === 'Accomplished') {
                 accomplishedCount++;
                 accomplishedList.push(t);
             } else {
@@ -246,7 +257,7 @@ const ProjectDetails = () => {
         });
 
         // Filter valid completed milestones
-        const completedMilestones = milestones.filter(m => ['Completed', 'Done', 'Accomplished'].includes(m.status));
+        const completedMilestones = milestones.filter(m => ['Completed', 'Accomplished'].includes(m.status));
 
         // Prepare Activity Data for Financial Breakdown
         // Map tasks to fields compatible with DashboardCharts ('name', 'total_budget', 'actual_cost')
@@ -287,6 +298,19 @@ const ProjectDetails = () => {
 
     const dashboardMetrics = calculateDashboardMetrics();
 
+    // Filter employees to only those in the project team
+    const projectMembers = employees.filter(emp => {
+        if (!project) return false;
+        const name = emp.name || `${emp.first_name || ''} ${emp.middle_name || ''} ${emp.last_name || ''}`.replace(/\s+/g, ' ').trim();
+        const assisting = project.assisting_personnel ? project.assisting_personnel.split(',').map(s => s.trim()) : [];
+
+        return (
+            name === project.lead_personnel ||
+            name === project.supervising_officer ||
+            assisting.includes(name)
+        );
+    });
+
     return (
         <div className="flex flex-col h-full bg-slate-50">
             {/* Header */}
@@ -306,75 +330,45 @@ const ProjectDetails = () => {
                     </div>
                 </div>
 
-                <div className="flex justify-between items-end">
-                    <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="flex justify-between items-center gap-2">
+                    <div className="flex justify-start items-center gap-2">
                         {/* Renamed Kanban to Dashboard */}
                         <TabButton active={activeTab === 'kanban'} onClick={() => setActiveTab('kanban')} icon={Layout}>Dashboard</TabButton>
-                        <TabButton active={activeTab === 'table'} onClick={() => setActiveTab('table')} icon={Table}>Activity List</TabButton>
-                        <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={CheckSquare}>Tasks</TabButton>
-                        {/* Removed standalone Timeline tab */}
                         <TabButton active={activeTab === 'milestones'} onClick={() => setActiveTab('milestones')} icon={Target}>Milestones</TabButton>
-                        <TabButton active={activeTab === 'financials'} onClick={() => setActiveTab('financials')} icon={PieChart}>Financials</TabButton>
+                        <TabButton active={activeTab === 'table'} onClick={() => setActiveTab('table')} icon={Table}>Activities</TabButton>
+                        <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={CheckSquare}>Tasks</TabButton>
                         <TabButton active={activeTab === 'spillovers'} onClick={() => setActiveTab('spillovers')} icon={Layers}>Spillovers</TabButton>
+                        <TabButton active={activeTab === 'financials'} onClick={() => setActiveTab('financials')} icon={PieChart}>Financials</TabButton>
                     </div>
-
-                    {activeTab === 'table' && (
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-1 mr-2">
-                                <button
-                                    onClick={() => setViewMode('table')}
-                                    className={clsx("p-1.5 rounded-md transition-all", viewMode === 'table' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
-                                    title="Table View"
-                                >
-                                    <Table size={16} />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('list')}
-                                    className={clsx("p-1.5 rounded-md transition-all", viewMode === 'list' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
-                                    title="List View"
-                                >
-                                    <List size={16} />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('gantt')}
-                                    className={clsx("p-1.5 rounded-md transition-all", viewMode === 'gantt' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
-                                    title="Timeline View"
-                                >
-                                    <Calendar size={16} />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('kanban')}
-                                    className={clsx("p-1.5 rounded-md transition-all", viewMode === 'kanban' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
-                                    title="Kanban View"
-                                >
-                                    <Layout size={16} />
-                                </button>
-                            </div>
-                            <button
-                                onClick={() => setIsCreatingTask(true)}
-                                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm transition-colors"
-                            >
-                                <Plus size={16} /> Add Activity
-                            </button>
-                        </div>
-                    )}
-
-                    {activeTab === 'tasks' && (
-                        <button
-                            onClick={() => setShowCreateSubtask(true)}
-                            className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm transition-colors mb-1"
-                        >
-                            <Plus size={16} /> Add Task
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        className={clsx(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border",
+                            isSidebarOpen
+                                ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
+                                : "bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
+                        )}
+                        title={isSidebarOpen ? "Hide Project Details" : "Show Project Details"}
+                    >
+                        <Layers size={16} />
+                        {isSidebarOpen ? "Hide" : "Show"} Project Details
+                    </button>
                 </div>
+
+
+
+
             </div>
 
-            {/* Main Content Grid */}
-            <div className="flex-1 overflow-hidden grid grid-cols-1 xl:grid-cols-4">
 
-                {/* Center Workspace (3/4) */}
-                <div className="xl:col-span-3 overflow-y-auto p-6">
+            {/* Main Content Grid */}
+            <div className="flex-1 overflow-hidden grid grid-cols-1 xl:grid-cols-4 transition-all duration-300">
+
+                {/* Center Workspace */}
+                <div className={clsx(
+                    "overflow-y-auto p-6 transition-all duration-300",
+                    isSidebarOpen ? "xl:col-span-3" : "xl:col-span-4"
+                )}>
                     {activeTab === 'kanban' && dashboardMetrics && (
                         <div className="max-w-6xl mx-auto space-y-8">
                             <DashboardCharts metrics={dashboardMetrics} />
@@ -385,6 +379,10 @@ const ProjectDetails = () => {
                                     activities={tasks}
                                     title="Project Activity Calendar"
                                     onActivityClick={setEditingTask}
+                                    onRangeSelect={(range) => {
+                                        setInitialTaskDate(range);
+                                        setIsCreatingTask(true);
+                                    }}
                                 />
                             </div>
                         </div>
@@ -399,11 +397,50 @@ const ProjectDetails = () => {
 
                     {activeTab === 'table' && (
                         <div className="h-full flex flex-col">
+                            <div className="flex items-center justify-between gap-2 mb-4">
+                                <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-1">
+                                    <button
+                                        onClick={() => setViewMode('table')}
+                                        className={clsx("p-1.5 rounded-md transition-all", viewMode === 'table' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
+                                        title="Table View"
+                                    >
+                                        <Table size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('list')}
+                                        className={clsx("p-1.5 rounded-md transition-all", viewMode === 'list' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
+                                        title="List View"
+                                    >
+                                        <List size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('gantt')}
+                                        className={clsx("p-1.5 rounded-md transition-all", viewMode === 'gantt' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
+                                        title="Timeline View"
+                                    >
+                                        <Calendar size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('kanban')}
+                                        className={clsx("p-1.5 rounded-md transition-all", viewMode === 'kanban' ? "bg-white shadow text-slate-800" : "text-slate-400 hover:text-slate-600")}
+                                        title="Kanban View"
+                                    >
+                                        <Layout size={16} />
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={() => setIsCreatingTask(true)}
+                                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm transition-colors"
+                                >
+                                    <Plus size={16} /> Add Activity
+                                </button>
+                            </div>
                             {viewMode === 'table' && (
                                 <TaskTable
                                     tasks={tasks}
                                     employees={employees}
                                     onTaskClick={setEditingTask}
+                                    onTaskDeleted={handleTaskDeleted}
                                 />
                             )}
                             {viewMode === 'list' && (
@@ -439,12 +476,23 @@ const ProjectDetails = () => {
                     )}
 
                     {activeTab === 'tasks' && (
-                        <SubtaskTable
-                            activities={tasks}
-                            employees={employees}
-                            onSubtaskClick={setEditingSubtask}
-                            onToggleStatus={handleSubtaskToggle}
-                        />
+                        <div className="h-full flex flex-col">
+                            <div className="flex justify-end mb-4">
+                                <button
+                                    onClick={() => setShowCreateSubtask(true)}
+                                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm transition-colors"
+                                >
+                                    <Plus size={16} /> Add Task
+                                </button>
+                            </div>
+                            <SubtaskTable
+                                activities={tasks}
+                                employees={employees}
+                                onSubtaskClick={setEditingSubtask}
+                                onToggleStatus={handleSubtaskToggle}
+                                onSubtaskDeleted={handleTaskDeleted}
+                            />
+                        </div>
                     )}
 
                     {/* Old Gantt tab location removed */}
@@ -505,236 +553,282 @@ const ProjectDetails = () => {
 
                 </div>
 
-                {/* Right Sidebar (1/4) - Project Details */}
-                <div className="border-l border-slate-200 bg-white p-6 overflow-y-auto">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                            <Layers size={18} /> Project Details
-                        </h3>
-                        {!isEditing ? (
-                            <button onClick={() => setIsEditing(true)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
-                                <Edit2 size={16} />
-                            </button>
-                        ) : (
-                            <div className="flex gap-2">
-                                <button onClick={handleSaveProject} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">
-                                    <Save size={16} />
-                                </button>
-                                <button onClick={() => { setIsEditing(false); setEditForm(project); }} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
-                                    <X size={16} />
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description</label>
-                            {isEditing ? (
-                                <textarea
-                                    className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                    rows="4"
-                                    value={editForm.description}
-                                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                                />
-                            ) : (
-                                <p className="text-sm text-slate-600 leading-relaxed">
-                                    {project.description || "No description provided."}
-                                </p>
-                            )}
+                {/* Right Sidebar - Project Details */}
+                {!isSidebarOpen ? (
+                    <div className="border-l border-slate-200 bg-white w-12 flex flex-col items-center justify-end py-6 transition-all duration-300">
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 mb-4"
+                            title="Expand Sidebar"
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                        <div className="writing-vertical-lr transform rotate-180 text-slate-400 font-bold tracking-wider text-xs whitespace-nowrap">
+                            PROJECT DETAILS
                         </div>
-
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Division</label>
-                            {isEditing ? (
-                                <select
-                                    className="w-full border border-slate-300 rounded-lg p-2 text-sm"
-                                    value={editForm.division}
-                                    onChange={e => setEditForm({ ...editForm, division: e.target.value })}
-                                >
-                                    <option value="">Select Division</option>
-                                    {divisions.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-                                </select>
+                    </div>
+                ) : (
+                    <div className="border-l border-slate-200 bg-white p-6 overflow-y-auto xl:col-span-1 transition-all duration-300">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <Layers size={18} /> Project Details
+                            </h3>
+                            {!isEditing ? (
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setIsSidebarOpen(false)}
+                                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-500"
+                                        title="Minimize Sidebar"
+                                    >
+                                        <ArrowLeft className="rotate-180" size={16} />
+                                    </button>
+                                    <button onClick={() => setIsEditing(true)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
+                                        <Edit2 size={16} />
+                                    </button>
+                                </div>
                             ) : (
-                                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                    <span className="text-sm font-medium text-slate-700">{project.division}</span>
+                                <div className="flex gap-2">
+                                    <button onClick={handleSaveProject} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">
+                                        <Save size={16} />
+                                    </button>
+                                    <button onClick={() => { setIsEditing(false); setEditForm(project); }} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
+                                        <X size={16} />
+                                    </button>
                                 </div>
                             )}
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Total Budget</label>
-                            {isEditing ? (
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={editForm.total_budget || 0}
-                                    onChange={e => setEditForm({ ...editForm, total_budget: e.target.value })}
-                                />
-                            ) : (
-                                <div className="space-y-1">
-                                    <p className="text-sm font-medium text-slate-800">
-                                        ₱{Number(financials?.total_budget || 0).toLocaleString()}
+                        <div className="space-y-6">
+                            {isEditing && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+                                        value={editForm.name || ''}
+                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                    />
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description</label>
+                                {isEditing ? (
+                                    <textarea
+                                        className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        rows="4"
+                                        value={editForm.description}
+                                        onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                                    />
+                                ) : (
+                                    <p className="text-sm text-slate-600 leading-relaxed">
+                                        {project.description || "No description provided."}
                                     </p>
-                                    {(Number(project.total_budget || 0) <= 0) && (
-                                        <p className="text-xs text-slate-400 italic">Calculated from activities</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
 
-                        <div className="pt-4 border-t border-slate-100">
-                            <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <Users size={18} /> Team
-                            </h4>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Division</label>
+                                {isEditing ? (
+                                    <select
+                                        className="w-full border border-slate-300 rounded-lg p-2 text-sm"
+                                        value={editForm.division}
+                                        onChange={e => setEditForm({ ...editForm, division: e.target.value })}
+                                    >
+                                        <option value="">Select Division</option>
+                                        {divisions.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                    </select>
+                                ) : (
+                                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                        <span className="text-sm font-medium text-slate-700">{project.division}</span>
+                                    </div>
+                                )}
+                            </div>
 
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs text-slate-500 mb-1">Lead Personnel</label>
-                                    {isEditing ? (
-                                        <select
-                                            className="w-full border border-slate-300 rounded p-2 text-sm"
-                                            value={editForm.lead_personnel}
-                                            onChange={e => setEditForm({ ...editForm, lead_personnel: e.target.value })}
-                                        >
-                                            <option value="">Select Lead</option>
-                                            {filteredEmployees.map(e => {
-                                                const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
-                                                return <option key={e.id} value={name}>{name}</option>
-                                            })}
-                                        </select>
-                                    ) : (
-                                        <p className="text-sm font-medium text-slate-800">{project.lead_personnel}</p>
-                                    )}
-                                </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Total Budget</label>
+                                {isEditing ? (
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={editForm.total_budget || 0}
+                                        onChange={e => setEditForm({ ...editForm, total_budget: e.target.value })}
+                                    />
+                                ) : (
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-medium text-slate-800">
+                                            ₱{Number(financials?.total_budget || 0).toLocaleString()}
+                                        </p>
+                                        {(Number(project.total_budget || 0) <= 0) && (
+                                            <p className="text-xs text-slate-400 italic">Calculated from activities</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
 
-                                <div>
-                                    <label className="block text-xs text-slate-500 mb-1">Supervising Officer</label>
-                                    {isEditing ? (
-                                        <select
-                                            className="w-full border border-slate-300 rounded p-2 text-sm"
-                                            value={editForm.supervising_officer}
-                                            onChange={e => setEditForm({ ...editForm, supervising_officer: e.target.value })}
-                                        >
-                                            <option value="">Select Supervisor</option>
-                                            {filteredEmployees.map(e => {
-                                                const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
-                                                return <option key={e.id} value={name}>{name}</option>
-                                            })}
-                                        </select>
-                                    ) : (
-                                        <p className="text-sm font-medium text-slate-800">{project.supervising_officer}</p>
-                                    )}
-                                </div>
+                            <div className="pt-4 border-t border-slate-100">
+                                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <Users size={18} /> Team
+                                </h4>
 
-                                <div>
-                                    <label className="block text-xs text-slate-500 mb-1">Members</label>
-                                    {isEditing ? (
-                                        <div className="border border-slate-300 rounded-lg p-2 max-h-40 overflow-y-auto space-y-2">
-                                            {filteredEmployees.length === 0 && <span className="text-xs text-slate-400">No employees found in this division.</span>}
-                                            {filteredEmployees.map(e => {
-                                                const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
-                                                const isSelected = editForm.assisting_personnel?.includes(name);
-                                                return (
-                                                    <div key={e.id} onClick={() => toggleMember(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                                        {isSelected ?
-                                                            <CheckSquare size={16} className="text-blue-600" /> :
-                                                            <Square size={16} className="text-slate-300" />
-                                                        }
-                                                        <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
-                                                            {name}
-                                                        </span>
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-slate-600 leading-relaxed">{project.assisting_personnel}</p>
-                                    )}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Lead Personnel</label>
+                                        {isEditing ? (
+                                            <select
+                                                className="w-full border border-slate-300 rounded p-2 text-sm"
+                                                value={editForm.lead_personnel}
+                                                onChange={e => setEditForm({ ...editForm, lead_personnel: e.target.value })}
+                                            >
+                                                <option value="">Select Lead</option>
+                                                {filteredEmployees.map(e => {
+                                                    const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+                                                    return <option key={e.id} value={name}>{name}</option>
+                                                })}
+                                            </select>
+                                        ) : (
+                                            <p className="text-sm font-medium text-slate-800">{project.lead_personnel}</p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Supervising Officer</label>
+                                        {isEditing ? (
+                                            <select
+                                                className="w-full border border-slate-300 rounded p-2 text-sm"
+                                                value={editForm.supervising_officer}
+                                                onChange={e => setEditForm({ ...editForm, supervising_officer: e.target.value })}
+                                            >
+                                                <option value="">Select Supervisor</option>
+                                                {filteredEmployees.map(e => {
+                                                    const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+                                                    return <option key={e.id} value={name}>{name}</option>
+                                                })}
+                                            </select>
+                                        ) : (
+                                            <p className="text-sm font-medium text-slate-800">{project.supervising_officer}</p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Members</label>
+                                        {isEditing ? (
+                                            <div className="border border-slate-300 rounded-lg p-2 max-h-40 overflow-y-auto space-y-2">
+                                                {filteredEmployees.length === 0 && <span className="text-xs text-slate-400">No employees found in this division.</span>}
+                                                {filteredEmployees.map(e => {
+                                                    const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+                                                    const isSelected = editForm.assisting_personnel?.includes(name);
+                                                    return (
+                                                        <div key={e.id} onClick={() => toggleMember(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                            {isSelected ?
+                                                                <CheckSquare size={16} className="text-blue-600" /> :
+                                                                <Square size={16} className="text-slate-300" />
+                                                            }
+                                                            <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
+                                                                {name}
+                                                            </span>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-slate-600 leading-relaxed">{project.assisting_personnel}</p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="pt-4 border-t border-slate-100">
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Basecamp Target</label>
-                            {isEditing ? (
-                                <div className="border border-slate-300 rounded-lg p-2 max-h-60 overflow-y-auto space-y-2">
-                                    {basecampOptions.map((option, idx) => {
-                                        const isSelected = editForm.basecamp_target?.includes(option);
-                                        return (
-                                            <div key={idx} onClick={() => toggleBasecamp(option)} className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                                {isSelected ?
-                                                    <CheckSquare size={16} className="text-blue-600 mt-0.5 flex-shrink-0" /> :
-                                                    <Square size={16} className="text-slate-300 mt-0.5 flex-shrink-0" />
-                                                }
-                                                <span className={clsx("text-sm select-none leading-tight", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
-                                                    {option}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {project.basecamp_target ? (
-                                        project.basecamp_target.split(',').map((target, i) => (
-                                            <div key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-1.5 rounded-md border border-blue-100 font-medium leading-snug">
-                                                {target.trim()}
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-sm text-slate-400 italic">No targets selected</p>
-                                    )}
-                                </div>
-                            )}
+                            <div className="pt-4 border-t border-slate-100">
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Basecamp Target</label>
+                                {isEditing ? (
+                                    <div className="border border-slate-300 rounded-lg p-2 max-h-60 overflow-y-auto space-y-2">
+                                        {basecampOptions.map((option, idx) => {
+                                            const isSelected = editForm.basecamp_target?.includes(option);
+                                            return (
+                                                <div key={idx} onClick={() => toggleBasecamp(option)} className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                    {isSelected ?
+                                                        <CheckSquare size={16} className="text-blue-600 mt-0.5 flex-shrink-0" /> :
+                                                        <Square size={16} className="text-slate-300 mt-0.5 flex-shrink-0" />
+                                                    }
+                                                    <span className={clsx("text-sm select-none leading-tight", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
+                                                        {option}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {project.basecamp_target ? (
+                                            project.basecamp_target.split(',').map((target, i) => (
+                                                <div key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-1.5 rounded-md border border-blue-100 font-medium leading-snug">
+                                                    {target.trim()}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-slate-400 italic">No targets selected</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div >
-            {(editingTask || isCreatingTask) && (
-                <CreateTaskModal
-                    projectId={id}
-                    task={editingTask}
-                    members={employees}
-                    onClose={() => {
-                        setEditingTask(null);
-                        setIsCreatingTask(false);
-                    }}
-                    onCreated={() => {
-                        setEditingTask(null);
-                        setIsCreatingTask(false);
-                        getProjectTasks(id).then(setTasks);
-                        getProjectFinancials(id).then(setFinancials);
-                    }}
-                />
-            )}
-            {editingSubtask && (
-                <EditSubtaskModal
-                    subtask={editingSubtask}
-                    parentId={editingSubtask.parentId}
-                    parentTask={editingSubtask.parentTask}
-                    members={employees}
-                    onClose={() => setEditingSubtask(null)}
-                    onUpdate={() => {
-                        getProjectTasks(id).then(setTasks);
-                        getProjectFinancials(id).then(setFinancials);
-                    }}
-                />
-            )}
-            {showCreateSubtask && (
-                <CreateSubtaskModal
-                    activities={tasks}
-                    members={employees}
-                    onClose={() => setShowCreateSubtask(false)}
-                    onCreate={() => {
-                        getProjectTasks(id).then(setTasks);
-                        getProjectFinancials(id).then(setFinancials);
-                    }}
-                />
-            )}
+                )}
+            </div>
+            {
+                (editingTask || isCreatingTask) && (
+                    <CreateTaskModal
+                        projectId={id}
+                        task={editingTask}
+                        members={projectMembers}
+                        milestones={milestones} // Pass milestones
+                        onClose={() => {
+                            setEditingTask(null);
+                            setIsCreatingTask(false);
+                            setInitialTaskDate(null);
+                        }}
+                        initialDate={initialTaskDate}
+                        onCreated={() => {
+                            setEditingTask(null);
+                            setIsCreatingTask(false);
+                            setInitialTaskDate(null);
+                            getProjectTasks(id).then(setTasks);
+                            getProjectFinancials(id).then(setFinancials);
+                        }}
+                    />
+                )
+            }
+            {
+                editingSubtask && (
+                    <EditSubtaskModal
+                        subtask={editingSubtask}
+                        parentId={editingSubtask.parentId}
+                        parentTask={editingSubtask.parentTask}
+                        members={projectMembers}
+                        onClose={() => setEditingSubtask(null)}
+                        onUpdate={() => {
+                            getProjectTasks(id).then(setTasks);
+                            getProjectFinancials(id).then(setFinancials);
+                        }}
+                    />
+                )
+            }
+            {
+                showCreateSubtask && (
+                    <CreateSubtaskModal
+                        activities={tasks}
+                        members={projectMembers}
+                        onClose={() => setShowCreateSubtask(false)}
+                        onCreate={() => {
+                            getProjectTasks(id).then(setTasks);
+                            getProjectFinancials(id).then(setFinancials);
+                        }}
+                    />
+                )
+            }
         </div >
     );
 };

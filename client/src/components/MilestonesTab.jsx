@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Flag, Calendar, Trash2, Edit2, ArrowUpDown, ArrowUp, ArrowDown, Star } from 'lucide-react';
 import { getProjectMilestones, deleteMilestone } from '../api';
 import MilestoneModal from './MilestoneModal';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 import clsx from 'clsx';
 
 const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
@@ -24,17 +25,11 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
             aValue = aValue ? new Date(aValue).getTime() : 0;
             bValue = bValue ? new Date(bValue).getTime() : 0;
         }
-        // Handle sorting for importance (numeric)
-        else if (sortConfig.key === 'importance') {
-            // Default to 1 if undefined
-            aValue = Number(aValue || 1);
-            bValue = Number(bValue || 1);
+        else if (sortConfig.key === 'progress') {
+            aValue = Number(aValue || 0);
+            bValue = Number(bValue || 0);
         }
-        // Handle string sorting (case-insensitive)
-        else if (typeof aValue === 'string') {
-            aValue = aValue.toLowerCase();
-            bValue = bValue.toLowerCase();
-        }
+
 
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -55,26 +50,7 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
         });
     };
 
-    const renderStars = (importance) => {
-        const rating = Number(importance || 1);
-        let colorClass = "text-slate-400"; // Default 1 star (White/Grey)
 
-        switch (rating) {
-            case 2: colorClass = "text-blue-500 fill-blue-500"; break;
-            case 3: colorClass = "text-green-500 fill-green-500"; break;
-            case 4: colorClass = "text-yellow-400 fill-yellow-400"; break;
-            case 5: colorClass = "text-amber-500 fill-amber-500"; break;
-            default: colorClass = "text-slate-400"; // 1 Star
-        }
-
-        return (
-            <div className="flex gap-0.5" title={`Importance: ${rating}/5`}>
-                {[...Array(rating)].map((_, i) => (
-                    <Star key={i} size={14} className={colorClass} />
-                ))}
-            </div>
-        );
-    };
 
     if (milestones.length === 0) {
         return (
@@ -84,16 +60,7 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
         );
     }
 
-    const getRowClasses = (importance) => {
-        const rating = Number(importance || 1);
-        switch (rating) {
-            case 2: return "bg-blue-50 hover:bg-blue-100";
-            case 3: return "bg-green-50 hover:bg-green-100";
-            case 4: return "bg-yellow-50 hover:bg-yellow-100";
-            case 5: return "bg-amber-50 hover:bg-amber-100";
-            default: return "bg-white hover:bg-slate-50"; // 1 Star
-        }
-    };
+
 
     return (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm mb-8">
@@ -111,14 +78,7 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
                                 Title {getSortIcon('title')}
                             </div>
                         </th>
-                        <th
-                            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors w-1/6"
-                            onClick={() => handleSort('importance')}
-                        >
-                            <div className="flex items-center">
-                                Importance {getSortIcon('importance')}
-                            </div>
-                        </th>
+
                         <th
                             className="p-4 cursor-pointer hover:bg-slate-50 transition-colors w-1/4"
                             onClick={() => handleSort('target_date')}
@@ -128,25 +88,23 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
                             </div>
                         </th>
                         <th
-                            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors w-1/6"
-                            onClick={() => handleSort('status')}
+                            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors w-1/5"
+                            onClick={() => handleSort('progress')}
                         >
                             <div className="flex items-center">
-                                Status {getSortIcon('status')}
+                                Progress {getSortIcon('progress')}
                             </div>
                         </th>
+
                         <th className="p-4 w-24 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {sortedMilestones.map(milestone => (
-                        <tr key={milestone.id} className={`${getRowClasses(milestone.importance)} transition-colors group`}>
+                        <tr key={milestone.id} className="bg-white hover:bg-slate-50 transition-colors group border-b border-slate-100">
                             <td className="p-4">
                                 <div className="font-semibold text-slate-800">{milestone.title}</div>
                                 <div className="text-xs text-slate-400 mt-0.5">{milestone.id}</div>
-                            </td>
-                            <td className="p-4">
-                                {renderStars(milestone.importance)}
                             </td>
                             <td className="p-4">
                                 <div className="text-sm text-slate-600 flex items-center gap-2">
@@ -155,14 +113,22 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
                                 </div>
                             </td>
                             <td className="p-4">
-                                <div className={clsx(
-                                    "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border",
-                                    milestone.status === 'Accomplished' ? "bg-green-50 text-green-700 border-green-200" :
-                                        "bg-amber-50 text-amber-700 border-amber-200"
-                                )}>
-                                    {milestone.status || 'Pending'}
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden w-24">
+                                        <div
+                                            className={clsx("h-full rounded-full",
+                                                milestone.progress === 100 ? "bg-green-500" : "bg-blue-500"
+                                            )}
+                                            style={{ width: `${milestone.progress || 0}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-600">{milestone.progress || 0}%</span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-1 pl-1">
+                                    {milestone.accomplished_activities || 0} / {milestone.total_activities || 0} Activities
                                 </div>
                             </td>
+
                             <td className="p-4 text-right">
                                 <div className="flex items-center justify-end gap-1">
                                     <button
@@ -174,7 +140,7 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
                                     </button>
                                     <button
                                         onClick={() => onDelete(milestone.id)}
-                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                                         title="Delete Milestone"
                                     >
                                         <Trash2 size={16} />
@@ -194,6 +160,10 @@ const MilestonesTab = ({ projectId }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editingMilestone, setEditingMilestone] = useState(null);
+
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [milestoneToDelete, setMilestoneToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const fetchMilestones = () => {
         setIsLoading(true);
@@ -217,21 +187,33 @@ const MilestonesTab = ({ projectId }) => {
         setModalOpen(true);
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm("Are you sure you want to delete this milestone?")) {
-            try {
-                await deleteMilestone(id);
-                fetchMilestones();
-            } catch (err) {
-                alert("Failed to delete milestone");
-            }
+    const handleDelete = (id) => {
+        const milestone = milestones.find(m => m.id === id);
+        setMilestoneToDelete(milestone);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!milestoneToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteMilestone(milestoneToDelete.id);
+            // Refresh list
+            fetchMilestones();
+            setDeleteModalOpen(false);
+            setMilestoneToDelete(null);
+        } catch (err) {
+            console.error("Failed to delete milestone", err);
+            alert("Failed to delete milestone");
+        } finally {
+            setIsDeleting(false);
         }
     };
 
     // Split milestones
-    // Filtering by exact 'Accomplished' string matching the dropdown. All others are Pending.
-    const accomplishedMilestones = milestones.filter(m => m.status === 'Accomplished');
-    const pendingMilestones = milestones.filter(m => m.status !== 'Accomplished');
+    // Filtering by progress === 100 for Accomplished. All others are Pending.
+    const accomplishedMilestones = milestones.filter(m => m.progress === 100);
+    const pendingMilestones = milestones.filter(m => m.progress !== 100);
 
     return (
         <div className="h-full flex flex-col">
@@ -288,6 +270,16 @@ const MilestonesTab = ({ projectId }) => {
                     }}
                 />
             )}
+
+            <DeleteConfirmationModal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Milestone"
+                itemName={milestoneToDelete?.title}
+                message="Are you sure you want to delete this milestone?"
+                isDeleting={isDeleting}
+            />
         </div>
     );
 };

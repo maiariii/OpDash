@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { io } from 'socket.io-client';
 import { getEmployees, getProjects, getProjectTasks, getProjectFinancials, getDivisions, getAllCatchUps, getAllMilestones } from '../api';
 import DashboardCharts from '../components/DashboardCharts';
 import CalendarView from '../components/CalendarView';
 import CreateTaskModal from '../components/CreateTaskModal';
 import SpilloverTracker from '../components/SpilloverTracker';
+import Loader from '../components/Loader';
 
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [selectedDivision, setSelectedDivision] = useState('All');
+    const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger for re-fetching
+    const socketRef = useRef(null);
+
     const [rawData, setRawData] = useState({
         projects: [],
         employees: [],
@@ -37,7 +42,7 @@ const Dashboard = () => {
     });
     const [editingTask, setEditingTask] = useState(null);
 
-
+    // Main Data Fetcher
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -75,6 +80,13 @@ const Dashboard = () => {
                     milestones: fetchedMilestones
                 });
 
+                // Join rooms for all fetched projects
+                if (socketRef.current) {
+                    fetchedProjects.forEach(p => {
+                        socketRef.current.emit('join_project', p.id);
+                    });
+                }
+
             } catch (error) {
                 console.error("Error loading dashboard data:", error);
             } finally {
@@ -83,6 +95,24 @@ const Dashboard = () => {
         };
 
         fetchData();
+    }, [refreshTrigger]);
+
+    // Socket Connection
+    useEffect(() => {
+        socketRef.current = io({ path: '/opdash/socket.io' });
+
+        socketRef.current.on('connect', () => {
+            console.log("Dashboard connected to socket");
+        });
+
+        socketRef.current.on('task_updated', () => {
+            // Trigger a refresh when any task is updated
+            setRefreshTrigger(prev => prev + 1);
+        });
+
+        return () => {
+            if (socketRef.current) socketRef.current.disconnect();
+        };
     }, []);
 
     // Filter and Calculate Stats
@@ -148,7 +178,7 @@ const Dashboard = () => {
 
         projectTasks.forEach(t => {
             totalActivities++;
-            if (t.status === 'Done') {
+            if (t.status === 'Accomplished') {
                 accomplishedActivities++;
                 accomplishedTasks.push(t);
             } else {
@@ -163,8 +193,7 @@ const Dashboard = () => {
         });
 
         // Calculate Milestones Reached
-        // Calculate Milestones Reached
-        const reachedMilestones = filteredMilestones.filter(m => ['Completed', 'Done', 'Accomplished'].includes(m.status));
+        const reachedMilestones = filteredMilestones.filter(m => ['Completed', 'Accomplished'].includes(m.status));
         const milestonesReached = reachedMilestones.length;
 
         filteredProjects.forEach(p => {
@@ -236,8 +265,9 @@ const Dashboard = () => {
 
     }, [rawData, selectedDivision, loading]);
 
+
     if (loading) {
-        return <div className="p-8 text-center text-slate-500">Loading dashboard data...</div>;
+        return <div className="p-8 flex justify-center"><Loader text="Loading dashboard data..." /></div>;
     }
 
     return (
@@ -283,7 +313,10 @@ const Dashboard = () => {
                     onClose={() => setEditingTask(null)}
                     onCreated={() => {
                         setEditingTask(null);
-                        window.location.reload();
+                        // No need for window.reload() anymore, socket will handle it
+                        // keeping it as fallback or removing it? 
+                        // Removing it to rely on socket.
+                        setRefreshTrigger(prev => prev + 1);
                     }}
                 />
             )}

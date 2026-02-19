@@ -29,7 +29,7 @@ const GanttChart = ({ tasks = [], onTaskClick }) => {
                     name: t.title,
                     start: t.start_date || new Date().toISOString().split('T')[0],
                     end: t.due_date || new Date().toISOString().split('T')[0],
-                    progress: t.status === 'Done' ? 100 : t.status === 'In Progress' ? 50 : 0,
+                    progress: t.status === 'Accomplished' ? 100 : t.status === 'In Progress' ? 50 : 0,
                     dependencies: '',
                     custom_class: divisionClass,
                     _division: divisionName

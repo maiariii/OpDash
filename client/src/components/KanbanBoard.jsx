@@ -12,9 +12,12 @@ const KanbanBoard = ({ tasks, members = [], onTaskUpdate, onTaskClick, onAddTask
 
     // Map backend status to UI columns
     const columns = {
-        'Todo': { title: 'Pending', icon: AlertCircle, color: 'text-orange-500', bg: 'bg-orange-50' },
+        'Pending': { title: 'Pending', icon: AlertCircle, color: 'text-orange-500', bg: 'bg-orange-50' },
         'In Progress': { title: 'In Progress', icon: Clock, color: 'text-blue-500', bg: 'bg-blue-50' },
-        'Done': { title: 'Accomplished', icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-50' }
+        'Continuing': { title: 'Continuing', icon: Clock, color: 'text-sky-500', bg: 'bg-sky-50' },
+        'Accomplished': { title: 'Accomplished', icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-50' },
+        'Deferred': { title: 'Deferred', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50' },
+        'Cancelled': { title: 'Cancelled', icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-50' }
     };
 
     const handleDragEnd = async (result) => {

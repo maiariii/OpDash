@@ -9,16 +9,21 @@ const EditSubtaskModal = ({ subtask, parentId, parentTask, members = [], onClose
     const [formData, setFormData] = useState({
         title: subtask.title || '',
         description: subtask.description || '',
-        status: subtask.status || 'Todo',
-        due_date: subtask.due_date || '',
+        status: subtask.status || 'Pending',
+        due_date: subtask.due_date ? (() => {
+            const d = new Date(subtask.due_date);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        })() : '',
         assignee_id: subtask.assignee_id || ''
     });
 
     const statusOptions = [
-        { label: 'Pending', value: 'Todo' },
+        { label: 'Pending', value: 'Pending' },
         { label: 'In Progress', value: 'In Progress' },
-        { label: 'Accomplished', value: 'Done' },
-        { label: 'Deferred', value: 'Deferred' }
+        { label: 'Accomplished', value: 'Accomplished' },
+        { label: 'Deferred', value: 'Deferred' },
+        { label: 'Continuing', value: 'Continuing' },
+        { label: 'Cancelled', value: 'Cancelled' }
     ];
 
     const handleSubmit = async (e) => {

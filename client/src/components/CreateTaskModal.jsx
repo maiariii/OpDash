@@ -1,22 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar } from 'lucide-react';
-import { createTask, updateTask } from '../api';
+import { createTask, updateTask, getProjectMilestones } from '../api';
 
-const CreateTaskModal = ({ projectId, task, members = [], onClose, onCreated }) => {
+const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMilestones = [], onClose, onCreated, initialDate = null }) => {
+    // console.log("CreateTaskModal received milestones:", initialMilestones);
     const isEditMode = !!task;
+
+    const [milestones, setMilestones] = useState(initialMilestones);
+
+    // Fetch milestones on mount to ensure we have them
+    useEffect(() => {
+        if (projectId) {
+            getProjectMilestones(projectId).then(setMilestones).catch(err => console.error(err));
+        }
+    }, [projectId]);
 
     // Parse members string into array if needed, or use passed array
     const availableMembers = members;
+
+    // Helper to extract start/end date from initialDate (which might be a range object or single date)
+    const getInitialDates = () => {
+        if (!initialDate) return { start: '', end: '' };
+
+        // If it's a range object { start, end }
+        if (initialDate.start && initialDate.end) {
+            return {
+                start: (() => {
+                    const d = new Date(initialDate.start);
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                })(),
+                end: (() => {
+                    const d = new Date(initialDate.end);
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                })()
+            };
+        }
+
+        // If it's a single date
+        const d = new Date(initialDate);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        return { start: dateStr, end: dateStr };
+    };
+
+    const initialDates = getInitialDates();
 
     // Initial State
     const [formData, setFormData] = useState({
         title: '',
         objective: '',
-        status: 'Todo',
-        start_date: '',
-        due_date: '',
+        status: 'Pending',
+        start_date: initialDates.start,
+        due_date: initialDates.end,
         cost: 0,
         budget: 0,
+        milestone_id: '', // Add milestone_id
         expenses: [],
         subtasks: [] // Initialize subtasks
     });
@@ -46,11 +83,18 @@ const CreateTaskModal = ({ projectId, task, members = [], onClose, onCreated }) 
             setFormData({
                 title: task.title || '',
                 objective: task.objective || '',
-                status: task.status || 'Todo',
-                start_date: task.start_date || '',
-                due_date: task.due_date || '',
+                status: task.status || 'Pending',
+                start_date: task.start_date ? (() => {
+                    const d = new Date(task.start_date);
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                })() : '',
+                due_date: task.due_date ? (() => {
+                    const d = new Date(task.due_date);
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                })() : '',
                 cost: task.cost || 0,
                 budget: task.budget || 0,
+                milestone_id: task.milestone_id || '', // Populate milestone_id
                 expenses: task.expenses || [],
                 subtasks: task.subtasks || []
             });
@@ -59,10 +103,12 @@ const CreateTaskModal = ({ projectId, task, members = [], onClose, onCreated }) 
 
     // Mapped statuses for UI
     const statusOptions = [
-        { label: 'Pending', value: 'Todo' },
+        { label: 'Pending', value: 'Pending' },
         { label: 'In Progress', value: 'In Progress' },
-        { label: 'Accomplished', value: 'Done' },
-        { label: 'Deferred', value: 'Deferred' }
+        { label: 'Accomplished', value: 'Accomplished' },
+        { label: 'Deferred', value: 'Deferred' },
+        { label: 'Continuing', value: 'Continuing' },
+        { label: 'Cancelled', value: 'Cancelled' }
     ];
 
     const handleAddExpense = () => {
@@ -141,6 +187,21 @@ const CreateTaskModal = ({ projectId, task, members = [], onClose, onCreated }) 
                     </div>
 
                     <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Parent Milestone <span className="text-red-500">*</span></label>
+                            <select
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white focus:ring-2 focus:ring-blue-500"
+                                value={formData.milestone_id}
+                                onChange={e => setFormData({ ...formData, milestone_id: e.target.value })}
+                                required
+                            >
+                                <option value="">Select a Milestone...</option>
+                                {milestones.map(m => (
+                                    <option key={m.id} value={m.id}>{m.title}</option>
+                                ))}
+                            </select>
+                        </div>
+
                         <div>
                             <div className="flex justify-between">
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Activity Title <span className="text-red-500">*</span></label>

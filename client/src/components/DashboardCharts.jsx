@@ -21,12 +21,9 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
 
     if (!isOpen) return null;
 
-    // Sort milestones by importance desc
-    // For milestones, filter to show ONLY Completed/Done/Accomplished and sort by importance
+    // For milestones, filter to show ONLY Completed/Done/Accomplished and sort by ID (fallback) or Date
     const displayData = type === 'milestone'
-        ? [...data]
-            .filter(item => ['Completed', 'Done', 'Accomplished'].includes(item.status))
-            .sort((a, b) => (Number(b.importance) || 0) - (Number(a.importance) || 0))
+        ? [...data] // .filter(item => ['Completed', 'Accomplished'].includes(item.status)) // Status removed
         : data;
 
     if (selectedItem) {
@@ -49,13 +46,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                             <p className="text-sm text-slate-600 whitespace-pre-wrap">{selectedItem.description || "No description provided."}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-xs uppercase font-bold text-slate-400">Status</label>
-                                <span className={clsx("inline-block px-2 py-0.5 rounded-full text-xs font-bold mt-1",
-                                    ['Completed', 'Done', 'Accomplished'].includes(selectedItem.status) ? 'bg-green-100 text-green-700' :
-                                        selectedItem.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                                )}>{selectedItem.status}</span>
-                            </div>
+
                             <div>
                                 <label className="text-xs uppercase font-bold text-slate-400">Target Date</label>
                                 <p className="text-sm font-medium text-slate-700 mt-1">{selectedItem.target_date ? new Date(selectedItem.target_date).toLocaleDateString() : '-'}</p>
@@ -99,8 +90,8 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                 {type === 'financial' && <th className="px-4 py-3">Spent</th>}
                                 {type === 'milestone' && (
                                     <>
-                                        <th className="px-4 py-3">Imp.</th>
-                                        <th className="px-4 py-3">Status</th>
+
+
                                         <th className="px-4 py-3">Target Date</th>
                                         <th className="px-4 py-3">Project</th>
                                         <th className="px-4 py-3">Division</th>
@@ -111,14 +102,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                         <tbody className="divide-y divide-slate-100">
                             {displayData.map((item, idx) => {
                                 const getRowColor = () => {
-                                    if (type !== 'milestone') return "hover:bg-slate-50";
-                                    switch (Number(item.importance)) {
-                                        case 5: return 'bg-amber-50/70 hover:bg-amber-100/80';
-                                        case 4: return 'bg-orange-50/70 hover:bg-orange-100/80';
-                                        case 3: return 'bg-green-50/70 hover:bg-green-100/80';
-                                        case 2: return 'bg-blue-50/70 hover:bg-blue-100/80';
-                                        default: return 'hover:bg-slate-50';
-                                    }
+                                    return "hover:bg-slate-50";
                                 };
                                 return (
                                     <tr
@@ -137,7 +121,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                             <>
                                                 <td className="px-4 py-3">
                                                     <span className={clsx("px-2 py-0.5 rounded-full text-xs font-bold",
-                                                        item.status === 'Done' ? 'bg-green-100 text-green-700' :
+                                                        item.status === 'Accomplished' ? 'bg-green-100 text-green-700' :
                                                             item.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
                                                     )}>
                                                         {item.status}
@@ -166,21 +150,8 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                         )}
                                         {type === 'milestone' && (
                                             <>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex gap-0.5">
-                                                        {[...Array(Number(item.importance) || 0)].map((_, i) => (
-                                                            <Activity key={i} size={12} className={clsx("fill-current", Number(item.importance) === 4 ? "text-orange-500" : "text-amber-500")} />
-                                                        ))}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={clsx("px-2 py-0.5 rounded-full text-xs font-bold",
-                                                        ['Completed', 'Done', 'Accomplished'].includes(item.status) ? 'bg-green-100 text-green-700' :
-                                                            item.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                                                    )}>
-                                                        {item.status}
-                                                    </span>
-                                                </td>
+
+
                                                 <td className="px-4 py-3 text-slate-500 text-xs">
                                                     {item.target_date ? new Date(item.target_date).toLocaleDateString() : '-'}
                                                 </td>
@@ -211,7 +182,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                         <div className="flex justify-between items-center">
                                             <span>Status:</span>
                                             <span className={clsx("px-2 py-0.5 rounded-full text-[10px] font-bold",
-                                                item.status === 'Done' ? 'bg-green-100 text-green-700' :
+                                                item.status === 'Accomplished' ? 'bg-green-100 text-green-700' :
                                                     item.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
                                             )}>{item.status}</span>
                                         </div>
@@ -262,13 +233,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
 
                                 {type === 'milestone' && (
                                     <div className="text-xs text-slate-500 space-y-1.5">
-                                        <div className="flex justify-between items-center">
-                                            <span>Status:</span>
-                                            <span className={clsx("px-2 py-0.5 rounded-full text-[10px] font-bold",
-                                                item.status === 'Completed' || item.status === 'Done' ? 'bg-green-100 text-green-700' :
-                                                    item.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                                            )}>{item.status}</span>
-                                        </div>
+
                                         <div className="flex justify-between">
                                             <span>Project:</span>
                                             <span className="truncate max-w-[120px]" title={item.project_name}>{item.project_name}</span>

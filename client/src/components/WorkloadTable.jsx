@@ -33,7 +33,7 @@ const WorkloadTable = ({ tasks = [], employees = [], onSubtaskClick }) => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'Done': return 'bg-green-100 text-green-700 border-green-200';
+            case 'Accomplished': return 'bg-green-100 text-green-700 border-green-200';
             case 'In Progress': return 'bg-blue-100 text-blue-700 border-blue-200';
             default: return 'bg-slate-100 text-slate-600 border-slate-200';
         }
@@ -117,8 +117,8 @@ const WorkloadTable = ({ tasks = [], employees = [], onSubtaskClick }) => {
     }).filter(Boolean))];
 
     // Split tasks
-    const activeTasks = processedSubtasks.filter(t => t.status !== 'Done');
-    const completedTasks = processedSubtasks.filter(t => t.status === 'Done');
+    const activeTasks = processedSubtasks.filter(t => t.status !== 'Accomplished');
+    const completedTasks = processedSubtasks.filter(t => t.status === 'Accomplished');
 
     const renderTable = (data, title, emptyMessage) => (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">

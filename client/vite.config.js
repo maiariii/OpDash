@@ -7,13 +7,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
+      '/opdash/api': {
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
       },
-      '/socket.io': {
-        target: 'http://localhost:3000',
+      '/opdash/socket.io': {
+        target: 'http://localhost:3001',
         ws: true,
       }
     }

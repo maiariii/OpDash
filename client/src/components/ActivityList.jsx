@@ -6,8 +6,11 @@ const ActivityList = ({ activities = [], employees = [], onActivityClick }) => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'Done': return 'bg-green-100 text-green-700 border-green-200';
+            case 'Accomplished': return 'bg-green-100 text-green-700 border-green-200';
             case 'In Progress': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'Continuing': return 'bg-sky-100 text-sky-700 border-sky-200';
+            case 'Deferred': return 'bg-amber-100 text-amber-700 border-amber-200';
+            case 'Cancelled': return 'bg-red-100 text-red-700 border-red-200';
             default: return 'bg-slate-100 text-slate-600 border-slate-200';
         }
     };
@@ -77,7 +80,7 @@ const ActivityList = ({ activities = [], employees = [], onActivityClick }) => {
 
                         <div className="flex flex-col items-end gap-2">
                             <span className={clsx("px-2.5 py-1 rounded-full text-xs font-medium border", getStatusColor(activity.status))}>
-                                {activity.status === 'Todo' ? 'Pending' : activity.status}
+                                {activity.status}
                             </span>
                             <div className="text-xs font-mono text-slate-400">
                                 {activity.budget ? `₱${Number(activity.budget).toLocaleString()}` : ''}

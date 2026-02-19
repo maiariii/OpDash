@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+// Forced update to clear cache
 const path = require('path');
 const fs = require('fs');
 
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS activities_list (
     budget NUMERIC,
     cost NUMERIC,
     assignee_id TEXT,
+    milestone_id TEXT, -- Link to parent milestone
     path TEXT,
     priority TEXT DEFAULT 'Medium',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -87,9 +89,7 @@ CREATE TABLE IF NOT EXISTS milestones_list (
     title TEXT NOT NULL,
     description TEXT,
     target_date DATE,
-    status TEXT DEFAULT 'Pending',
     notes TEXT,
-    importance INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -143,6 +143,11 @@ async function initDB() {
             -- activities_list: priority
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='priority') THEN 
                 ALTER TABLE activities_list ADD COLUMN priority TEXT DEFAULT 'Medium'; 
+            END IF;
+
+            -- activities_list: milestone_id
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='milestone_id') THEN 
+                ALTER TABLE activities_list ADD COLUMN milestone_id TEXT; 
             END IF;
         END $$;
     `);
@@ -224,7 +229,35 @@ async function upsertProject(data) {
     return res.rows[0];
 }
 
+
 async function deleteProject(id) {
+    await initDB();
+    // 1. Delete Expenses linked to activities of this project
+    await query(`
+        DELETE FROM expense_list 
+        WHERE activity_id IN (SELECT id FROM activities_list WHERE project_id = $1)
+    `, [id]);
+
+    // 2. Delete Catchups linked to activities of this project
+    await query(`
+        DELETE FROM catchup_list 
+        WHERE activity_id IN (SELECT id FROM activities_list WHERE project_id = $1)
+    `, [id]);
+
+    // 3. Delete Subtasks (task_list) linked to project
+    await query(`
+        DELETE FROM task_list 
+        WHERE project_id = $1 
+           OR activity_id IN (SELECT id FROM activities_list WHERE project_id = $1)
+    `, [id]);
+
+    // 4. Delete Milestones linked to project
+    await query('DELETE FROM milestones_list WHERE project_id = $1', [id]);
+
+    // 5. Delete Activities linked to project
+    await query('DELETE FROM activities_list WHERE project_id = $1', [id]);
+
+    // 6. Delete Project itself
     await query('DELETE FROM projects_list WHERE id = $1', [id]);
 }
 
@@ -253,8 +286,8 @@ async function upsertActivity(data) {
         INSERT INTO activities_list(
             id, project_id, title, objective, status,
             start_date, due_date, budget, cost,
-            assignee_id, path, priority, created_at
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13, CURRENT_TIMESTAMP))
+            assignee_id, milestone_id, path, priority, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, COALESCE($14, CURRENT_TIMESTAMP))
         ON CONFLICT(id) DO UPDATE SET
             title = EXCLUDED.title,
             objective = EXCLUDED.objective,
@@ -264,15 +297,16 @@ async function upsertActivity(data) {
             budget = EXCLUDED.budget,
             cost = EXCLUDED.cost,
             assignee_id = EXCLUDED.assignee_id,
+            milestone_id = EXCLUDED.milestone_id,
             path = EXCLUDED.path,
             priority = EXCLUDED.priority
         RETURNING *;
     `;
     const values = [
         data.id, data.project_id, data.title, data.objective || '',
-        data.status || 'Todo', data.start_date || null, data.due_date || null,
+        data.status || 'Pending', data.start_date || null, data.due_date || null,
         Number(data.budget) || 0, Number(data.cost) || 0,
-        data.assignee_id || null, data.path || data.id,
+        data.assignee_id || null, data.milestone_id || null, data.path || data.id,
         data.priority || 'Medium', data.created_at
     ];
     const res = await query(q, values);
@@ -280,6 +314,17 @@ async function upsertActivity(data) {
 }
 
 async function deleteActivity(id) {
+    await initDB();
+    // 1. Delete Expenses linked to activity
+    await query('DELETE FROM expense_list WHERE activity_id = $1', [id]);
+
+    // 2. Delete Catchups linked to activity
+    await query('DELETE FROM catchup_list WHERE activity_id = $1', [id]);
+
+    // 3. Delete Subtasks linked to activity
+    await query('DELETE FROM task_list WHERE activity_id = $1', [id]);
+
+    // 4. Delete Activity itself
     await query('DELETE FROM activities_list WHERE id = $1', [id]);
 }
 
@@ -313,12 +358,16 @@ async function upsertSubtask(data) {
     `;
     const values = [
         data.id, data.project_id, data.activity_id, data.title,
-        data.description || '', data.status || 'Todo',
+        data.description || '', data.status || 'Pending',
         data.assignee_id || null, data.due_date || null,
         data.created_at
     ];
     const res = await query(q, values);
     return res.rows[0];
+}
+
+async function deleteSubtask(id) {
+    await query('DELETE FROM task_list WHERE id = $1', [id]);
 }
 
 // --- EMPLOYEES ---
@@ -383,39 +432,49 @@ async function upsertDivision(data) {
     return res.rows[0];
 }
 
-// --- MILESTONES ---
-
 async function getMilestones(projectId = null) {
-    let q = 'SELECT * FROM milestones_list';
+    let text = `
+        SELECT
+            m.*,
+            COUNT(a.id)::int as total_activities,
+            COUNT(CASE WHEN a.status IN ('Completed', 'Accomplished') THEN 1 END)::int as accomplished_activities
+        FROM milestones_list m
+        LEFT JOIN activities_list a ON m.id = a.milestone_id
+    `;
     const params = [];
+
     if (projectId) {
-        q += ' WHERE project_id = $1';
+        text += ' WHERE m.project_id = $1';
         params.push(projectId);
     }
-    const res = await query(q, params);
-    return res.rows;
+
+    text += ' GROUP BY m.id ORDER BY m.target_date ASC';
+
+    const res = await query(text, params);
+    return res.rows.map(row => ({
+        ...row,
+        progress: row.total_activities > 0
+            ? Math.round((row.accomplished_activities / row.total_activities) * 100)
+            : 0
+    }));
 }
 
 async function upsertMilestone(data) {
     await initDB();
     const q = `
         INSERT INTO milestones_list(
-            id, project_id, title, description, target_date, status, notes, importance, created_at
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, CURRENT_TIMESTAMP))
+            id, project_id, title, description, target_date, notes, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_TIMESTAMP))
         ON CONFLICT(id) DO UPDATE SET
             title = EXCLUDED.title,
             description = EXCLUDED.description,
             target_date = EXCLUDED.target_date,
-            status = EXCLUDED.status,
-            notes = EXCLUDED.notes,
-            importance = EXCLUDED.importance
+            notes = EXCLUDED.notes
         RETURNING *;
     `;
     const values = [
-        data.id, data.project_id, data.title, data.description || '',
-        data.target_date || null, data.status || 'Pending',
-        data.notes || '', Number(data.importance) || 1,
-        data.created_at
+        data.id, data.project_id, data.title, data.description || '', data.target_date,
+        data.notes || '', data.created_at
     ];
     const res = await query(q, values);
     return res.rows[0];
@@ -424,6 +483,7 @@ async function upsertMilestone(data) {
 async function deleteMilestone(id) {
     await query('DELETE FROM milestones_list WHERE id = $1', [id]);
 }
+
 
 // --- EXPENSES ---
 
@@ -483,6 +543,7 @@ async function upsertCatchup(data) {
     return res.rows[0];
 }
 
+
 async function getCatchups(activityId = null) {
     let q = 'SELECT * FROM catchup_list';
     const params = [];
@@ -494,18 +555,34 @@ async function getCatchups(activityId = null) {
     return res.rows;
 }
 
+async function getCatchupsByProject(projectId) {
+    // Join with activities to filter by project
+    const q = `
+        SELECT c.* FROM catchup_list c
+        JOIN activities_list a ON c.activity_id = a.id
+        WHERE a.project_id = $1
+    `;
+    const res = await query(q, [projectId]);
+    return res.rows;
+}
+
+
+
+async function deleteCatchup(id) {
+    await query('DELETE FROM catchup_list WHERE id = $1', [id]);
+}
 
 module.exports = {
     initDB,
     generateControlCode,
     getProjects, getProjectById, upsertProject, deleteProject,
     getActivities, getActivityById, upsertActivity, deleteActivity,
-    getSubtasks, upsertSubtask,
+    getSubtasks, upsertSubtask, deleteSubtask,
     getEmployees, getEmployeeById, upsertEmployee, deleteEmployee,
     getDivisions, upsertDivision,
     getMilestones, upsertMilestone, deleteMilestone,
     getExpenses, getExpensesByProject, addExpense, deleteExpense,
-    upsertCatchup, getCatchups,
+    upsertCatchup, getCatchups, getCatchupsByProject, deleteCatchup,
     // Alias for backward compat / ease of refactor
     ensureTableAndInsertProject: upsertProject,
     ensureTableAndInsertActivity: upsertActivity,

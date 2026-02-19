@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = '/api';
+const API_URL = '/opdash/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -38,5 +38,10 @@ export const updateCatchUp = (id, data) => api.put(`/catchups/${id}`, data).then
 export const getProjectCatchUps = (projectId) => api.get(`/projects/${projectId}/catchups`).then(res => res.data);
 export const getAllCatchUps = () => api.get('/catchups').then(res => res.data);
 export const getAllMilestones = () => api.get('/milestones').then(res => res.data);
+
+export const deleteTask = (id) => api.delete(`/tasks/${id}`).then(res => res.data);
+export const deleteSubtask = (id) => api.delete(`/subtasks/${id}`).then(res => res.data);
+export const deleteCatchUp = (id) => api.delete(`/catchups/${id}`).then(res => res.data);
+export const deleteProject = (id) => api.delete(`/projects/${id}`).then(res => res.data);
 
 export default api;

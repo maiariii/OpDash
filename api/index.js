@@ -10,13 +10,14 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
+    path: '/opdash/socket.io',
     cors: {
         origin: "*",
         methods: ["GET", "POST", "PUT"]
     }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -53,17 +54,19 @@ apiRouter.get('/projects', async (req, res) => {
         const allActivities = await azureDb.getActivities();
 
         const projectsWithBudget = projects.map(p => {
+            const projectTasks = allActivities.filter(t => t.project_id === p.id);
             let calculatedBudget = 0;
-            if (!p.total_budget || Number(p.total_budget) <= 0) {
-                const projectTasks = allActivities.filter(t => t.project_id === p.id);
+            if (projectTasks.length > 0) {
                 calculatedBudget = projectTasks.reduce((sum, t) => sum + (Number(t.budget) || 0), 0);
             }
 
+            // NEW LOGIC: If the project has activities, the "Total Budget" is the sum of those activities' budgets.
+            // We only fall back to the manual 'total_budget' if there are NO activities defined yet.
+            const finalBudget = projectTasks.length > 0 ? calculatedBudget : (Number(p.total_budget || 0));
+
             return {
                 ...p,
-                total_budget: (p.total_budget && Number(p.total_budget) > 0)
-                    ? Number(p.total_budget)
-                    : (calculatedBudget > 0 ? calculatedBudget : 0)
+                total_budget: finalBudget
             };
         });
         res.json(projectsWithBudget);
@@ -314,9 +317,7 @@ apiRouter.get('/projects/:id/financials', async (req, res) => {
         // Dynamic Budget
         let dynamicTotalBudget = activities.reduce((sum, a) => sum + (Number(a.budget) || 0), 0);
 
-        const finalBudget = (project.total_budget && Number(project.total_budget) > 0)
-            ? Number(project.total_budget)
-            : (dynamicTotalBudget > 0 ? dynamicTotalBudget : 0);
+        const finalBudget = activities.length > 0 ? dynamicTotalBudget : (Number(project.total_budget || 0));
 
         const burnRate = finalBudget > 0 ? (actualCost / finalBudget) * 100 : 0;
 
@@ -394,7 +395,7 @@ apiRouter.get('/projects/:id/tasks', async (req, res) => {
 // POST Create Task (Activity)
 apiRouter.post('/tasks', async (req, res) => {
     try {
-        const { project_id, title, objective, parent_path, status, assignee_id, estimated_hours, start_date, due_date, cost, budget } = req.body;
+        const { project_id, title, objective, parent_path, status, assignee_id, milestone_id, estimated_hours, start_date, due_date, cost, budget } = req.body;
 
         if (title && title.length > 50) return res.status(400).json({ error: 'Activity title cannot exceed 50 characters' });
         if (objective && objective.length > 100) return res.status(400).json({ error: 'Activity objective cannot exceed 100 characters' });
@@ -408,9 +409,10 @@ apiRouter.post('/tasks', async (req, res) => {
             path,
             title,
             objective: objective || '',
-            status: status || 'Todo',
+            status: status || 'Pending',
             priority: 'Medium',
             assignee_id,
+            milestone_id, // Add milestone_id
             estimated_hours: Number(estimated_hours) || 0,
             start_date,
             due_date,
@@ -430,7 +432,7 @@ apiRouter.post('/tasks', async (req, res) => {
                     activity_id: saved.id,
                     title: sub.title,
                     description: sub.description || '',
-                    status: 'Todo'
+                    status: 'Pending'
                 };
                 await azureDb.upsertSubtask(subTaskObj);
             }
@@ -469,7 +471,7 @@ apiRouter.put('/tasks/:id', async (req, res) => {
         const current = await azureDb.getActivityById(id);
         if (!current) return res.status(404).json({ error: "Task (Activity) not found" });
 
-        const { status, title, objective, priority, assignee_id, start_date, due_date, cost, budget } = req.body;
+        const { status, title, objective, priority, assignee_id, milestone_id, start_date, due_date, cost, budget } = req.body;
 
         const updatedTask = {
             ...current,
@@ -478,6 +480,7 @@ apiRouter.put('/tasks/:id', async (req, res) => {
             status: status || current.status,
             priority: priority || current.priority,
             assignee_id: assignee_id || current.assignee_id,
+            milestone_id: milestone_id !== undefined ? milestone_id : current.milestone_id, // Update if provided
             start_date: start_date || current.start_date,
             due_date: due_date || current.due_date,
             cost: cost !== undefined ? Number(cost) : current.cost,
@@ -580,7 +583,7 @@ apiRouter.post('/activities/:activityId/tasks', async (req, res) => {
             description: description || '',
             assignee_id,
             due_date,
-            status: status || 'Todo',
+            status: status || 'Pending',
             project_id: parent.project_id,
             activity_id: activityId,
             created_at: new Date().toISOString()
@@ -628,7 +631,7 @@ apiRouter.get('/projects/:id/milestones', async (req, res) => {
 // POST Create Milestone
 apiRouter.post('/milestones', async (req, res) => {
     try {
-        const { project_id, title, description, target_date, status, notes, importance } = req.body;
+        const { project_id, title, description, target_date, notes } = req.body;
         if (!title) return res.status(400).json({ error: 'Title is required' });
 
         const id = await azureDb.generateControlCode('milestone');
@@ -638,9 +641,7 @@ apiRouter.post('/milestones', async (req, res) => {
             title,
             description,
             target_date,
-            status,
             notes,
-            importance: Number(importance) || 1,
             created_at: new Date().toISOString()
         };
         const saved = await azureDb.upsertMilestone(newMilestone);
@@ -654,7 +655,7 @@ apiRouter.post('/milestones', async (req, res) => {
 apiRouter.put('/milestones/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, target_date, status, notes, importance } = req.body;
+        const { title, description, target_date, notes } = req.body;
 
         const all = await azureDb.getMilestones();
         const existing = all.find(m => m.id === id);
@@ -666,9 +667,7 @@ apiRouter.put('/milestones/:id', async (req, res) => {
             title: title || existing.title,
             description: description !== undefined ? description : existing.description,
             target_date: target_date || existing.target_date,
-            status: status || existing.status,
-            notes: notes !== undefined ? notes : existing.notes,
-            importance: importance !== undefined ? Number(importance) : existing.importance
+            notes: notes !== undefined ? notes : existing.notes
         };
 
         const saved = await azureDb.upsertMilestone(updated);
@@ -722,6 +721,18 @@ apiRouter.post('/catchups', async (req, res) => {
     }
 });
 
+// GET Project Catch-ups
+apiRouter.get('/projects/:id/catchups', async (req, res) => {
+    try {
+        const catchups = await azureDb.getCatchupsByProject(req.params.id);
+        res.json(catchups);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+
 // Use the router
 app.use(['/api', '/opdash/api'], apiRouter);
 
@@ -730,6 +741,47 @@ app.get('/opdash/*', (req, res) => {
     res.sendFile(path.join(__dirname, '../index.html'));
 });
 
+// DELETE Activity
+apiRouter.delete('/tasks/:id', async (req, res) => {
+    try {
+        await azureDb.deleteActivity(req.params.id);
+        res.json({ message: 'Activity deleted' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE Subtask
+apiRouter.delete('/subtasks/:id', async (req, res) => {
+    try {
+        await azureDb.deleteSubtask(req.params.id);
+        res.json({ message: 'Subtask deleted' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE Catch-up
+apiRouter.delete('/catchups/:id', async (req, res) => {
+    try {
+        await azureDb.deleteCatchup(req.params.id);
+        res.json({ message: 'Catch-up plan deleted' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE Milestone
+apiRouter.delete('/milestones/:id', async (req, res) => {
+    try {
+        await azureDb.deleteMilestone(req.params.id);
+        res.json({ message: 'Milestone deleted' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 server.listen(PORT, () => {
+
     console.log(`Server running on http://localhost:${PORT}`);
 });

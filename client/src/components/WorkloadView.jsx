@@ -34,7 +34,7 @@ const WorkloadView = ({ tasks = [], employees = [], onSubtaskClick }) => {
         return employees.map(emp => {
             const count = subtasks.filter(t => {
                 if (t.assignee_id !== emp.id) return false;
-                if (t.status === 'Done') return false;
+                if (t.status === 'Accomplished') return false;
                 if (!t.due_date) return false;
                 const dueDate = startOfDay(new Date(t.due_date));
                 return isWithinInterval(dueDate, { start, end });

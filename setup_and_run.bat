@@ -48,7 +48,7 @@ start "OpsTracker Frontend" cmd /k "npm run dev"
 echo.
 echo ==========================================
 echo   System is launching!
-echo   Backend: http://localhost:3000
+echo   Backend: http://localhost:3001
 echo   Frontend: http://localhost:5173
 echo ==========================================
 echo.

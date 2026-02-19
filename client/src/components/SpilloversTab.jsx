@@ -11,8 +11,8 @@ const SpilloversTab = ({ tasks = [], onTaskClick }) => {
     const [loadingCatchUps, setLoadingCatchUps] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: 'title', direction: 'asc' });
 
-    // Filter for Deferred tasks
-    const deferredTasks = tasks.filter(t => t.status === 'Deferred');
+    // Filter for Deferred AND Continuing tasks
+    const deferredTasks = tasks.filter(t => t.status === 'Deferred' || t.status === 'Continuing');
 
     // Fetch catch-ups when deferred tasks change (or on mount/update)
     useEffect(() => {
@@ -63,7 +63,9 @@ const SpilloversTab = ({ tasks = [], onTaskClick }) => {
     };
 
     const getStatusColor = (status) => {
-        return 'bg-yellow-100 text-yellow-700 border-yellow-200'; // Specific for Deferred
+        if (status === 'Continuing') return 'bg-indigo-100 text-indigo-700 border-indigo-200';
+        if (status === 'Cancelled') return 'bg-red-100 text-red-700 border-red-200';
+        return 'bg-yellow-100 text-yellow-700 border-yellow-200'; // Default Deferred
     };
 
     const formatDate = (dateStr) => {
@@ -124,7 +126,7 @@ const SpilloversTab = ({ tasks = [], onTaskClick }) => {
                     <AlertCircle size={24} />
                 </div>
                 <h3 className="text-lg font-medium text-slate-800">No Spillovers</h3>
-                <p className="text-slate-500">There are no deferred activities for this project.</p>
+                <p className="text-slate-500">There are no deferred or continuing activities for this project.</p>
             </div>
         );
     }
@@ -135,7 +137,7 @@ const SpilloversTab = ({ tasks = [], onTaskClick }) => {
                 <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-yellow-50">
                     <h3 className="font-bold text-yellow-800 uppercase tracking-wide text-sm flex items-center gap-2">
                         <AlertCircle size={16} />
-                        Deferred Activities (Spillovers)
+                        Deferred & Continuing Activities (Spillovers)
                     </h3>
                     <span className="bg-white px-2 py-1 rounded-full text-xs font-bold text-yellow-700 shadow-sm">
                         {deferredTasks.length}

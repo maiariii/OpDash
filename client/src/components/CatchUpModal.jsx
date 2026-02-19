@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, AlertCircle, FileText, Type, PlusCircle } from 'lucide-react';
-import { createCatchUp, updateCatchUp } from '../api';
+import { X, Calendar, AlertCircle, FileText, Type, PlusCircle, Trash2 } from 'lucide-react';
+import { createCatchUp, updateCatchUp, deleteCatchUp } from '../api';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 const CatchUpModal = ({ isOpen, onClose, activityId, activityTitle, onCatchUpCreated, existingPlans = [] }) => {
     const [title, setTitle] = useState('');
@@ -10,6 +11,10 @@ const CatchUpModal = ({ isOpen, onClose, activityId, activityTitle, onCatchUpCre
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [editingPlanId, setEditingPlanId] = useState(null); // Track if editing
+
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [planToDelete, setPlanToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Reset form on open
     useEffect(() => {
@@ -25,6 +30,31 @@ const CatchUpModal = ({ isOpen, onClose, activityId, activityTitle, onCatchUpCre
         setTargetDate('');
         setError(null);
         setEditingPlanId(null);
+    };
+
+    const handleDeleteClick = (plan) => {
+        setPlanToDelete(plan);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!planToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteCatchUp(planToDelete.id);
+            onCatchUpCreated(); // Refresh list
+            setDeleteModalOpen(false);
+            setPlanToDelete(null);
+            if (editingPlanId === planToDelete.id) {
+                resetForm();
+            }
+        } catch (err) {
+            console.error("Failed to delete catch-up plan", err);
+            setError("Failed to delete catch-up plan");
+            setDeleteModalOpen(false);
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const handleEditClick = (plan) => {
@@ -122,6 +152,13 @@ const CatchUpModal = ({ isOpen, onClose, activityId, activityTitle, onCatchUpCre
                                                     className="text-xs text-blue-600 hover:underline font-medium"
                                                 >
                                                     Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteClick(plan)}
+                                                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors ml-2"
+                                                    title="Delete Plan"
+                                                >
+                                                    <Trash2 size={14} />
                                                 </button>
                                             </div>
                                         </div>
@@ -254,6 +291,16 @@ const CatchUpModal = ({ isOpen, onClose, activityId, activityTitle, onCatchUpCre
                     </button>
                 </div>
             </div>
+
+            <DeleteConfirmationModal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Catch-up Plan"
+                itemName={planToDelete?.title}
+                message="Are you sure you want to delete this catch-up plan?"
+                isDeleting={isDeleting}
+            />
         </div>
     );
 };
