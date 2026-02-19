@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Flag, Calendar, Trash2, Edit2, ArrowUpDown, ArrowUp, ArrowDown, Star } from 'lucide-react';
+import { Plus, Flag, Calendar, Trash2, Edit2, ArrowUpDown, ArrowUp, ArrowDown, Star, X } from 'lucide-react';
 import { getProjectMilestones, deleteMilestone } from '../api';
 import MilestoneModal from './MilestoneModal';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import clsx from 'clsx';
 
-const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
+const MilestoneTable = ({ milestones, onEdit, onDelete, title, onView }) => {
     const [sortConfig, setSortConfig] = useState({ key: 'target_date', direction: 'asc' });
 
     const handleSort = (key) => {
@@ -101,7 +101,11 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {sortedMilestones.map(milestone => (
-                        <tr key={milestone.id} className="bg-white hover:bg-slate-50 transition-colors group border-b border-slate-100">
+                        <tr
+                            key={milestone.id}
+                            className="bg-white hover:bg-slate-50 transition-colors group border-b border-slate-100 cursor-pointer"
+                            onClick={() => onView && onView(milestone)}
+                        >
                             <td className="p-4">
                                 <div className="font-semibold text-slate-800">{milestone.title}</div>
                                 <div className="text-xs text-slate-400 mt-0.5">{milestone.id}</div>
@@ -132,14 +136,20 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
                             <td className="p-4 text-right">
                                 <div className="flex items-center justify-end gap-1">
                                     <button
-                                        onClick={() => onEdit(milestone)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onEdit(milestone);
+                                        }}
                                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                         title="Edit Milestone"
                                     >
                                         <Edit2 size={16} />
                                     </button>
                                     <button
-                                        onClick={() => onDelete(milestone.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDelete(milestone.id);
+                                        }}
                                         className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                                         title="Delete Milestone"
                                     >
@@ -155,7 +165,80 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title }) => {
     );
 };
 
-const MilestonesTab = ({ projectId }) => {
+const MilestoneActivitiesModal = ({ milestone, activities, onClose }) => {
+    // Filter activities for this milestone
+    const milestoneActivities = activities.filter(a => a.milestone_id === milestone.id);
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <Flag className="text-blue-600" />
+                            {milestone.title}
+                        </h2>
+                        <p className="text-slate-500 text-sm mt-1">
+                            Target Date: {new Date(milestone.target_date).toLocaleDateString()}
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-50 rounded-lg transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="p-6 overflow-y-auto flex-1">
+                    {milestoneActivities.length > 0 ? (
+                        <div className="space-y-4">
+                            {/* Reusing a simple table or could import TaskTable if we want full features. 
+                                 However, SubtaskTable is imported in ProjectDetails but NOT here. 
+                                 Let's create a simple list or import TaskTable? 
+                                 TaskTable is complex with many props. 
+                                 Let's just render a simple list for now or copy a basic table structure.
+                             */}
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                                    <tr>
+                                        <th className="p-3 border-b border-slate-200">Activity</th>
+                                        <th className="p-3 border-b border-slate-200">Status</th>
+                                        <th className="p-3 border-b border-slate-200">Due Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {milestoneActivities.map(activity => (
+                                        <tr key={activity.id} className="hover:bg-slate-50">
+                                            <td className="p-3 text-slate-700 font-medium">{activity.title}</td>
+                                            <td className="p-3">
+                                                <span className={clsx(
+                                                    "px-2 py-0.5 rounded-full text-xs font-medium border",
+                                                    activity.status === 'Accomplished' ? "bg-green-50 text-green-700 border-green-200" :
+                                                        activity.status === 'Waitlisted' ? "bg-purple-50 text-purple-700 border-purple-200" :
+                                                            activity.status === 'In Progress' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                                                "bg-slate-100 text-slate-600 border-slate-200"
+                                                )}>
+                                                    {activity.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-3 text-slate-500 text-sm">
+                                                {activity.due_date ? new Date(activity.due_date).toLocaleDateString() : '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                            <p>No activities linked to this milestone.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const MilestonesTab = ({ projectId, activities = [] }) => {
     const [milestones, setMilestones] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -164,6 +247,10 @@ const MilestonesTab = ({ projectId }) => {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [milestoneToDelete, setMilestoneToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // View Activities Modal
+    const [viewModalOpen, setViewModalOpen] = useState(false);
+    const [selectedMilestone, setSelectedMilestone] = useState(null);
 
     const fetchMilestones = () => {
         setIsLoading(true);
@@ -193,6 +280,11 @@ const MilestonesTab = ({ projectId }) => {
         setDeleteModalOpen(true);
     };
 
+    const handleView = (milestone) => {
+        setSelectedMilestone(milestone);
+        setViewModalOpen(true);
+    };
+
     const confirmDelete = async () => {
         if (!milestoneToDelete) return;
         setIsDeleting(true);
@@ -211,7 +303,6 @@ const MilestonesTab = ({ projectId }) => {
     };
 
     // Split milestones
-    // Filtering by progress === 100 for Accomplished. All others are Pending.
     const accomplishedMilestones = milestones.filter(m => m.progress === 100);
     const pendingMilestones = milestones.filter(m => m.progress !== 100);
 
@@ -248,6 +339,7 @@ const MilestonesTab = ({ projectId }) => {
                         milestones={pendingMilestones}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onView={handleView}
                     />
 
                     <MilestoneTable
@@ -255,6 +347,7 @@ const MilestonesTab = ({ projectId }) => {
                         milestones={accomplishedMilestones}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onView={handleView}
                     />
                 </div>
             )}
@@ -268,6 +361,14 @@ const MilestonesTab = ({ projectId }) => {
                         setModalOpen(false);
                         fetchMilestones();
                     }}
+                />
+            )}
+
+            {viewModalOpen && selectedMilestone && (
+                <MilestoneActivitiesModal
+                    milestone={selectedMilestone}
+                    activities={activities}
+                    onClose={() => setViewModalOpen(false)}
                 />
             )}
 

@@ -6,6 +6,7 @@ const COLORS = {
     'Pending': '#f59e0b', // Amber
     'Accomplished': '#10b981', // Emerald
     'Delayed': '#ef4444', // Red
+    'Waitlisted': '#a855f7', // Purple
     'Budget': '#3b82f6', // Blue
     'Spent': '#8b5cf6'  // Violet
 };
@@ -221,11 +222,11 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                 {type === 'financial' && (
                                     <div className="text-xs text-slate-500 space-y-1 mt-2 pt-2 border-t border-slate-100">
                                         <div className="flex justify-between">
-                                            <span>Budget:</span>
+                                            <span>GMS Allocation:</span>
                                             <span className="font-mono font-bold text-slate-700">₱{Number(item.total_budget || 0).toLocaleString()}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span>Spent:</span>
+                                            <span>Obligated:</span>
                                             <span className="font-mono font-bold text-slate-700">₱{Number(item.actual_cost || 0).toLocaleString()}</span>
                                         </div>
                                     </div>
@@ -413,16 +414,24 @@ const DashboardCharts = ({ metrics }) => {
         pendingActivities,
         accomplishedActivities,
         delayedActivities,
+        waitlistedActivities = 0,
         totalBudget,
         totalSpent,
+        totalGaaPs,
+        totalGaaMooe,
         // Detailed Data Arrays
         allProjects = [],
         allEmployees = [],
         allTasks = [],
         pendingTasks = [],
         accomplishedTasks = [],
-        delayedTasks = []
+        delayedTasks = [],
+        waitlistedTasks = []
     } = metrics;
+
+    // Add missing fallback for detailed arrays to avoid crashes
+    const totalGaaPsVal = totalGaaPs || 0;
+    const totalGaaMooeVal = totalGaaMooe || 0;
 
     const [modalState, setModalState] = useState({
         isOpen: false,
@@ -442,6 +451,7 @@ const DashboardCharts = ({ metrics }) => {
     const activityData = [
         { label: 'Pending', value: pendingActivities, color: COLORS.Pending, data: pendingTasks },
         { label: 'Accomplished', value: accomplishedActivities, color: COLORS.Accomplished, data: accomplishedTasks },
+        { label: 'Waitlisted', value: waitlistedActivities, color: COLORS.Waitlisted, data: waitlistedTasks },
         { label: 'Delayed', value: delayedActivities, color: COLORS.Delayed, data: delayedTasks }
     ];
 
@@ -449,6 +459,7 @@ const DashboardCharts = ({ metrics }) => {
         const titleMap = {
             'Pending': 'Pending Activities',
             'Accomplished': 'Accomplished Activities',
+            'Waitlisted': 'Waitlisted Activities',
             'Delayed': 'Delayed Activities'
         };
         // Use slice.data if available (from activityData), or switch based on label
@@ -456,6 +467,7 @@ const DashboardCharts = ({ metrics }) => {
         if (!data) {
             if (slice.label === 'Pending') data = pendingTasks;
             else if (slice.label === 'Accomplished') data = accomplishedTasks;
+            else if (slice.label === 'Waitlisted') data = waitlistedTasks;
             else if (slice.label === 'Delayed') data = delayedTasks;
         }
 
@@ -465,7 +477,7 @@ const DashboardCharts = ({ metrics }) => {
     return (
         <div className="space-y-6">
             {/* Metric Cards Row 1 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <MetricCard
                     title="Total Activities"
                     value={totalActivities}
@@ -491,6 +503,14 @@ const DashboardCharts = ({ metrics }) => {
                     onClick={() => openModal('Accomplished Activities', accomplishedTasks, 'task')}
                 />
                 <MetricCard
+                    title="Waitlisted"
+                    value={waitlistedActivities || 0}
+                    icon={Clock}
+                    color="bg-purple-500"
+                    clickable
+                    onClick={() => openModal('Waitlisted Activities', waitlistedTasks || [], 'task')}
+                />
+                <MetricCard
                     title="Delayed"
                     value={delayedActivities}
                     icon={AlertTriangle}
@@ -501,30 +521,41 @@ const DashboardCharts = ({ metrics }) => {
             </div>
 
             {/* Metric Cards Row 2 (Financials & People) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <MetricCard
                     title="Milestones Reached"
                     value={metrics.milestonesReached || 0}
                     icon={CheckCircle2}
                     color="bg-emerald-600"
                     clickable
-                    onClick={() => openModal('Milestones Reached', metrics.allMilestones || [], 'milestone')}
+                    onClick={() => {
+                        const reached = (metrics.allMilestones || []).filter(m =>
+                            ['Accomplished', 'Completed', 'Done'].includes(m.status)
+                        );
+                        openModal('Milestones Reached', reached, 'milestone');
+                    }}
                 />
                 <MetricCard
-                    title="Total Budget"
+                    title="Total GMS Allocation"
                     value={`₱${totalBudget.toLocaleString()}`}
                     icon={DollarSign}
                     color="bg-blue-600"
                     clickable
-                    onClick={() => openModal('Project Budgets', allProjects, 'financial')}
+                    onClick={() => {
+                        const withBudget = allProjects.filter(p => (p.total_budget || 0) > 0);
+                        openModal('GMS Allocation Breakdown', withBudget, 'financial');
+                    }}
                 />
                 <MetricCard
-                    title="Amount Spent"
+                    title="Obligated Funds"
                     value={`₱${totalSpent.toLocaleString()}`}
                     icon={BarChart3}
                     color="bg-violet-600"
                     clickable
-                    onClick={() => openModal('Project Expenses', allProjects, 'financial')}
+                    onClick={() => {
+                        const withSpend = allProjects.filter(p => (p.actual_cost || 0) > 0);
+                        openModal('Obligated Funds Breakdown', withSpend, 'financial');
+                    }}
                 />
             </div>
 
@@ -541,13 +572,13 @@ const DashboardCharts = ({ metrics }) => {
                     <h3 className="text-lg font-bold text-slate-800 mb-6">Financial Overview</h3>
                     <div className="space-y-6 py-4">
                         <FinancialBar
-                            label="Total Budget"
+                            label="Total GMS Allocation"
                             value={totalBudget}
                             max={Math.max(totalBudget, totalSpent) * 1.1} // Scale relative to max
                             color={COLORS.Budget}
                         />
                         <FinancialBar
-                            label="Amount Spent"
+                            label="Obligated Funds"
                             value={totalSpent}
                             max={Math.max(totalBudget, totalSpent) * 1.1}
                             color={COLORS.Spent}

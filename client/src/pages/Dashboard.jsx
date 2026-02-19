@@ -38,7 +38,11 @@ const Dashboard = () => {
         accomplishedTasks: [],
         delayedTasks: [],
         milestonesReached: 0,
-        allMilestones: []
+        delayedTasks: [],
+        milestonesReached: 0,
+        allMilestones: [],
+        totalGaaPs: 0,
+        totalGaaMooe: 0
     });
     const [editingTask, setEditingTask] = useState(null);
 
@@ -168,6 +172,8 @@ const Dashboard = () => {
         let delayedActivities = 0;
         let totalBudget = 0;
         let totalSpent = 0;
+        let totalGaaPs = 0;
+        let totalGaaMooe = 0;
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -193,13 +199,15 @@ const Dashboard = () => {
         });
 
         // Calculate Milestones Reached
-        const reachedMilestones = filteredMilestones.filter(m => ['Completed', 'Accomplished'].includes(m.status));
+        const reachedMilestones = filteredMilestones.filter(m => ['Accomplished', 'Completed', 'Done'].includes(m.status));
         const milestonesReached = reachedMilestones.length;
 
         filteredProjects.forEach(p => {
             // Financial Metrics
             totalBudget += Number(p.financials?.total_budget || 0);
             totalSpent += Number(p.financials?.actual_cost || 0);
+            totalGaaPs += Number(p.gaa_ps || 0);
+            totalGaaMooe += Number(p.gaa_mooe || 0);
         });
 
         // Prepare Calendar Events (Tasks + Catchups + Milestones)
@@ -248,6 +256,8 @@ const Dashboard = () => {
             delayedActivities,
             totalBudget,
             totalSpent,
+            totalGaaPs,
+            totalGaaMooe,
             milestonesReached,
             // Detailed Arrays
             allProjects: filteredProjects.map(p => ({

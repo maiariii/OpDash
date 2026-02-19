@@ -149,6 +149,41 @@ async function initDB() {
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='milestone_id') THEN 
                 ALTER TABLE activities_list ADD COLUMN milestone_id TEXT; 
             END IF;
+
+            -- activities_list: activity_type
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='activity_type') THEN 
+                ALTER TABLE activities_list ADD COLUMN activity_type TEXT; 
+            END IF;
+
+            -- Migration: Rename budget -> gms_allocation
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='budget') THEN
+                ALTER TABLE activities_list RENAME COLUMN budget TO gms_allocation;
+            END IF;
+
+            -- Migration: Rename cost -> obligated_amount
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='cost') THEN
+                ALTER TABLE activities_list RENAME COLUMN cost TO obligated_amount;
+            END IF;
+
+            -- projects_list: gaa_allocation
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_allocation') THEN 
+                ALTER TABLE projects_list ADD COLUMN gaa_allocation NUMERIC DEFAULT 0; 
+            END IF;
+
+            -- projects_list: gms_allocation
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gms_allocation') THEN 
+                ALTER TABLE projects_list ADD COLUMN gms_allocation NUMERIC DEFAULT 0; 
+            END IF;
+
+            -- projects_list: gaa_ps
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_ps') THEN 
+                ALTER TABLE projects_list ADD COLUMN gaa_ps NUMERIC DEFAULT 0; 
+            END IF;
+
+            -- projects_list: gaa_mooe
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_mooe') THEN 
+                ALTER TABLE projects_list ADD COLUMN gaa_mooe NUMERIC DEFAULT 0; 
+            END IF;
         END $$;
     `);
 }
@@ -204,8 +239,8 @@ async function upsertProject(data) {
         INSERT INTO projects_list(
             id, name, description, division, lead_personnel,
             supervising_officer, assisting_personnel, status, 
-            basecamp_target, total_budget, created_at
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11, CURRENT_TIMESTAMP))
+            basecamp_target, total_budget, gaa_allocation, gms_allocation, gaa_ps, gaa_mooe, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, COALESCE($15, CURRENT_TIMESTAMP))
         ON CONFLICT(id) DO UPDATE SET
             name = EXCLUDED.name,
             description = EXCLUDED.description,
@@ -215,7 +250,11 @@ async function upsertProject(data) {
             assisting_personnel = EXCLUDED.assisting_personnel,
             status = EXCLUDED.status,
             basecamp_target = EXCLUDED.basecamp_target,
-            total_budget = EXCLUDED.total_budget
+            total_budget = EXCLUDED.total_budget,
+            gaa_allocation = EXCLUDED.gaa_allocation,
+            gms_allocation = EXCLUDED.gms_allocation,
+            gaa_ps = EXCLUDED.gaa_ps,
+            gaa_mooe = EXCLUDED.gaa_mooe
         RETURNING *;
     `;
     const values = [
@@ -223,6 +262,8 @@ async function upsertProject(data) {
         data.lead_personnel || 'N/A', data.supervising_officer || 'N/A',
         data.assisting_personnel || 'N/A', data.status || 'Planning',
         data.basecamp_target || '', Number(data.total_budget) || 0,
+        Number(data.gaa_allocation) || 0, Number(data.gms_allocation) || 0,
+        Number(data.gaa_ps) || 0, Number(data.gaa_mooe) || 0,
         data.created_at
     ];
     const res = await query(q, values);
@@ -285,19 +326,20 @@ async function upsertActivity(data) {
     const q = `
         INSERT INTO activities_list(
             id, project_id, title, objective, status,
-            start_date, due_date, budget, cost,
-            assignee_id, milestone_id, path, priority, created_at
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, COALESCE($14, CURRENT_TIMESTAMP))
+            start_date, due_date, gms_allocation, obligated_amount,
+            assignee_id, milestone_id, activity_type, path, priority, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, COALESCE($15, CURRENT_TIMESTAMP))
         ON CONFLICT(id) DO UPDATE SET
             title = EXCLUDED.title,
             objective = EXCLUDED.objective,
             status = EXCLUDED.status,
             start_date = EXCLUDED.start_date,
             due_date = EXCLUDED.due_date,
-            budget = EXCLUDED.budget,
-            cost = EXCLUDED.cost,
+            gms_allocation = EXCLUDED.gms_allocation,
+            obligated_amount = EXCLUDED.obligated_amount,
             assignee_id = EXCLUDED.assignee_id,
             milestone_id = EXCLUDED.milestone_id,
+            activity_type = EXCLUDED.activity_type,
             path = EXCLUDED.path,
             priority = EXCLUDED.priority
         RETURNING *;
@@ -305,8 +347,10 @@ async function upsertActivity(data) {
     const values = [
         data.id, data.project_id, data.title, data.objective || '',
         data.status || 'Pending', data.start_date || null, data.due_date || null,
-        Number(data.budget) || 0, Number(data.cost) || 0,
-        data.assignee_id || null, data.milestone_id || null, data.path || data.id,
+        Number(data.gms_allocation) || 0, Number(data.obligated_amount) || 0,
+        data.assignee_id || null, data.milestone_id || null,
+        data.activity_type || 'Deskwork', // Default or null
+        data.path || data.id,
         data.priority || 'Medium', data.created_at
     ];
     const res = await query(q, values);

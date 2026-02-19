@@ -79,7 +79,7 @@ apiRouter.get('/projects', async (req, res) => {
 // POST Create Project
 apiRouter.post('/projects', async (req, res) => {
     try {
-        const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, total_budget, basecamp_target } = req.body;
+        const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, total_budget, basecamp_target, gaa_allocation, gms_allocation, gaa_ps, gaa_mooe } = req.body;
 
         if (!name) return res.status(400).json({ error: 'Project Name is required' });
         if (name.length > 50) return res.status(400).json({ error: 'Project Name cannot exceed 50 characters' });
@@ -96,6 +96,10 @@ apiRouter.post('/projects', async (req, res) => {
             supervising_officer: supervising_officer || 'N/A',
             assisting_personnel: assisting_personnel || 'N/A',
             total_budget: Number(total_budget) || 0,
+            gaa_allocation: Number(gaa_allocation) || 0,
+            gms_allocation: Number(gms_allocation) || 0,
+            gaa_ps: Number(gaa_ps) || 0,
+            gaa_mooe: Number(gaa_mooe) || 0,
             basecamp_target: basecamp_target || '',
             status: 'Planning',
             created_at: new Date().toISOString()
@@ -116,7 +120,7 @@ apiRouter.put('/projects/:id', async (req, res) => {
         const current = await azureDb.getProjectById(id);
         if (!current) return res.status(404).json({ error: 'Project not found' });
 
-        const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, status, total_budget, basecamp_target } = req.body;
+        const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, status, total_budget, basecamp_target, gaa_allocation, gms_allocation, gaa_ps, gaa_mooe } = req.body;
 
         if (name && name.length > 50) return res.status(400).json({ error: 'Project Name cannot exceed 50 characters' });
         if (description && description.length > 100) return res.status(400).json({ error: 'Project description cannot exceed 100 characters' });
@@ -130,6 +134,10 @@ apiRouter.put('/projects/:id', async (req, res) => {
             supervising_officer: supervising_officer || current.supervising_officer,
             assisting_personnel: assisting_personnel || current.assisting_personnel,
             total_budget: total_budget !== undefined ? Number(total_budget) : current.total_budget,
+            gaa_allocation: gaa_allocation !== undefined ? Number(gaa_allocation) : current.gaa_allocation,
+            gms_allocation: gms_allocation !== undefined ? Number(gms_allocation) : current.gms_allocation,
+            gaa_ps: gaa_ps !== undefined ? Number(gaa_ps) : current.gaa_ps,
+            gaa_mooe: gaa_mooe !== undefined ? Number(gaa_mooe) : current.gaa_mooe,
             basecamp_target: basecamp_target !== undefined ? basecamp_target : current.basecamp_target,
             status: status || current.status
         };
@@ -299,42 +307,62 @@ apiRouter.get('/projects/:id/financials', async (req, res) => {
         const expenses = await azureDb.getExpensesByProject(projectId);
         console.log(`[Financials] Project ${projectId} has ${expenses.length} expenses.`);
 
-        // 3. Calculate Actual Cost
-        let actualCost = 0;
+        // 3. Calculate Actual Cost (Obligated Funds)
+        let obligatedFunds = 0;
         let totalHours = 0; // Simulated/Missing
 
-        // Add up activity.cost (Legacy field) + expenses
+        // Add up activity.obligated_amount (formerly cost) + expenses (if any)
         activities.forEach(a => {
-            actualCost += Number(a.cost) || 0;
+            obligatedFunds += Number(a.obligated_amount) || 0;
         });
 
+        // If expense_list is used separately, keep this. If expenses are now embedded in activities (via obligated_amount), this might be double counting if both exist. 
+        // Assuming expense_list tracks OTHER costs not in activities, or is legacy. 
+        // For now, let's keep it but label it as potentially extra.
+        // User request: "Amount Spent to Obligated Funds".
+        // "Total of GMS Allocation and total obligated amount".
+        // If I exclude expenses, I might miss data. If I include, I might double count if they migrate data.
+        // Given CreateTaskModal saves to obligated_amount, and doesn't write to expense_list, I should rely on obligated_amount for tasks.
         expenses.forEach(e => {
-            actualCost += Number(e.amount) || 0;
+            obligatedFunds += Number(e.amount) || 0;
         });
 
-        console.log(`[Financials] Calculated Actual Cost: ${actualCost}`);
+        console.log(`[Financials] Calculated Obligated Funds: ${obligatedFunds}`);
 
-        // Dynamic Budget
-        let dynamicTotalBudget = activities.reduce((sum, a) => sum + (Number(a.budget) || 0), 0);
+        // Dynamic Total GMS Allocation (formerly Budget)
+        let totalGmsAllocation = activities.reduce((sum, a) => sum + (Number(a.gms_allocation) || 0), 0);
 
-        const finalBudget = activities.length > 0 ? dynamicTotalBudget : (Number(project.total_budget || 0));
+        // Fallback or Override?
+        // If project has a defined top-level budget, use that? 
+        // Or is the project budget the sum of allocations?
+        // Usually "Total Budget" is the project's budget. "Allocated" is what's assigned to tasks.
+        // User said: "change total budget to Total GMS Allocation... This should get the total of the GMS Allocation"
+        // So they want the SUM of Activity Allocations.
+        const finalGmsAllocation = totalGmsAllocation;
 
-        const burnRate = finalBudget > 0 ? (actualCost / finalBudget) * 100 : 0;
+        // Note: Project might have its own 'total_budget' field in DB. Check valid use.
+        // If activities are empty, maybe use project.total_budget?
+        // Let's strictly follow "total of the GMS Allocation".
+
+        const burnRate = finalGmsAllocation > 0 ? (obligatedFunds / finalGmsAllocation) * 100 : 0;
 
         // CPI
-        const completedTasks = activities.filter(t => t.status === 'Done').length;
+        const completedTasks = activities.filter(t => t.status === 'Accomplished').length;
         const totalTasks = activities.length || 1;
         const percentComplete = completedTasks / totalTasks;
 
-        const cpi = actualCost > 0 ? ((percentComplete * finalBudget) / actualCost) : 1;
-        const remainingBudget = finalBudget - actualCost;
+        const cpi = obligatedFunds > 0 ? ((percentComplete * finalGmsAllocation) / obligatedFunds) : 1;
+        const remainingFunds = finalGmsAllocation - obligatedFunds;
 
         res.json({
             id: project.id,
             name: project.name,
-            total_budget: finalBudget,
-            remaining_budget: remainingBudget,
-            actual_cost: actualCost,
+            total_budget: finalGmsAllocation, // Keep key for backward comp, or strict rename? Let's use new keys too.
+            total_gms_allocation: finalGmsAllocation,
+            obligated_funds: obligatedFunds,
+            remaining_budget: remainingFunds, // Legacy key
+            remaining_funds: remainingFunds,
+            actual_cost: obligatedFunds, // Legacy key
             total_hours: totalHours,
             burn_rate_percent: burnRate,
             cpi: cpi
@@ -395,7 +423,7 @@ apiRouter.get('/projects/:id/tasks', async (req, res) => {
 // POST Create Task (Activity)
 apiRouter.post('/tasks', async (req, res) => {
     try {
-        const { project_id, title, objective, parent_path, status, assignee_id, milestone_id, estimated_hours, start_date, due_date, cost, budget } = req.body;
+        const { project_id, title, objective, parent_path, status, assignee_id, milestone_id, activity_type, estimated_hours, start_date, due_date, obligated_amount, gms_allocation } = req.body;
 
         if (title && title.length > 50) return res.status(400).json({ error: 'Activity title cannot exceed 50 characters' });
         if (objective && objective.length > 100) return res.status(400).json({ error: 'Activity objective cannot exceed 100 characters' });
@@ -413,11 +441,12 @@ apiRouter.post('/tasks', async (req, res) => {
             priority: 'Medium',
             assignee_id,
             milestone_id, // Add milestone_id
+            activity_type, // Add activity_type
             estimated_hours: Number(estimated_hours) || 0,
             start_date,
             due_date,
-            cost: Number(cost) || 0,
-            budget: Number(budget) || 0,
+            obligated_amount: Number(obligated_amount) || 0,
+            gms_allocation: Number(gms_allocation) || 0,
             created_at: new Date().toISOString()
         };
 
@@ -471,7 +500,7 @@ apiRouter.put('/tasks/:id', async (req, res) => {
         const current = await azureDb.getActivityById(id);
         if (!current) return res.status(404).json({ error: "Task (Activity) not found" });
 
-        const { status, title, objective, priority, assignee_id, milestone_id, start_date, due_date, cost, budget } = req.body;
+        const { status, title, objective, priority, assignee_id, milestone_id, activity_type, start_date, due_date, obligated_amount, gms_allocation } = req.body;
 
         const updatedTask = {
             ...current,
@@ -481,10 +510,11 @@ apiRouter.put('/tasks/:id', async (req, res) => {
             priority: priority || current.priority,
             assignee_id: assignee_id || current.assignee_id,
             milestone_id: milestone_id !== undefined ? milestone_id : current.milestone_id, // Update if provided
+            activity_type: activity_type !== undefined ? activity_type : current.activity_type,
             start_date: start_date || current.start_date,
             due_date: due_date || current.due_date,
-            cost: cost !== undefined ? Number(cost) : current.cost,
-            budget: budget !== undefined ? Number(budget) : current.budget
+            obligated_amount: obligated_amount !== undefined ? Number(obligated_amount) : current.obligated_amount,
+            gms_allocation: gms_allocation !== undefined ? Number(gms_allocation) : current.gms_allocation
         };
 
         const saved = await azureDb.upsertActivity(updatedTask);

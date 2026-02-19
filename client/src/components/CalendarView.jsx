@@ -4,13 +4,14 @@ import {
     eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths,
     addWeeks, subWeeks, isToday, startOfDay, endOfDay, isWithinInterval
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Layers, LayoutGrid, List } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Layers, LayoutGrid, List, ChevronDown, Filter } from 'lucide-react';
 import clsx from 'clsx';
 
 const CalendarView = ({ activities = [], title = "Activity Calendar", onActivityClick, onDayClick, onRangeSelect }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState('month'); // 'month', 'week', 'biweek'
-    const [filterStatus, setFilterStatus] = useState('All');
+    const [filterStatus, setFilterStatus] = useState(['Pending', 'In Progress']); // Default: Pending & Ongoing
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Drag Selection State
     const [isDragging, setIsDragging] = useState(false);
@@ -62,6 +63,7 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
         'In Progress', // Note: data might use 'Ongoing' too, we can handle normalization or multiple checks
         'Accomplished', // Note: data might use 'Done'/'Completed' too
         'Deferred',
+        'Waitlisted',
         'Continuing',
         'Cancelled'
     ];
@@ -75,8 +77,8 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
     }, []);
 
     const filteredActivities = useMemo(() => {
-        if (filterStatus === 'All') return activities;
-        return activities.filter(a => a.status === filterStatus);
+        if (filterStatus.length === 0) return [];
+        return activities.filter(a => filterStatus.includes(a.status));
     }, [activities, filterStatus]);
 
     // --- Layout Algorithm for Continuous Tiles ---
@@ -221,6 +223,8 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
                 return "bg-blue-50 text-blue-700 border border-blue-100";
             case 'Pending':
                 return "bg-slate-100 text-slate-600 border border-slate-200";
+            case 'Waitlisted':
+                return "bg-purple-50 text-purple-700 border border-purple-100";
             case 'Deferred':
                 return "bg-amber-50 text-amber-700 border border-amber-100";
             case 'Cancelled':
@@ -246,16 +250,62 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
                 <div className="flex items-center gap-4">
                     {/* Activity Status Filter */}
                     <div className="relative">
-                        <select
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                            className="text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer hover:bg-white"
+                        <button
+                            onClick={() => setIsFilterOpen(!isFilterOpen)}
+                            className="flex items-center gap-2 text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-white transition-colors"
                         >
-                            <option value="All">All Statuses</option>
-                            {uniqueStatuses.map(status => (
-                                <option key={status} value={status}>{status}</option>
-                            ))}
-                        </select>
+                            <Filter size={16} />
+                            <span>Filters ({filterStatus.length})</span>
+                            <ChevronDown size={14} className="text-slate-400" />
+                        </button>
+
+                        {isFilterOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsFilterOpen(false)} />
+                                <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-50 p-2 animate-in fade-in zoom-in duration-100">
+                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 py-1 mb-1">Status</div>
+                                    <div className="space-y-0.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                        {uniqueStatuses.map(status => (
+                                            <label key={status} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer select-none">
+                                                <div className={clsx(
+                                                    "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                                                    filterStatus.includes(status) ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 bg-white"
+                                                )}>
+                                                    {filterStatus.includes(status) && <ChevronDown size={12} className="rotate-0" />} {/* Checkmark hack or just box */}
+                                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={filterStatus.includes(status)}
+                                                    onChange={() => {
+                                                        setFilterStatus(prev =>
+                                                            prev.includes(status)
+                                                                ? prev.filter(s => s !== status)
+                                                                : [...prev, status]
+                                                        );
+                                                    }}
+                                                    className="hidden"
+                                                />
+                                                <span className="text-sm text-slate-700">{status}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <div className="pt-2 mt-2 border-t border-slate-100 flex gap-2">
+                                        <button
+                                            onClick={() => setFilterStatus(uniqueStatuses)}
+                                            className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 flex-1"
+                                        >
+                                            Select All
+                                        </button>
+                                        <button
+                                            onClick={() => setFilterStatus([])}
+                                            className="text-xs font-medium text-slate-500 hover:text-slate-700 px-2 py-1 rounded hover:bg-slate-100 flex-1"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* View Switcher */}

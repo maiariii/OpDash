@@ -22,6 +22,7 @@ const EditSubtaskModal = ({ subtask, parentId, parentTask, members = [], onClose
         { label: 'In Progress', value: 'In Progress' },
         { label: 'Accomplished', value: 'Accomplished' },
         { label: 'Deferred', value: 'Deferred' },
+        { label: 'Waitlisted', value: 'Waitlisted' },
         { label: 'Continuing', value: 'Continuing' },
         { label: 'Cancelled', value: 'Cancelled' }
     ];

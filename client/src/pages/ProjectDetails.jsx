@@ -59,6 +59,7 @@ const ProjectDetails = () => {
     // Edit Mode State
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
+    const [fundingSources, setFundingSources] = useState({ gaaPs: false, gaaMooe: false, gms: false });
     const [editingTask, setEditingTask] = useState(null); // For Task Modal
 
     const [isCreatingTask, setIsCreatingTask] = useState(false); // For Creating New Task
@@ -109,6 +110,23 @@ const ProjectDetails = () => {
         return () => socket.disconnect();
     }, [id]);
 
+    useEffect(() => {
+        if (isEditing && project) {
+            setFundingSources({
+                gaaPs: Number(project.gaa_ps) > 0,
+                gaaMooe: Number(project.gaa_mooe) > 0,
+                gms: Number(project.gms_allocation) > 0
+            });
+            // Ensure editForm has numeric values or at least 0
+            setEditForm(prev => ({
+                ...prev,
+                gaa_ps: Number(prev.gaa_ps) || 0,
+                gaa_mooe: Number(prev.gaa_mooe) || 0,
+                gms_allocation: Number(prev.gms_allocation) || 0
+            }));
+        }
+    }, [isEditing, project]);
+
     const handleTaskUpdate = (task) => {
         setTasks(prev => prev.map(t => t.id === task.id ? task : t));
     };
@@ -137,8 +155,16 @@ const ProjectDetails = () => {
                     .join(', ');
             }
 
-            const updated = await updateProject(id, cleanForm);
-            setProject(updated);
+            const updated = { ...cleanForm };
+
+            updated.gaa_ps = Number(cleanForm.gaa_ps) || 0;
+            updated.gaa_mooe = Number(cleanForm.gaa_mooe) || 0;
+            updated.gaa_allocation = updated.gaa_ps + updated.gaa_mooe;
+            updated.gms_allocation = Number(cleanForm.gms_allocation) || 0;
+            updated.total_budget = updated.gaa_allocation + updated.gms_allocation;
+
+            const savedProject = await updateProject(id, updated);
+            setProject(savedProject);
             setIsEditing(false);
         } catch (err) {
             console.error(err);
@@ -246,28 +272,96 @@ const ProjectDetails = () => {
             if (t.status === 'Accomplished') {
                 accomplishedCount++;
                 accomplishedList.push(t);
+            } else if (t.status === 'Waitlisted') {
+                // Treat waitlisted as separate from pending in count if desired, 
+                // OR keep it as "Pending" but just a different status. 
+                // Request said "Add Waitlisted as an Activity Status option".
+                // Usually it's distinct. Let's add a specific counter.
+                // But for "Pending Activities" high level metric, does Waitlisted count?
+                // Let's assume Waitlisted is NOT Pending, it is Waitlisted.
+                // So we add a new counter.
             } else {
-                pendingCount++;
+                // This covers Pending, In Progress, Continuing, Deferred, Cancelled?? 
+                // Wait, logic above was: if Accomplished -> accomplishedCount. ELSE -> pendingCount.
+                // "Pending" in dashboard likely means "Not Accomplished".
+                // If I want to split it out, I need to change this logic.
+
+                // New Logic: 
+                // Accomplished -> Accomplished
+                // Waitlisted -> Waitlisted (New)
+                // Others (Pending, In Progress, Continuing, Deferred) -> Pending?
+                // Or maybe Cancelled should be ignored?
+                // Let's stick to the existing pattern but extract Waitlisted.
+
+                if (t.status === 'Waitlisted') {
+                    // Do nothing for pendingCount? Or is it still "Pending" completion?
+                    // Let's treat it as a separate category to show zero if needed, 
+                    // but usually dashboards sum up to total.
+                    // Total = Pending + Accomplished + Delayed? No.
+                    // Let's add a specific `waitlistedCount`.
+                }
+
+                pendingCount++; // Logic was: everything not accomplished is pending.
                 pendingList.push(t);
-                if (t.due_date && new Date(t.due_date) < today) {
+
+                if (t.due_date && new Date(t.due_date) < today && t.status !== 'Waitlisted' && t.status !== 'Cancelled') {
+                    // Only count delayed if not waitlisted/cancelled?
                     delayedCount++;
                     delayedList.push(t);
                 }
             }
         });
 
+        // RE-WRITING THE LOOP TO BE CLEARER AND ADD WAITLISTED
+        // Reset counts
+        pendingCount = 0;
+        accomplishedCount = 0;
+        delayedCount = 0;
+        let waitlistedCount = 0;
+        const waitlistedList = [];
+
+        // Clear lists
+        pendingList.length = 0;
+        accomplishedList.length = 0;
+        delayedList.length = 0;
+
+        enrichedTasks.forEach(t => {
+            if (t.status === 'Accomplished') {
+                accomplishedCount++;
+                accomplishedList.push(t);
+            } else if (t.status === 'Waitlisted') {
+                waitlistedCount++;
+                waitlistedList.push(t);
+                // Waitlisted might NOT be considered "Pending" in the strict sense of "To Do", 
+                // it's "On Hold". But for Total Activities = Pending + Accomplished + Waitlisted?
+            } else {
+                // Pending, In Progress, Continuing, Deferred, Cancelled
+                if (t.status !== 'Cancelled') {
+                    pendingCount++;
+                    pendingList.push(t);
+
+                    if (t.due_date && new Date(t.due_date) < today) {
+                        delayedCount++;
+                        delayedList.push(t);
+                    }
+                }
+            }
+        });
+
+
         // Filter valid completed milestones
-        const completedMilestones = milestones.filter(m => ['Completed', 'Accomplished'].includes(m.status));
+        // Filter valid completed milestones
+        const completedMilestones = milestones.filter(m => ['Accomplished', 'Completed', 'Done'].includes(m.status));
 
         // Prepare Activity Data for Financial Breakdown
         // Map tasks to fields compatible with DashboardCharts ('name', 'total_budget', 'actual_cost')
-        // Using 'budget' and 'cost' properties from task objects
+        // Using 'gms_allocation' and 'obligated_amount' properties from task objects
         const activityFinancials = enrichedTasks.map(t => ({
             ...t,
             name: t.title, // Map title to name for the card
-            total_budget: t.budget || 0,
-            actual_cost: t.cost || 0
-        })).sort((a, b) => b.total_budget - a.total_budget); // Sort by budget desc
+            total_budget: t.gms_allocation || 0,
+            actual_cost: t.obligated_amount || 0
+        })).sort((a, b) => b.total_budget - a.total_budget); // Sort by allocation desc
 
         // Mock AI Message construction based on single project
         // (If `aiRisk` exists, we can incorporate it or just let the dashboard use it if we passed it down, 
@@ -280,11 +374,12 @@ const ProjectDetails = () => {
             pendingActivities: pendingCount,
             accomplishedActivities: accomplishedCount,
             delayedActivities: delayedCount,
-            totalBudget: Number(financials.total_budget || 0),
-            totalSpent: Number(financials.actual_cost || 0),
+            waitlistedActivities: waitlistedCount,
+            totalBudget: Number(financials.total_gms_allocation || financials.total_budget || 0),
+            totalSpent: Number(financials.obligated_funds || financials.actual_cost || 0),
             milestonesReached: completedMilestones.length,
             // Detailed Arrays
-            // IMPORTANT: Passing 'activityFinancials' as 'allProjects' allows the "Total Budget" and "Amount Spent" 
+            // IMPORTANT: Passing 'activityFinancials' as 'allProjects' allows the "Total GMS Allocation" and "Obligated Funds" 
             // cards to show the breakdown of Activities (Tasks) instead of just the single project.
             allProjects: activityFinancials,
             allEmployees: filteredEmployees.map(e => ({ ...e, division_name: project.division })),
@@ -292,6 +387,7 @@ const ProjectDetails = () => {
             pendingTasks: pendingList,
             accomplishedTasks: accomplishedList,
             delayedTasks: delayedList,
+            waitlistedTasks: waitlistedList,
             allMilestones: milestones.map(m => ({ ...m, project_name: project.name, division_name: project.division, importance: m.importance }))
         };
     };
@@ -498,7 +594,7 @@ const ProjectDetails = () => {
                     {/* Old Gantt tab location removed */}
 
                     {activeTab === 'milestones' && (
-                        <MilestonesTab projectId={id} />
+                        <MilestonesTab projectId={id} activities={dashboardMetrics?.allTasks || []} />
                     )}
 
                     {activeTab === 'financials' && financials && (
@@ -506,15 +602,15 @@ const ProjectDetails = () => {
                             <h2 className="text-lg font-bold text-slate-800 mb-4">Project Financials</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total Budget</h3>
+                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total GMS Allocation</h3>
                                     <p className="text-3xl font-bold text-slate-800 tracking-tight mt-1">
-                                        ₱{Number(financials?.total_budget || 0).toLocaleString()}
+                                        ₱{Number(project.gms_allocation || financials?.total_gms_allocation || 0).toLocaleString()}
                                     </p>
                                 </div>
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Actual Cost</h3>
+                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Obligated Funds</h3>
                                     <p className="text-3xl font-bold text-slate-800 tracking-tight mt-1">
-                                        ₱{Number(financials?.actual_cost || 0).toLocaleString()}
+                                        ₱{Number(financials?.obligated_funds || financials?.actual_cost || 0).toLocaleString()}
                                     </p>
                                 </div>
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
@@ -523,29 +619,13 @@ const ProjectDetails = () => {
                                         ₱{Number(financials?.remaining_budget || 0).toLocaleString()}
                                     </p>
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Consumption Rate</h3>
+                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Utilization Rate</h3>
                                     <p className="text-3xl font-bold text-orange-500 tracking-tight">
                                         {financials?.burn_rate_percent?.toFixed(1) || 0}%
                                     </p>
                                     <p className="text-xs text-slate-400 mt-2">Percentage of budget used.</p>
                                 </div>
-
-                                {aiRisk && (
-                                    <div className={clsx(
-                                        "p-6 rounded-xl border shadow-sm flex flex-col gap-2",
-                                        aiRisk.riskLevel === 'HIGH' ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"
-                                    )}>
-                                        <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-sm">
-                                            <Activity size={18} />
-                                            AI Risk Assessment: {aiRisk.riskLevel}
-                                        </div>
-                                        <p className="text-sm leading-relaxed opacity-90">{aiRisk.message}</p>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     )}
@@ -647,24 +727,150 @@ const ProjectDetails = () => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Total Budget</label>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Funding</label>
                                 {isEditing ? (
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={editForm.total_budget || 0}
-                                        onChange={e => setEditForm({ ...editForm, total_budget: e.target.value })}
-                                    />
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                                        <div className="flex flex-wrap gap-4 mb-3">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded text-blue-600 focus:ring-blue-500"
+                                                    checked={fundingSources.gaaPs}
+                                                    onChange={e => {
+                                                        const checked = e.target.checked;
+                                                        setFundingSources(prev => ({ ...prev, gaaPs: checked }));
+                                                        if (!checked) setEditForm(prev => ({ ...prev, gaa_ps: 0 }));
+                                                    }}
+                                                />
+                                                <span className="text-sm font-medium text-slate-700">GAA-PS</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded text-blue-600 focus:ring-blue-500"
+                                                    checked={fundingSources.gaaMooe}
+                                                    onChange={e => {
+                                                        const checked = e.target.checked;
+                                                        setFundingSources(prev => ({ ...prev, gaaMooe: checked }));
+                                                        if (!checked) setEditForm(prev => ({ ...prev, gaa_mooe: 0 }));
+                                                    }}
+                                                />
+                                                <span className="text-sm font-medium text-slate-700">GAA-MOOE</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded text-blue-600 focus:ring-blue-500"
+                                                    checked={fundingSources.gms}
+                                                    onChange={e => {
+                                                        const checked = e.target.checked;
+                                                        setFundingSources(prev => ({ ...prev, gms: checked }));
+                                                        if (!checked) setEditForm(prev => ({ ...prev, gms_allocation: 0 }));
+                                                    }}
+                                                />
+                                                <span className="text-sm font-medium text-slate-700">GMS</span>
+                                            </label>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {fundingSources.gaaPs && (
+                                                <div>
+                                                    <label className="block text-xs text-slate-500 mb-1">GAA-PS Allocation (₱)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        className="w-full border border-slate-300 rounded p-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                                        value={editForm.gaa_ps || ''}
+                                                        onChange={e => setEditForm({ ...editForm, gaa_ps: e.target.value })}
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            )}
+                                            {fundingSources.gaaMooe && (
+                                                <div>
+                                                    <label className="block text-xs text-slate-500 mb-1">GAA-MOOE Allocation (₱)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        className="w-full border border-slate-300 rounded p-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                                        value={editForm.gaa_mooe || ''}
+                                                        onChange={e => setEditForm({ ...editForm, gaa_mooe: e.target.value })}
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            )}
+                                            {fundingSources.gms && (
+                                                <div>
+                                                    <label className="block text-xs text-slate-500 mb-1">GMS Allocation (₱)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        className="w-full border border-slate-300 rounded p-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                                        value={editForm.gms_allocation || ''}
+                                                        onChange={e => setEditForm({ ...editForm, gms_allocation: e.target.value })}
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="text-right text-xs font-bold text-slate-700 border-t border-slate-200 pt-2">
+                                            Total: ₱{((Number(editForm.gaa_ps) || 0) + (Number(editForm.gaa_mooe) || 0) + (Number(editForm.gms_allocation) || 0)).toLocaleString()}
+                                        </div>
+                                    </div>
                                 ) : (
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-medium text-slate-800">
-                                            ₱{Number(financials?.total_budget || 0).toLocaleString()}
-                                        </p>
-                                        {(Number(project.total_budget || 0) <= 0) && (
-                                            <p className="text-xs text-slate-400 italic">Calculated from activities</p>
+                                    <div className="space-y-2">
+                                        {(Number(project.gaa_allocation) > 0 || Number(project.gms_allocation) > 0) ? (
+                                            <div className="text-sm space-y-1">
+                                                {Number(project.gaa_ps) > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-slate-500">GAA-PS:</span>
+                                                        <span className="font-mono text-slate-700 font-medium">₱{Number(project.gaa_ps).toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                                {Number(project.gaa_mooe) > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-slate-500">GAA-MOOE:</span>
+                                                        <span className="font-mono text-slate-700 font-medium">₱{Number(project.gaa_mooe).toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                                {/* Fallback for old GAA allocation if specific split is missing but total exists */}
+                                                {(Number(project.gaa_allocation) > 0 && Number(project.gaa_ps) === 0 && Number(project.gaa_mooe) === 0) && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-slate-500">GAA (Total):</span>
+                                                        <span className="font-mono text-slate-700 font-medium">₱{Number(project.gaa_allocation).toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                                {Number(project.gms_allocation) > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-slate-500">GMS:</span>
+                                                        <span className="font-mono text-slate-700 font-medium">₱{Number(project.gms_allocation).toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between border-t border-slate-100 pt-1 mt-1 font-bold">
+                                                    <span className="text-slate-800">Total:</span>
+                                                    <span className="font-mono text-slate-800">₱{Number(project.total_budget || 0).toLocaleString()}</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-medium text-slate-800">
+                                                    ₱{Number(project.total_budget || 0).toLocaleString()}
+                                                </p>
+                                                <p className="text-xs text-slate-400 italic">No specific source breakdown</p>
+                                            </div>
                                         )}
+
+                                        {/* Activity Rollup comparison */}
+                                        <div className="pt-2 mt-2 border-t border-slate-100">
+                                            <p className="text-xs text-slate-400">Allocated to Activities:</p>
+                                            <p className="text-sm font-bold text-blue-600">
+                                                ₱{Number(financials?.total_gms_allocation || financials?.total_budget || 0).toLocaleString()}
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                             </div>

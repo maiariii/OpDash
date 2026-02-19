@@ -11,9 +11,14 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
         description: '',
         division: '',
         lead_personnel: '',
+        lead_personnel: '',
         supervising_officer: '',
         assisting_personnel: [] // Array for multi-select
     });
+
+    // Financial Optimizations
+    const [fundingSources, setFundingSources] = useState({ gaaPs: false, gaaMooe: false, gms: false });
+    const [allocations, setAllocations] = useState({ gaaPs: '', gaaMooe: '', gms: '' });
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -72,10 +77,20 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
         e.preventDefault();
         setLoading(true);
         try {
+            const gaaPs = Number(allocations.gaaPs) || 0;
+            const gaaMooe = Number(allocations.gaaMooe) || 0;
+            const gms = Number(allocations.gms) || 0;
+            const totalGaa = gaaPs + gaaMooe;
+
             const projectData = {
                 ...formData,
                 assisting_personnel: formData.assisting_personnel.join(', '),
-                basecamp_target: selectedBasecamp.join(', ')
+                basecamp_target: selectedBasecamp.join(', '),
+                gaa_ps: gaaPs,
+                gaa_mooe: gaaMooe,
+                gaa_allocation: totalGaa, // Keep for backward compatibility or sum
+                gms_allocation: gms,
+                total_budget: totalGaa + gms
             };
 
             const newProject = await createProject(projectData);
@@ -132,17 +147,90 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Total Budget (₱)</label>
-                        <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="0.00"
-                            value={formData.total_budget || ''}
-                            onChange={e => setFormData({ ...formData, total_budget: e.target.value })}
-                        />
+                    {/* Source of Funds Section */}
+                    {/* Source of Funds Section */}
+                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                        <label className="block text-sm font-medium text-slate-700">Source of Funds</label>
+                        <div className="flex flex-wrap gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="rounded text-blue-600 focus:ring-blue-500"
+                                    checked={fundingSources.gaaPs}
+                                    onChange={e => setFundingSources({ ...fundingSources, gaaPs: e.target.checked })}
+                                />
+                                <span className="text-sm text-slate-700">GAA-PS</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="rounded text-blue-600 focus:ring-blue-500"
+                                    checked={fundingSources.gaaMooe}
+                                    onChange={e => setFundingSources({ ...fundingSources, gaaMooe: e.target.checked })}
+                                />
+                                <span className="text-sm text-slate-700">GAA-MOOE</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="rounded text-blue-600 focus:ring-blue-500"
+                                    checked={fundingSources.gms}
+                                    onChange={e => setFundingSources({ ...fundingSources, gms: e.target.checked })}
+                                />
+                                <span className="text-sm text-slate-700">GMS</span>
+                            </label>
+                        </div>
+
+                        {/* Dynamic Allocation Inputs */}
+                        <div className="grid grid-cols-2 gap-4 mt-2">
+                            {fundingSources.gaaPs && (
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">GAA-PS Allocation (₱)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                        placeholder="0.00"
+                                        value={allocations.gaaPs}
+                                        onChange={e => setAllocations({ ...allocations, gaaPs: e.target.value })}
+                                    />
+                                </div>
+                            )}
+                            {fundingSources.gaaMooe && (
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">GAA-MOOE Allocation (₱)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                        placeholder="0.00"
+                                        value={allocations.gaaMooe}
+                                        onChange={e => setAllocations({ ...allocations, gaaMooe: e.target.value })}
+                                    />
+                                </div>
+                            )}
+                            {fundingSources.gms && (
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">GMS Allocation (₱)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                        placeholder="0.00"
+                                        value={allocations.gms}
+                                        onChange={e => setAllocations({ ...allocations, gms: e.target.value })}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        {(fundingSources.gaaPs || fundingSources.gaaMooe || fundingSources.gms) && (
+                            <div className="text-right text-xs font-bold text-slate-600 border-t border-slate-200 pt-2">
+                                Total Budget: ₱{((Number(allocations.gaaPs) || 0) + (Number(allocations.gaaMooe) || 0) + (Number(allocations.gms) || 0)).toLocaleString()}
+                            </div>
+                        )}
                     </div>
 
                     <div>
@@ -228,6 +316,38 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                                     <span className="text-sm text-slate-700 leading-snug">{option}</span>
                                 </label>
                             ))}
+                            <label className="flex items-start gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedBasecamp.some(opt => !basecampOptions.includes(opt))}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            // Add placeholder for custom input
+                                            setSelectedBasecamp([...selectedBasecamp, "Others: "]);
+                                        } else {
+                                            // Remove custom input
+                                            setSelectedBasecamp(selectedBasecamp.filter(opt => basecampOptions.includes(opt)));
+                                        }
+                                    }}
+                                    className="mt-1 rounded text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-slate-700 leading-snug">Others</span>
+                            </label>
+                            {selectedBasecamp.some(opt => !basecampOptions.includes(opt)) && (
+                                <input
+                                    type="text"
+                                    className="w-full mt-2 px-2 py-1 border border-slate-300 rounded text-sm outline-none focus:border-blue-500"
+                                    placeholder="Specify other target..."
+                                    value={selectedBasecamp.find(opt => !basecampOptions.includes(opt))?.replace("Others: ", "") || ""}
+                                    onChange={(e) => {
+                                        const customVal = "Others: " + e.target.value;
+                                        setSelectedBasecamp(prev => [
+                                            ...prev.filter(opt => basecampOptions.includes(opt)),
+                                            customVal
+                                        ]);
+                                    }}
+                                />
+                            )}
                         </div>
                     </div>
 

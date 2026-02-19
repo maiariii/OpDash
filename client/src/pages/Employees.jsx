@@ -2,6 +2,30 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { getEmployees, createEmployee, updateEmployee, getDivisions, deleteEmployee } from '../api';
 import { User, Plus, Edit2, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
 
+const POSITIONS = [
+    "Administrative Aide I", "Administrative Aide II", "Administrative Aide III", "Administrative Aide IV", "Administrative Aide V", "Administrative Aide VI",
+    "Administrative Assistant I", "Administrative Assistant II", "Administrative Assistant III", "Administrative Assistant V", "Administrative Assistant VI",
+    "Administrative Officer I", "Administrative Officer II", "Administrative Officer III", "Administrative Officer IV", "Administrative Officer V",
+    "Administrative Support I", "Administrative Support II",
+    "Chief Administrative Officer",
+    "Chief Health Program Officer",
+    "Director II", "Director III", "Director IV",
+    "Draftsman II",
+    "Electronics and Communications",
+    "Engineer II", "Engineer III", "Engineer IV", "Engineer V",
+    "Executive Assistant I", "Executive Assistant II", "Executive Assistant III", "Executive Assistant IV", "Executive Assistant V",
+    "Messenger/Ground Maintenance/Utility Workers",
+    "Project Development Officer I", "Project Development Officer II", "Project Development Officer III", "Project Development Officer IV", "Project Development Officer V",
+    "Senior Administrative Assistant I", "Senior Administrative Assistant II", "Senior Administrative Assistant III", "Senior Administrative Assistant V",
+    "Skilled Worker/Driver",
+    "Statistician I", "Statistician II", "Statistician III",
+    "Supervising Administrative Officer",
+    "Technical Assistant I", "Technical Assistant II", "Technical Assistant III",
+    "Technical Assistant III (Attorney III)", "Technical Assistant III (Engineer II)",
+    "Technical Assistant IV",
+    "Technical Assistant IV (Architect III)", "Technical Assistant IV (Attorney IV)", "Technical Assistant IV (Engineer III)", "Technical Assistant IV (Medical Officer III)"
+].sort();
+
 const Employees = () => {
     const [divisions, setDivisions] = useState([]);
     const [employees, setEmployees] = useState([]);
@@ -186,27 +210,9 @@ const Employees = () => {
                             required
                         >
                             <option value="">Select Position</option>
-                            {
-                                [
-                                    "Administrative Aide I", "Administrative Aide II", "Administrative Aide III", "Administrative Aide IV", "Administrative Aide V", "Administrative Aide VI",
-                                    "Administrative Assistant I", "Administrative Assistant II", "Administrative Assistant III", "Administrative Assistant V", "Administrative Assistant VI",
-                                    "Administrative Officer I", "Administrative Officer II", "Administrative Officer III", "Administrative Officer IV", "Administrative Officer V",
-                                    "Chief Administrative Officer",
-                                    "Chief Health Program Officer",
-                                    "Director II", "Director III", "Director IV",
-                                    "Draftsman II",
-                                    "Electronics and Communications",
-                                    "Engineer II", "Engineer III", "Engineer IV", "Engineer V",
-                                    "Executive Assistant I", "Executive Assistant II", "Executive Assistant III", "Executive Assistant IV", "Executive Assistant V",
-                                    "Project Development Officer I", "Project Development Officer II", "Project Development Officer III", "Project Development Officer IV", "Project Development Officer V",
-                                    "Senior Administrative Assistant I", "Senior Administrative Assistant II", "Senior Administrative Assistant III", "Senior Administrative Assistant V",
-                                    "Statistician I", "Statistician II", "Statistician III",
-                                    "Supervising Administrative Officer",
-                                    "Technical Assistant I", "Technical Assistant II", "Technical Assistant III", "Technical Assistant IV"
-                                ].map(pos => (
-                                    <option key={pos} value={pos}>{pos}</option>
-                                ))
-                            }
+                            {POSITIONS.map(pos => (
+                                <option key={pos} value={pos}>{pos}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="flex justify-end">
@@ -385,27 +391,9 @@ const Employees = () => {
                                             required
                                         >
                                             <option value="">Select Position</option>
-                                            {
-                                                [
-                                                    "Administrative Aide I", "Administrative Aide II", "Administrative Aide III", "Administrative Aide IV", "Administrative Aide V", "Administrative Aide VI",
-                                                    "Administrative Assistant I", "Administrative Assistant II", "Administrative Assistant III", "Administrative Assistant V", "Administrative Assistant VI",
-                                                    "Administrative Officer I", "Administrative Officer II", "Administrative Officer III", "Administrative Officer IV", "Administrative Officer V",
-                                                    "Chief Administrative Officer",
-                                                    "Chief Health Program Officer",
-                                                    "Director II", "Director III", "Director IV",
-                                                    "Draftsman II",
-                                                    "Electronics and Communications",
-                                                    "Engineer II", "Engineer III", "Engineer IV", "Engineer V",
-                                                    "Executive Assistant I", "Executive Assistant II", "Executive Assistant III", "Executive Assistant IV", "Executive Assistant V",
-                                                    "Project Development Officer I", "Project Development Officer II", "Project Development Officer III", "Project Development Officer IV", "Project Development Officer V",
-                                                    "Senior Administrative Assistant I", "Senior Administrative Assistant II", "Senior Administrative Assistant III", "Senior Administrative Assistant V",
-                                                    "Statistician I", "Statistician II", "Statistician III",
-                                                    "Supervising Administrative Officer",
-                                                    "Technical Assistant I", "Technical Assistant II", "Technical Assistant III", "Technical Assistant IV"
-                                                ].map(pos => (
-                                                    <option key={pos} value={pos}>{pos}</option>
-                                                ))
-                                            }
+                                            {POSITIONS.map(pos => (
+                                                <option key={pos} value={pos}>{pos}</option>
+                                            ))}
                                         </select>
                                     </div>
                                 </div>
