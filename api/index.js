@@ -423,7 +423,7 @@ apiRouter.get('/projects/:id/tasks', async (req, res) => {
 // POST Create Task (Activity)
 apiRouter.post('/tasks', async (req, res) => {
     try {
-        const { project_id, title, objective, parent_path, status, assignee_id, milestone_id, activity_type, estimated_hours, start_date, due_date, obligated_amount, gms_allocation } = req.body;
+        const { project_id, title, objective, parent_path, status, assignee_id, milestone_id, activity_type, nature_of_activity, estimated_hours, start_date, due_date, obligated_amount, gms_allocation } = req.body;
 
         if (title && title.length > 50) return res.status(400).json({ error: 'Activity title cannot exceed 50 characters' });
         if (objective && objective.length > 100) return res.status(400).json({ error: 'Activity objective cannot exceed 100 characters' });
@@ -442,6 +442,7 @@ apiRouter.post('/tasks', async (req, res) => {
             assignee_id,
             milestone_id, // Add milestone_id
             activity_type, // Add activity_type
+            nature_of_activity: nature_of_activity || '',
             estimated_hours: Number(estimated_hours) || 0,
             start_date,
             due_date,
@@ -500,7 +501,11 @@ apiRouter.put('/tasks/:id', async (req, res) => {
         const current = await azureDb.getActivityById(id);
         if (!current) return res.status(404).json({ error: "Task (Activity) not found" });
 
-        const { status, title, objective, priority, assignee_id, milestone_id, activity_type, start_date, due_date, obligated_amount, gms_allocation } = req.body;
+        const {
+            project_id, title, objective, status, priority, assignee_id,
+            milestone_id, activity_type, nature_of_activity, estimated_hours,
+            start_date, due_date, gms_allocation, obligated_amount
+        } = req.body;
 
         const updatedTask = {
             ...current,
@@ -509,9 +514,11 @@ apiRouter.put('/tasks/:id', async (req, res) => {
             status: status || current.status,
             priority: priority || current.priority,
             assignee_id: assignee_id || current.assignee_id,
-            milestone_id: milestone_id !== undefined ? milestone_id : current.milestone_id, // Update if provided
+            milestone_id: milestone_id !== undefined ? milestone_id : current.milestone_id,
             activity_type: activity_type !== undefined ? activity_type : current.activity_type,
-            start_date: start_date || current.start_date,
+            nature_of_activity: nature_of_activity !== undefined ? nature_of_activity : current.nature_of_activity,
+            estimated_hours: estimated_hours !== undefined ? Number(estimated_hours) : current.estimated_hours,
+            start_date: start_date !== undefined ? start_date : current.start_date,
             due_date: due_date || current.due_date,
             obligated_amount: obligated_amount !== undefined ? Number(obligated_amount) : current.obligated_amount,
             gms_allocation: gms_allocation !== undefined ? Number(gms_allocation) : current.gms_allocation

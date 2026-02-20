@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { getEmployees, getProjects, getProjectTasks, getProjectFinancials, getDivisions, getAllCatchUps, getAllMilestones } from '../api';
 import DashboardCharts from '../components/DashboardCharts';
+import MultiSelect from '../components/MultiSelect';
 import CalendarView from '../components/CalendarView';
 import CreateTaskModal from '../components/CreateTaskModal';
 import SpilloverTracker from '../components/SpilloverTracker';
@@ -9,7 +10,7 @@ import Loader from '../components/Loader';
 
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
-    const [selectedDivision, setSelectedDivision] = useState('All');
+    const [selectedDivisions, setSelectedDivisions] = useState([]); // Array of selected division names
     const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger for re-fetching
     const socketRef = useRef(null);
 
@@ -36,8 +37,6 @@ const Dashboard = () => {
         allTasks: [],
         pendingTasks: [],
         accomplishedTasks: [],
-        delayedTasks: [],
-        milestonesReached: 0,
         delayedTasks: [],
         milestonesReached: 0,
         allMilestones: [],
@@ -125,15 +124,15 @@ const Dashboard = () => {
 
         const { projectDetails, employees, projects, catchups, milestones } = rawData;
 
-        // Filter Data based on selectedDivision
-        const filteredProjects = selectedDivision === 'All'
+        // Filter Data based on selectedDivisions
+        const filteredProjects = selectedDivisions.length === 0
             ? projectDetails
-            : projectDetails.filter(p => p.division === selectedDivision);
+            : projectDetails.filter(p => selectedDivisions.includes(p.division));
 
         // For employees, we filter by division_name (mapped earlier)
-        const filteredEmployees = selectedDivision === 'All'
+        const filteredEmployees = selectedDivisions.length === 0
             ? employees
-            : employees.filter(e => e.division_name === selectedDivision);
+            : employees.filter(e => selectedDivisions.includes(e.division_name));
 
         const filteredProjectIds = new Set(filteredProjects.map(p => p.id));
 
@@ -273,7 +272,7 @@ const Dashboard = () => {
             allMilestones: enrichedMilestones
         });
 
-    }, [rawData, selectedDivision, loading]);
+    }, [rawData, selectedDivisions, loading]);
 
 
     if (loading) {
@@ -285,18 +284,15 @@ const Dashboard = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h2 className="text-2xl font-bold text-slate-800">Executive Dashboard</h2>
 
-                <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
-                    <span className="text-sm font-medium text-slate-500 pl-2">Filter by Division:</span>
-                    <select
-                        value={selectedDivision}
-                        onChange={(e) => setSelectedDivision(e.target.value)}
-                        className="form-select text-sm border-none focus:ring-0 bg-transparent font-medium text-slate-800 cursor-pointer min-w-[200px]"
-                    >
-                        <option value="All">All Divisions</option>
-                        {rawData.divisions.map(div => (
-                            <option key={div.id} value={div.name}>{div.name}</option>
-                        ))}
-                    </select>
+                <div className="flex items-center gap-2">
+                    <MultiSelect
+                        label="Filter by Division"
+                        options={rawData.divisions.map(d => ({ label: d.name, value: d.name }))}
+                        selected={selectedDivisions}
+                        onChange={setSelectedDivisions}
+                        placeholder="All Divisions"
+                        className="min-w-[350px]"
+                    />
                 </div>
             </div>
 

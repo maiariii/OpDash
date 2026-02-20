@@ -11,7 +11,6 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
         description: '',
         division: '',
         lead_personnel: '',
-        lead_personnel: '',
         supervising_officer: '',
         assisting_personnel: [] // Array for multi-select
     });
@@ -59,8 +58,11 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
         "Workforce Plan and Management",
         "HROD Process Excellence",
         "Prioritization Index for Education Facilities Allocation",
+        "Prioritization Index for Education Facilities Allocation",
         "Career Opportunities in DepEd for SHS Graduates"
     ];
+
+
 
     const [selectedBasecamp, setSelectedBasecamp] = useState([]);
 
@@ -247,6 +249,8 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                             ))}
                         </select>
                     </div>
+
+
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Lead Personnel</label>

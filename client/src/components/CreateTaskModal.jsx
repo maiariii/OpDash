@@ -56,6 +56,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
         gms_allocation: 0,
         milestone_id: '', // Add milestone_id
         activity_type: 'Deskwork', // Default
+        nature_of_activity: '', // New field
         expenses: [],
         subtasks: [] // Initialize subtasks
     });
@@ -98,6 +99,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                 gms_allocation: task.gms_allocation || task.budget || 0,   // Fallback to old field
                 milestone_id: task.milestone_id || '', // Populate milestone_id
                 activity_type: task.activity_type || 'Deskwork',
+                nature_of_activity: task.nature_of_activity || '',
                 expenses: task.expenses || [],
                 subtasks: task.subtasks || []
             });
@@ -244,6 +246,28 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                                 <option value="Communications">Communications</option>
                                 <option value="Workshop">Workshop</option>
                                 <option value="Field Visit">Field Visit</option>
+                            </select>
+                        </div>
+
+                        {/* Nature of Activity Dropdown */}
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                                Nature of Activity <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors text-slate-800 appearance-none bg-no-repeat bg-[right_1rem_center]"
+                                value={formData.nature_of_activity}
+                                onChange={(e) => setFormData({ ...formData, nature_of_activity: e.target.value })}
+                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1.25rem' }}
+                                required
+                            >
+                                <option value="">Select Nature of Activity</option>
+                                <option value="Policy Development">Policy Development</option>
+                                <option value="Program Implementation">Program Implementation</option>
+                                <option value="Technical Assistance">Technical Assistance</option>
+                                <option value="Monitoring and Evaluation">Monitoring and Evaluation</option>
+                                <option value="Tools/System Development">Tools/System Development</option>
+                                <option value="Office Management">Office Management</option>
                             </select>
                         </div>
 

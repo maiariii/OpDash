@@ -48,12 +48,15 @@ CREATE TABLE IF NOT EXISTS activities_list (
     title TEXT NOT NULL,
     objective TEXT,
     status TEXT,
+    milestone_id TEXT,
+    activity_type TEXT,
+    nature_of_activity TEXT,
+    estimated_hours NUMERIC,
     start_date DATE,
     due_date DATE,
-    budget NUMERIC,
-    cost NUMERIC,
+    gms_allocation NUMERIC,
+    obligated_amount NUMERIC,
     assignee_id TEXT,
-    milestone_id TEXT, -- Link to parent milestone
     path TEXT,
     priority TEXT DEFAULT 'Medium',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -153,6 +156,16 @@ async function initDB() {
             -- activities_list: activity_type
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='activity_type') THEN 
                 ALTER TABLE activities_list ADD COLUMN activity_type TEXT; 
+            END IF;
+
+            -- activities_list: nature_of_activity
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='nature_of_activity') THEN 
+                ALTER TABLE activities_list ADD COLUMN nature_of_activity TEXT; 
+            END IF;
+
+            -- activities_list: estimated_hours
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='estimated_hours') THEN 
+                ALTER TABLE activities_list ADD COLUMN estimated_hours NUMERIC; 
             END IF;
 
             -- Migration: Rename budget -> gms_allocation
@@ -326,31 +339,35 @@ async function upsertActivity(data) {
     const q = `
         INSERT INTO activities_list(
             id, project_id, title, objective, status,
+            milestone_id, activity_type, nature_of_activity, estimated_hours,
             start_date, due_date, gms_allocation, obligated_amount,
-            assignee_id, milestone_id, activity_type, path, priority, created_at
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, COALESCE($15, CURRENT_TIMESTAMP))
+            assignee_id, path, priority, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, COALESCE($17, CURRENT_TIMESTAMP))
         ON CONFLICT(id) DO UPDATE SET
             title = EXCLUDED.title,
             objective = EXCLUDED.objective,
             status = EXCLUDED.status,
+            milestone_id = EXCLUDED.milestone_id,
+            activity_type = EXCLUDED.activity_type,
+            nature_of_activity = EXCLUDED.nature_of_activity,
+            estimated_hours = EXCLUDED.estimated_hours,
             start_date = EXCLUDED.start_date,
             due_date = EXCLUDED.due_date,
             gms_allocation = EXCLUDED.gms_allocation,
             obligated_amount = EXCLUDED.obligated_amount,
             assignee_id = EXCLUDED.assignee_id,
-            milestone_id = EXCLUDED.milestone_id,
-            activity_type = EXCLUDED.activity_type,
             path = EXCLUDED.path,
             priority = EXCLUDED.priority
         RETURNING *;
     `;
     const values = [
         data.id, data.project_id, data.title, data.objective || '',
-        data.status || 'Pending', data.start_date || null, data.due_date || null,
+        data.status || 'Pending', data.milestone_id || null,
+        data.activity_type || 'Deskwork', data.nature_of_activity || '',
+        Number(data.estimated_hours) || 0,
+        data.start_date || null, data.due_date || null,
         Number(data.gms_allocation) || 0, Number(data.obligated_amount) || 0,
-        data.assignee_id || null, data.milestone_id || null,
-        data.activity_type || 'Deskwork', // Default or null
-        data.path || data.id,
+        data.assignee_id || null, data.path || data.id,
         data.priority || 'Medium', data.created_at
     ];
     const res = await query(q, values);

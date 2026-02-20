@@ -203,6 +203,8 @@ const ProjectDetails = () => {
         "Career Opportunities in DepEd for SHS Graduates"
     ];
 
+
+
     const toggleBasecamp = (option) => {
         let current = editForm.basecamp_target ? editForm.basecamp_target.split(',').map(s => s.trim()) : [];
         current = current.filter(c => c); // Clean empty
@@ -690,6 +692,8 @@ const ProjectDetails = () => {
                                     />
                                 </div>
                             )}
+
+
 
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description</label>
