@@ -262,6 +262,10 @@ const ProjectDetails = () => {
         let accomplishedCount = 0;
         let delayedCount = 0;
 
+        // Financial Aggregates from Activities
+        let totalActivityGms = 0;
+        let totalActivityObligated = 0;
+
         const pendingList = [];
         const accomplishedList = [];
         const delayedList = [];
@@ -348,6 +352,10 @@ const ProjectDetails = () => {
                     }
                 }
             }
+
+            // Sum Financials
+            totalActivityGms += Number(t.gms_allocation) || 0;
+            totalActivityObligated += Number(t.obligated_amount) || 0;
         });
 
 
@@ -377,8 +385,10 @@ const ProjectDetails = () => {
             accomplishedActivities: accomplishedCount,
             delayedActivities: delayedCount,
             waitlistedActivities: waitlistedCount,
-            totalBudget: Number(financials.total_gms_allocation || financials.total_budget || 0),
-            totalSpent: Number(financials.obligated_funds || financials.actual_cost || 0),
+            totalBudget: totalActivityGms, // Use Sum of Activities
+            totalSpent: totalActivityObligated, // Use Sum of Activities
+            remainingBudget: totalActivityGms - totalActivityObligated,
+            burnRate: totalActivityGms > 0 ? (totalActivityObligated / totalActivityGms) * 100 : 0,
             milestonesReached: completedMilestones.length,
             // Detailed Arrays
             // IMPORTANT: Passing 'activityFinancials' as 'allProjects' allows the "Total GMS Allocation" and "Obligated Funds" 
@@ -606,25 +616,25 @@ const ProjectDetails = () => {
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total GMS Allocation</h3>
                                     <p className="text-3xl font-bold text-slate-800 tracking-tight mt-1">
-                                        ₱{Number(project.gms_allocation || financials?.total_gms_allocation || 0).toLocaleString()}
+                                        ₱{dashboardMetrics?.totalBudget?.toLocaleString() || '0'}
                                     </p>
                                 </div>
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Obligated Funds</h3>
                                     <p className="text-3xl font-bold text-slate-800 tracking-tight mt-1">
-                                        ₱{Number(financials?.obligated_funds || financials?.actual_cost || 0).toLocaleString()}
+                                        ₱{dashboardMetrics?.totalSpent?.toLocaleString() || '0'}
                                     </p>
                                 </div>
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Remaining Budget</h3>
-                                    <p className={`text-3xl font-bold tracking-tight mt-1 ${(financials?.remaining_budget || 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                        ₱{Number(financials?.remaining_budget || 0).toLocaleString()}
+                                    <p className={`text-3xl font-bold tracking-tight mt-1 ${(dashboardMetrics?.remainingBudget || 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                        ₱{dashboardMetrics?.remainingBudget?.toLocaleString() || '0'}
                                     </p>
                                 </div>
                                 <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Utilization Rate</h3>
                                     <p className="text-3xl font-bold text-orange-500 tracking-tight">
-                                        {financials?.burn_rate_percent?.toFixed(1) || 0}%
+                                        {dashboardMetrics?.burnRate?.toFixed(1) || 0}%
                                     </p>
                                     <p className="text-xs text-slate-400 mt-2">Percentage of budget used.</p>
                                 </div>
@@ -956,7 +966,7 @@ const ProjectDetails = () => {
                                 {isEditing ? (
                                     <div className="border border-slate-300 rounded-lg p-2 max-h-60 overflow-y-auto space-y-2">
                                         {basecampOptions.map((option, idx) => {
-                                            const isSelected = editForm.basecamp_target?.includes(option);
+                                            const isSelected = editForm.basecamp_target?.split(',').map(s => s.trim()).includes(option);
                                             return (
                                                 <div key={idx} onClick={() => toggleBasecamp(option)} className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
                                                     {isSelected ?
@@ -969,6 +979,50 @@ const ProjectDetails = () => {
                                                 </div>
                                             );
                                         })}
+                                        {/* Others Option */}
+                                        <div
+                                            className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"
+                                            onClick={() => {
+                                                let current = editForm.basecamp_target ? editForm.basecamp_target.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                                // Check if any custom value exists
+                                                const hasCustom = current.some(opt => !basecampOptions.includes(opt));
+
+                                                if (hasCustom) {
+                                                    // Remove custom
+                                                    current = current.filter(opt => basecampOptions.includes(opt));
+                                                } else {
+                                                    // Add placeholder
+                                                    current.push("Others: ");
+                                                }
+                                                setEditForm({ ...editForm, basecamp_target: current.join(', ') });
+                                            }}
+                                        >
+                                            {(editForm.basecamp_target?.split(',').map(s => s.trim()).some(opt => opt && !basecampOptions.includes(opt))) ?
+                                                <CheckSquare size={16} className="text-blue-600 mt-0.5 flex-shrink-0" /> :
+                                                <Square size={16} className="text-slate-300 mt-0.5 flex-shrink-0" />
+                                            }
+                                            <span className="text-sm select-none leading-tight text-slate-500">
+                                                Others
+                                            </span>
+                                        </div>
+                                        {/* Input for Others */}
+                                        {(editForm.basecamp_target?.split(',').map(s => s.trim()).some(opt => opt && !basecampOptions.includes(opt))) && (
+                                            <input
+                                                type="text"
+                                                className="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm outline-none focus:border-blue-500"
+                                                placeholder="Specify other target..."
+                                                value={editForm.basecamp_target.split(',').map(s => s.trim()).find(opt => !basecampOptions.includes(opt))?.replace("Others: ", "") || ""}
+                                                onChange={(e) => {
+                                                    const customVal = "Others: " + e.target.value;
+                                                    let current = editForm.basecamp_target.split(',').map(s => s.trim()).filter(Boolean);
+                                                    // Remove old custom and add new
+                                                    current = current.filter(opt => basecampOptions.includes(opt));
+                                                    current.push(customVal);
+                                                    setEditForm({ ...editForm, basecamp_target: current.join(', ') });
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="space-y-2">

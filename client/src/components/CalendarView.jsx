@@ -4,7 +4,7 @@ import {
     eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths,
     addWeeks, subWeeks, isToday, startOfDay, endOfDay, isWithinInterval
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Layers, LayoutGrid, List, ChevronDown, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Layers, LayoutGrid, List, ChevronDown, Filter, Check } from 'lucide-react';
 import clsx from 'clsx';
 
 const CalendarView = ({ activities = [], title = "Activity Calendar", onActivityClick, onDayClick, onRangeSelect }) => {
@@ -12,6 +12,11 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
     const [viewMode, setViewMode] = useState('month'); // 'month', 'week', 'biweek'
     const [filterStatus, setFilterStatus] = useState(['Pending', 'In Progress']); // Default: Pending & Ongoing
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    // Activity Type Filter
+    const activityTypes = ['Deskwork', 'Communications', 'Workshop', 'Field Visit'];
+    // Default: Exclude Deskwork and Communications
+    const [filterType, setFilterType] = useState(['Workshop', 'Field Visit']);
 
     // Drag Selection State
     const [isDragging, setIsDragging] = useState(false);
@@ -77,9 +82,16 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
     }, []);
 
     const filteredActivities = useMemo(() => {
-        if (filterStatus.length === 0) return [];
-        return activities.filter(a => filterStatus.includes(a.status));
-    }, [activities, filterStatus]);
+        if (filterStatus.length === 0 && filterType.length === 0) return [];
+        return activities.filter(a => {
+            const statusMatch = filterStatus.includes(a.status);
+            // If activity has no type, treat it cautiously? Or include if only status match?
+            // Let's assume default 'Deskwork' if missing, but better to check
+            const type = a.activity_type || 'Deskwork';
+            const typeMatch = filterType.includes(type);
+            return statusMatch && typeMatch;
+        });
+    }, [activities, filterStatus, filterType]);
 
     // --- Layout Algorithm for Continuous Tiles ---
 
@@ -248,57 +260,98 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {/* Activity Status Filter */}
+                    {/* Activity Status & Type Filter */}
                     <div className="relative">
                         <button
                             onClick={() => setIsFilterOpen(!isFilterOpen)}
                             className="flex items-center gap-2 text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-white transition-colors"
                         >
                             <Filter size={16} />
-                            <span>Filters ({filterStatus.length})</span>
+                            <span>Filters ({filterStatus.length + filterType.length})</span>
                             <ChevronDown size={14} className="text-slate-400" />
                         </button>
 
                         {isFilterOpen && (
                             <>
                                 <div className="fixed inset-0 z-40" onClick={() => setIsFilterOpen(false)} />
-                                <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-50 p-2 animate-in fade-in zoom-in duration-100">
-                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 py-1 mb-1">Status</div>
-                                    <div className="space-y-0.5 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                        {uniqueStatuses.map(status => (
-                                            <label key={status} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer select-none">
-                                                <div className={clsx(
-                                                    "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                                                    filterStatus.includes(status) ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 bg-white"
-                                                )}>
-                                                    {filterStatus.includes(status) && <ChevronDown size={12} className="rotate-0" />} {/* Checkmark hack or just box */}
-                                                </div>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={filterStatus.includes(status)}
-                                                    onChange={() => {
-                                                        setFilterStatus(prev =>
-                                                            prev.includes(status)
-                                                                ? prev.filter(s => s !== status)
-                                                                : [...prev, status]
-                                                        );
-                                                    }}
-                                                    className="hidden"
-                                                />
-                                                <span className="text-sm text-slate-700">{status}</span>
-                                            </label>
-                                        ))}
+                                <div className="absolute top-full right-0 mt-1 w-64 bg-white rounded-xl shadow-xl border border-slate-100 z-50 p-2 animate-in fade-in zoom-in duration-100 flex flex-col max-h-[400px]">
+
+                                    {/* Activity Codes / Type */}
+                                    <div className="p-2 border-b border-slate-100">
+                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Activity Type</div>
+                                        <div className="space-y-1">
+                                            {activityTypes.map(type => (
+                                                <label key={type} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer select-none">
+                                                    <div className={clsx(
+                                                        "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                                                        filterType.includes(type) ? "bg-purple-600 border-purple-600 text-white" : "border-slate-300 bg-white"
+                                                    )}>
+                                                        {filterType.includes(type) && <Check size={12} />}
+                                                    </div>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={filterType.includes(type)}
+                                                        onChange={() => {
+                                                            setFilterType(prev =>
+                                                                prev.includes(type)
+                                                                    ? prev.filter(t => t !== type)
+                                                                    : [...prev, type]
+                                                            );
+                                                        }}
+                                                        className="hidden"
+                                                    />
+                                                    <span className="text-sm text-slate-700">{type}</span>
+                                                </label>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="pt-2 mt-2 border-t border-slate-100 flex gap-2">
+
+                                    {/* Status */}
+                                    <div className="p-2 flex-1 overflow-y-auto custom-scrollbar">
+                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Status</div>
+                                        <div className="space-y-1">
+                                            {uniqueStatuses.map(status => (
+                                                <label key={status} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer select-none">
+                                                    <div className={clsx(
+                                                        "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                                                        filterStatus.includes(status) ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 bg-white"
+                                                    )}>
+                                                        {filterStatus.includes(status) && <Check size={12} />}
+                                                    </div>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={filterStatus.includes(status)}
+                                                        onChange={() => {
+                                                            setFilterStatus(prev =>
+                                                                prev.includes(status)
+                                                                    ? prev.filter(s => s !== status)
+                                                                    : [...prev, status]
+                                                            );
+                                                        }}
+                                                        className="hidden"
+                                                    />
+                                                    <span className="text-sm text-slate-700">{status}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-2 border-t border-slate-100 bg-slate-50 flex gap-2">
                                         <button
-                                            onClick={() => setFilterStatus(uniqueStatuses)}
-                                            className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 flex-1"
+                                            onClick={() => {
+                                                setFilterStatus(uniqueStatuses);
+                                                setFilterType(activityTypes);
+                                            }}
+                                            className="text-xs font-bold text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded hover:bg-blue-50 flex-1 border border-blue-100 bg-white"
                                         >
-                                            Select All
+                                            Reset All
                                         </button>
                                         <button
-                                            onClick={() => setFilterStatus([])}
-                                            className="text-xs font-medium text-slate-500 hover:text-slate-700 px-2 py-1 rounded hover:bg-slate-100 flex-1"
+                                            onClick={() => {
+                                                setFilterStatus([]);
+                                                setFilterType([]);
+                                            }}
+                                            className="text-xs font-bold text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded hover:bg-slate-200 flex-1 border border-slate-200 bg-white"
                                         >
                                             Clear
                                         </button>
