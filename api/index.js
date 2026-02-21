@@ -6,6 +6,7 @@ const azureDb = require('./azureDb'); // Import all
 const http = require('http');
 const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,6 +26,19 @@ app.use(express.json());
 // Serve Static Files from React App
 // production mode
 app.use('/opdash', express.static(path.join(__dirname, '../')));
+app.use('/opdash/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Multer Config
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, path.join(__dirname, 'uploads'));
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + '-' + file.originalname);
+    }
+});
+const upload = multer({ storage });
 
 // Initialize DB schema on startup
 azureDb.initDB().catch(err => console.error("DB Init failed:", err));
@@ -44,6 +58,22 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // ---------------------------
 // ENDPOINTS
 const apiRouter = express.Router();
+
+// File Upload Endpoint
+apiRouter.post('/upload', upload.single('file'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        res.json({
+            name: req.file.originalname,
+            url: `/opdash/uploads/${req.file.filename}`,
+            filename: req.file.filename
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // ---------------------------
 
 // GET All Projects
@@ -79,7 +109,7 @@ apiRouter.get('/projects', async (req, res) => {
 // POST Create Project
 apiRouter.post('/projects', async (req, res) => {
     try {
-        const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, total_budget, basecamp_target, gaa_allocation, gms_allocation, gaa_ps, gaa_mooe } = req.body;
+        const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, total_budget, basecamp_target, gaa_allocation, gms_allocation, gaa_ps, gaa_mooe, program_id } = req.body;
 
         if (!name) return res.status(400).json({ error: 'Project Name is required' });
         if (name.length > 50) return res.status(400).json({ error: 'Project Name cannot exceed 50 characters' });
@@ -100,6 +130,7 @@ apiRouter.post('/projects', async (req, res) => {
             gms_allocation: Number(gms_allocation) || 0,
             gaa_ps: Number(gaa_ps) || 0,
             gaa_mooe: Number(gaa_mooe) || 0,
+            program_id: program_id || null,
             basecamp_target: basecamp_target || '',
             status: 'Planning',
             created_at: new Date().toISOString()
@@ -120,7 +151,7 @@ apiRouter.put('/projects/:id', async (req, res) => {
         const current = await azureDb.getProjectById(id);
         if (!current) return res.status(404).json({ error: 'Project not found' });
 
-        const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, status, total_budget, basecamp_target, gaa_allocation, gms_allocation, gaa_ps, gaa_mooe } = req.body;
+        const { name, description, division, lead_personnel, supervising_officer, assisting_personnel, status, total_budget, basecamp_target, gaa_allocation, gms_allocation, gaa_ps, gaa_mooe, program_id } = req.body;
 
         if (name && name.length > 50) return res.status(400).json({ error: 'Project Name cannot exceed 50 characters' });
         if (description && description.length > 100) return res.status(400).json({ error: 'Project description cannot exceed 100 characters' });
@@ -138,6 +169,7 @@ apiRouter.put('/projects/:id', async (req, res) => {
             gms_allocation: gms_allocation !== undefined ? Number(gms_allocation) : current.gms_allocation,
             gaa_ps: gaa_ps !== undefined ? Number(gaa_ps) : current.gaa_ps,
             gaa_mooe: gaa_mooe !== undefined ? Number(gaa_mooe) : current.gaa_mooe,
+            program_id: program_id !== undefined ? program_id : current.program_id,
             basecamp_target: basecamp_target !== undefined ? basecamp_target : current.basecamp_target,
             status: status || current.status
         };
@@ -181,6 +213,30 @@ apiRouter.put('/divisions/:id', async (req, res) => {
         // Verify existence? upsertDivision handles insert if id provided, but we want update semantics
         const saved = await azureDb.upsertDivision({ id, name });
         res.json(saved);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET All Programs
+apiRouter.get('/programs', async (req, res) => {
+    try {
+        const programs = await azureDb.getPrograms();
+        res.json(programs);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST Create Program
+apiRouter.post('/programs', async (req, res) => {
+    try {
+        const { name, division } = req.body;
+        if (!name) return res.status(400).json({ error: 'Name required' });
+        const id = await azureDb.generateControlCode('program');
+        const newProgram = { id, name, division: division || null, created_at: new Date().toISOString() };
+        const saved = await azureDb.upsertProgram(newProgram);
+        res.status(201).json(saved);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

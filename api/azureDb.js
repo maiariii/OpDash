@@ -39,6 +39,14 @@ CREATE TABLE IF NOT EXISTS projects_list (
     status TEXT,
     basecamp_target TEXT,
     total_budget NUMERIC,
+    program_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS programs_list (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    division TEXT, -- Tie program to a division
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -59,6 +67,7 @@ CREATE TABLE IF NOT EXISTS activities_list (
     assignee_id TEXT,
     path TEXT,
     priority TEXT DEFAULT 'Medium',
+    file_attachments TEXT, -- JSON string or comma-separated list of filenames/paths
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -197,6 +206,21 @@ async function initDB() {
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_mooe') THEN 
                 ALTER TABLE projects_list ADD COLUMN gaa_mooe NUMERIC DEFAULT 0; 
             END IF;
+
+            -- projects_list: program_id
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='program_id') THEN 
+                ALTER TABLE projects_list ADD COLUMN program_id TEXT; 
+            END IF;
+
+            -- programs_list: division
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='programs_list' AND column_name='division') THEN 
+                ALTER TABLE programs_list ADD COLUMN division TEXT; 
+            END IF;
+
+            -- activities_list: file_attachments
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='file_attachments') THEN 
+                ALTER TABLE activities_list ADD COLUMN file_attachments TEXT; 
+            END IF;
         END $$;
     `);
 }
@@ -212,6 +236,7 @@ async function generateControlCode(type) {
     else if (type === 'task') { prefix = 'HRODI-T'; table = 'task_list'; } // Subtasks
     else if (type === 'employee') { prefix = 'HRODI-E'; table = 'employee_list'; digits = 4; }
     else if (type === 'milestone') { prefix = 'HRODI-M'; table = 'milestones_list'; digits = 4; }
+    else if (type === 'program') { prefix = 'HRODI-PR-'; table = 'programs_list'; digits = 3; }
 
     // Find max ID
     // We look for IDs that start with the prefix
@@ -252,8 +277,8 @@ async function upsertProject(data) {
         INSERT INTO projects_list(
             id, name, description, division, lead_personnel,
             supervising_officer, assisting_personnel, status, 
-            basecamp_target, total_budget, gaa_allocation, gms_allocation, gaa_ps, gaa_mooe, created_at
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, COALESCE($15, CURRENT_TIMESTAMP))
+            basecamp_target, total_budget, gaa_allocation, gms_allocation, gaa_ps, gaa_mooe, program_id, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, COALESCE($16, CURRENT_TIMESTAMP))
         ON CONFLICT(id) DO UPDATE SET
             name = EXCLUDED.name,
             description = EXCLUDED.description,
@@ -267,7 +292,8 @@ async function upsertProject(data) {
             gaa_allocation = EXCLUDED.gaa_allocation,
             gms_allocation = EXCLUDED.gms_allocation,
             gaa_ps = EXCLUDED.gaa_ps,
-            gaa_mooe = EXCLUDED.gaa_mooe
+            gaa_mooe = EXCLUDED.gaa_mooe,
+            program_id = EXCLUDED.program_id
         RETURNING *;
     `;
     const values = [
@@ -277,7 +303,7 @@ async function upsertProject(data) {
         data.basecamp_target || '', Number(data.total_budget) || 0,
         Number(data.gaa_allocation) || 0, Number(data.gms_allocation) || 0,
         Number(data.gaa_ps) || 0, Number(data.gaa_mooe) || 0,
-        data.created_at
+        data.program_id || null, data.created_at
     ];
     const res = await query(q, values);
     return res.rows[0];
@@ -341,8 +367,8 @@ async function upsertActivity(data) {
             id, project_id, title, objective, status,
             milestone_id, activity_type, nature_of_activity, estimated_hours,
             start_date, due_date, gms_allocation, obligated_amount,
-            assignee_id, path, priority, created_at
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, COALESCE($17, CURRENT_TIMESTAMP))
+            assignee_id, path, priority, file_attachments, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, COALESCE($18, CURRENT_TIMESTAMP))
         ON CONFLICT(id) DO UPDATE SET
             title = EXCLUDED.title,
             objective = EXCLUDED.objective,
@@ -357,7 +383,8 @@ async function upsertActivity(data) {
             obligated_amount = EXCLUDED.obligated_amount,
             assignee_id = EXCLUDED.assignee_id,
             path = EXCLUDED.path,
-            priority = EXCLUDED.priority
+            priority = EXCLUDED.priority,
+            file_attachments = EXCLUDED.file_attachments
         RETURNING *;
     `;
     const values = [
@@ -368,7 +395,7 @@ async function upsertActivity(data) {
         data.start_date || null, data.due_date || null,
         Number(data.gms_allocation) || 0, Number(data.obligated_amount) || 0,
         data.assignee_id || null, data.path || data.id,
-        data.priority || 'Medium', data.created_at
+        data.priority || 'Medium', data.file_attachments || null, data.created_at
     ];
     const res = await query(q, values);
     return res.rows[0];
@@ -489,6 +516,26 @@ async function upsertDivision(data) {
     `;
     // If id is not provided, generate one? API usually provides UUID
     const values = [data.id, data.name, data.created_at];
+    const res = await query(q, values);
+    return res.rows[0];
+}
+
+// --- PROGRAMS ---
+
+async function getPrograms() {
+    const res = await query('SELECT * FROM programs_list ORDER BY created_at ASC');
+    return res.rows;
+}
+
+async function upsertProgram(data) {
+    await initDB();
+    const q = `
+        INSERT INTO programs_list(id, name, division, created_at)
+        VALUES($1, $2, $3, COALESCE($4, CURRENT_TIMESTAMP))
+        ON CONFLICT(id) DO UPDATE SET name = EXCLUDED.name, division = COALESCE(programs_list.division, EXCLUDED.division)
+        RETURNING *;
+    `;
+    const values = [data.id, data.name, data.division || null, data.created_at];
     const res = await query(q, values);
     return res.rows[0];
 }
@@ -641,6 +688,7 @@ module.exports = {
     getSubtasks, upsertSubtask, deleteSubtask,
     getEmployees, getEmployeeById, upsertEmployee, deleteEmployee,
     getDivisions, upsertDivision,
+    getPrograms, upsertProgram,
     getMilestones, upsertMilestone, deleteMilestone,
     getExpenses, getExpensesByProject, addExpense, deleteExpense,
     upsertCatchup, getCatchups, getCatchupsByProject, deleteCatchup,

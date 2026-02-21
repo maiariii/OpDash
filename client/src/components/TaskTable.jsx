@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
+import { Calendar, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Paperclip } from 'lucide-react';
 import clsx from 'clsx';
 import { deleteTask } from '../api';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
@@ -168,6 +168,9 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick, onTaskDeleted }) =
                                         <div className={clsx("font-medium", overdue ? "text-red-700" : "text-slate-800")}>
                                             {task.title}
                                             {overdue && <AlertCircle size={14} className="inline ml-2 text-red-600 mb-0.5" />}
+                                            {task.file_attachments && JSON.parse(task.file_attachments).length > 0 && (
+                                                <Paperclip size={12} className="inline ml-2 text-slate-400" title={`${JSON.parse(task.file_attachments).length} attachment(s)`} />
+                                            )}
                                         </div>
                                         {task.objective && (
                                             <div className="text-xs text-slate-400 truncate max-w-[200px]">{task.objective}</div>

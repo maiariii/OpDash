@@ -15,6 +15,9 @@ export const getDivisions = () => api.get('/divisions').then(res => res.data);
 export const createDivision = (data) => api.post('/divisions', data).then(res => res.data);
 export const updateDivision = (id, data) => api.put(`/divisions/${id}`, data).then(res => res.data);
 
+export const getPrograms = () => api.get('/programs').then(res => res.data);
+export const createProgram = (data) => api.post('/programs', data).then(res => res.data);
+
 export const getProjects = () => api.get('/projects').then(res => res.data);
 export const createProject = (data) => api.post('/projects', data).then(res => res.data);
 export const updateProject = (id, data) => api.put(`/projects/${id}`, data).then(res => res.data);
@@ -27,6 +30,16 @@ export const createTask = (data) => api.post('/tasks', data).then(res => res.dat
 export const createSubtask = (activityId, data) => api.post(`/activities/${activityId}/tasks`, data).then(res => res.data);
 export const updateTask = (taskId, data) => api.put(`/tasks/${taskId}`, data).then(res => res.data);
 export const predictRisk = (data) => api.post('/ai/predict-risk', data).then(res => res.data);
+
+export const uploadFile = (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/upload', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    }).then(res => res.data);
+};
 
 // Milestones
 export const getProjectMilestones = (projectId) => api.get(`/projects/${projectId}/milestones`).then(res => res.data);

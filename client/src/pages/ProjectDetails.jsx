@@ -11,7 +11,7 @@ import {
     getProjects, getProjectTasks, getProjectFinancials,
     getProjectMilestones,
     updateTask, createTask, predictRisk,
-    updateProject, getDivisions, getEmployees
+    updateProject, getDivisions, getEmployees, getPrograms
 } from '../api';
 
 import KanbanBoard from '../components/KanbanBoard';
@@ -71,6 +71,7 @@ const ProjectDetails = () => {
     // Dropdown Data
     const [divisions, setDivisions] = useState([]);
     const [employees, setEmployees] = useState([]);
+    const [programs, setPrograms] = useState([]);
 
     useEffect(() => {
         // Load initial data
@@ -80,8 +81,9 @@ const ProjectDetails = () => {
             getProjectFinancials(id),
             getProjectMilestones(id), // Fetch Milestones
             getDivisions(),
-            getEmployees()
-        ]).then(([projects, tasks, fin, ms, divs, emps]) => {
+            getEmployees(),
+            getPrograms()
+        ]).then(([projects, tasks, fin, ms, divs, emps, progs]) => {
             const p = projects.find(p => p.id === id);
             setProject(p);
             setTasks(tasks);
@@ -89,6 +91,7 @@ const ProjectDetails = () => {
             setMilestones(ms); // Set Milestones
             setDivisions(divs);
             setEmployees(emps);
+            setPrograms(progs);
 
             // Init Edit Form
             if (p) setEditForm(p);
@@ -142,17 +145,27 @@ const ProjectDetails = () => {
             // 1. Split, trim, filter valid strings
             // 2. Validate against actual employee list
             const cleanForm = { ...editForm };
-            if (cleanForm.assisting_personnel) {
+            if (cleanForm.assisting_personnel || cleanForm.lead_personnel) {
                 // Create a Set of valid employee names for O(1) lookup
                 const validNames = new Set(employees.map(e =>
                     e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`.trim().replace(/\s+/g, ' ')
                 ));
 
-                cleanForm.assisting_personnel = cleanForm.assisting_personnel
-                    .split(',')
-                    .map(s => s.trim())
-                    .filter(s => s && s.toLowerCase() !== 'n/a' && validNames.has(s))
-                    .join(', ');
+                if (cleanForm.assisting_personnel) {
+                    cleanForm.assisting_personnel = cleanForm.assisting_personnel
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(s => s && s.toLowerCase() !== 'n/a' && validNames.has(s))
+                        .join(', ');
+                }
+
+                if (cleanForm.lead_personnel) {
+                    cleanForm.lead_personnel = cleanForm.lead_personnel
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(s => s && s.toLowerCase() !== 'n/a' && validNames.has(s))
+                        .join(', ');
+                }
             }
 
             const updated = { ...cleanForm };
@@ -179,6 +192,18 @@ const ProjectDetails = () => {
         const div = divisions.find(d => d.name === editForm.division);
         if (!div) return [];
         return employees.filter(e => e.division_id === div.id);
+    };
+
+    const toggleLead = (empName) => {
+        let currentLeads = editForm.lead_personnel ? editForm.lead_personnel.split(',').map(s => s.trim()) : [];
+        currentLeads = currentLeads.filter(m => m && m.toLowerCase() !== 'n/a');
+
+        if (currentLeads.includes(empName)) {
+            currentLeads = currentLeads.filter(m => m !== empName);
+        } else {
+            currentLeads.push(empName);
+        }
+        setEditForm({ ...editForm, lead_personnel: currentLeads.join(', ') });
     };
 
     const toggleMember = (empName) => {
@@ -411,9 +436,10 @@ const ProjectDetails = () => {
         if (!project) return false;
         const name = emp.name || `${emp.first_name || ''} ${emp.middle_name || ''} ${emp.last_name || ''}`.replace(/\s+/g, ' ').trim();
         const assisting = project.assisting_personnel ? project.assisting_personnel.split(',').map(s => s.trim()) : [];
+        const leads = project.lead_personnel ? project.lead_personnel.split(',').map(s => s.trim()) : [];
 
         return (
-            name === project.lead_personnel ||
+            leads.includes(name) ||
             name === project.supervising_officer ||
             assisting.includes(name)
         );
@@ -703,7 +729,28 @@ const ProjectDetails = () => {
                                 </div>
                             )}
 
-
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Program</label>
+                                {isEditing ? (
+                                    <select
+                                        className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={editForm.program_id || ''}
+                                        onChange={e => setEditForm({ ...editForm, program_id: e.target.value })}
+                                    >
+                                        <option value="">Select Program</option>
+                                        {programs
+                                            .filter(p => !p.division || p.division === editForm.division)
+                                            .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                    </select>
+                                ) : (
+                                    <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                        <span className="text-sm font-medium text-blue-800">
+                                            {project.program_id ? programs.find(p => p.id === project.program_id)?.name || "Unknown Program" : "No Program Assigned"}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
 
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description</label>
@@ -898,19 +945,26 @@ const ProjectDetails = () => {
                                     <div>
                                         <label className="block text-xs text-slate-500 mb-1">Lead Personnel</label>
                                         {isEditing ? (
-                                            <select
-                                                className="w-full border border-slate-300 rounded p-2 text-sm"
-                                                value={editForm.lead_personnel}
-                                                onChange={e => setEditForm({ ...editForm, lead_personnel: e.target.value })}
-                                            >
-                                                <option value="">Select Lead</option>
+                                            <div className="border border-slate-300 rounded-lg p-2 max-h-40 overflow-y-auto space-y-2">
+                                                {filteredEmployees.length === 0 && <span className="text-xs text-slate-400">No employees found in this division.</span>}
                                                 {filteredEmployees.map(e => {
                                                     const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
-                                                    return <option key={e.id} value={name}>{name}</option>
+                                                    const isSelected = editForm.lead_personnel?.includes(name);
+                                                    return (
+                                                        <div key={e.id} onClick={() => toggleLead(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                            {isSelected ?
+                                                                <CheckSquare size={16} className="text-blue-600" /> :
+                                                                <Square size={16} className="text-slate-300" />
+                                                            }
+                                                            <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
+                                                                {name}
+                                                            </span>
+                                                        </div>
+                                                    )
                                                 })}
-                                            </select>
+                                            </div>
                                         ) : (
-                                            <p className="text-sm font-medium text-slate-800">{project.lead_personnel}</p>
+                                            <p className="text-sm text-slate-600 leading-relaxed">{project.lead_personnel}</p>
                                         )}
                                     </div>
 

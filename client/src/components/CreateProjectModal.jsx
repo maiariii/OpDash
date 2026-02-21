@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { createProject, getDivisions, getEmployees } from '../api';
+import { createProject, getDivisions, getEmployees, getPrograms, createProgram } from '../api';
 import { X } from 'lucide-react';
 
 const CreateProjectModal = ({ onClose, onProjectCreated }) => {
     const [divisions, setDivisions] = useState([]);
     const [employees, setEmployees] = useState([]);
+    const [programs, setPrograms] = useState([]);
 
     const [formData, setFormData] = useState({
+        program_id: '',
         name: '',
         description: '',
         division: '',
-        lead_personnel: '',
+        lead_personnel: [], // Array for multi-select
         supervising_officer: '',
         assisting_personnel: [] // Array for multi-select
     });
@@ -21,9 +23,10 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        Promise.all([getDivisions(), getEmployees()]).then(([d, e]) => {
+        Promise.all([getDivisions(), getEmployees(), getPrograms()]).then(([d, e, p]) => {
             setDivisions(d);
             setEmployees(e);
+            setPrograms(p);
         });
     }, []);
 
@@ -40,6 +43,45 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
     };
 
     const availableEmployees = formData.division ? getEmployeesInDivision() : employees;
+
+    const handleLeadChange = (name) => {
+        setFormData(prev => {
+            const current = prev.lead_personnel;
+            if (current.includes(name)) {
+                return { ...prev, lead_personnel: current.filter(n => n !== name) };
+            } else {
+                return { ...prev, lead_personnel: [...current, name] };
+            }
+        });
+    };
+
+    const [isAddingProgram, setIsAddingProgram] = useState(false);
+    const [newProgramName, setNewProgramName] = useState('');
+    const [creatingProgram, setCreatingProgram] = useState(false);
+
+    const handleCreateProgram = async () => {
+        if (!newProgramName.trim()) return;
+        if (!formData.division) {
+            alert('Please select a Division first to tie this program to.');
+            return;
+        }
+        setCreatingProgram(true);
+        try {
+            const newProg = await createProgram({
+                name: newProgramName.trim(),
+                division: formData.division
+            });
+            setPrograms([...programs, newProg]);
+            setFormData({ ...formData, program_id: newProg.id });
+            setIsAddingProgram(false);
+            setNewProgramName('');
+        } catch (error) {
+            console.error('Failed to create program:', error);
+            alert('Failed to create program');
+        } finally {
+            setCreatingProgram(false);
+        }
+    };
 
     const handleAssistingChange = (name) => {
         setFormData(prev => {
@@ -86,6 +128,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
             const projectData = {
                 ...formData,
+                lead_personnel: formData.lead_personnel.join(', '),
                 assisting_personnel: formData.assisting_personnel.join(', '),
                 basecamp_target: selectedBasecamp.join(', '),
                 gaa_ps: gaaPs,
@@ -119,6 +162,65 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                 <h2 className="text-xl font-bold text-slate-800 mb-6">New Project</h2>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-medium text-slate-700">Program</label>
+                            {!isAddingProgram && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddingProgram(true)}
+                                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"
+                                >
+                                    + New Program
+                                </button>
+                            )}
+                        </div>
+                        {isAddingProgram ? (
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    className="flex-1 px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    placeholder="Enter program name..."
+                                    value={newProgramName}
+                                    onChange={e => setNewProgramName(e.target.value)}
+                                    disabled={creatingProgram}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleCreateProgram}
+                                    disabled={creatingProgram || !newProgramName.trim()}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                                >
+                                    {creatingProgram ? 'Saving...' : 'Save'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsAddingProgram(false);
+                                        setNewProgramName('');
+                                    }}
+                                    className="px-3 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-sm"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        ) : (
+                            <select
+                                required
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                value={formData.program_id}
+                                onChange={e => setFormData({ ...formData, program_id: e.target.value })}
+                            >
+                                <option value="">Select Program</option>
+                                {programs
+                                    .filter(p => !p.division || p.division === formData.division)
+                                    .map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                            </select>
+                        )}
+                    </div>
+
                     <div>
                         <div className="flex justify-between">
                             <label className="block text-sm font-medium text-slate-700 mb-1">Project Name</label>
@@ -253,18 +355,25 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Lead Personnel</label>
-                        <select
-                            required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                            value={formData.lead_personnel}
-                            onChange={e => setFormData({ ...formData, lead_personnel: e.target.value })}
-                        >
-                            <option value="">Select Lead</option>
-                            {availableEmployees.map(e => (
-                                <option key={e.id} value={e.name}>{e.name} ({e.position})</option>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Lead Personnel (Select Multiple)
+                        </label>
+                        <div className="border border-slate-300 rounded-lg p-3 max-h-40 overflow-y-auto bg-slate-50">
+                            {availableEmployees.length === 0 ? (
+                                <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
+                            ) : availableEmployees.map(e => (
+                                <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.lead_personnel.includes(e.name)}
+                                        onChange={() => handleLeadChange(e.name)}
+                                        className="rounded text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-slate-700">{e.name}</span>
+                                    <span className="text-xs text-slate-400">({e.position})</span>
+                                </label>
                             ))}
-                        </select>
+                        </div>
                     </div>
 
                     <div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, User, Flag, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Calendar, User, Flag, AlertCircle, CheckCircle2, Clock, Paperclip } from 'lucide-react';
 import clsx from 'clsx';
 
 const ActivityList = ({ activities = [], employees = [], onActivityClick }) => {
@@ -52,6 +52,9 @@ const ActivityList = ({ activities = [], employees = [], onActivityClick }) => {
                             <div className="flex items-center gap-2 mb-1">
                                 <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
                                     {activity.title}
+                                    {activity.file_attachments && JSON.parse(activity.file_attachments).length > 0 && (
+                                        <Paperclip size={14} className="inline ml-2 text-slate-400" />
+                                    )}
                                 </h3>
                                 <span className={clsx("px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset", getPriorityColor(activity.priority))}>
                                     {activity.priority || 'Normal'}

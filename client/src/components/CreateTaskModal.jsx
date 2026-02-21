@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar } from 'lucide-react';
-import { createTask, updateTask, getProjectMilestones } from '../api';
+import { X, Calendar, Paperclip, Upload, Trash2, Loader2, Download } from 'lucide-react';
+import { createTask, updateTask, getProjectMilestones, uploadFile } from '../api';
 
 const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMilestones = [], onClose, onCreated, initialDate = null }) => {
     // console.log("CreateTaskModal received milestones:", initialMilestones);
@@ -58,7 +58,8 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
         activity_type: '', // No preselection
         nature_of_activity: '', // No preselection
         expenses: [],
-        subtasks: [] // Initialize subtasks
+        subtasks: [], // Initialize subtasks
+        file_attachments: [] // Initialize file attachments as array
     });
 
     const [loading, setLoading] = useState(false);
@@ -101,10 +102,41 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                 activity_type: task.activity_type || '', // Wait, if existing task has type, use it. If not, default? Usually tasks have type. Let's assume passed task has valid type.
                 nature_of_activity: task.nature_of_activity || '',
                 expenses: task.expenses || [],
-                subtasks: task.subtasks || []
+                subtasks: task.subtasks || [],
+                file_attachments: task.file_attachments ? JSON.parse(task.file_attachments) : []
             });
         }
     }, [task]);
+
+    const [uploading, setUploading] = useState(false);
+
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const uploadedFile = await uploadFile(file);
+            setFormData(prev => ({
+                ...prev,
+                file_attachments: [...(prev.file_attachments || []), uploadedFile]
+            }));
+        } catch (error) {
+            console.error('Upload failed:', error);
+            alert('Failed to upload file');
+        } finally {
+            setUploading(false);
+            // Reset input
+            e.target.value = '';
+        }
+    };
+
+    const removeFile = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            file_attachments: prev.file_attachments.filter((_, i) => i !== index)
+        }));
+    };
 
 
     // Mapped statuses for UI
@@ -171,11 +203,15 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
         setLoading(true);
         try {
             if (isEditMode) {
-                await updateTask(task.id, formData);
+                await updateTask(task.id, {
+                    ...formData,
+                    file_attachments: JSON.stringify(formData.file_attachments)
+                });
             } else {
                 await createTask({
                     ...formData,
-                    project_id: projectId
+                    project_id: projectId,
+                    file_attachments: JSON.stringify(formData.file_attachments)
                 });
             }
             onCreated();
@@ -376,10 +412,6 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                             )
                         }
 
-
-
-
-
                         {/* Tasks / Sub-Activities Section */}
                         <div className="mt-4 border-t border-slate-100 pt-4">
                             <div className="flex justify-between items-center mb-2">
@@ -407,6 +439,61 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                             )}
                         </div>
 
+                        {/* File Attachments Section */}
+                        <div className="mt-4 border-t border-slate-100 pt-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="block text-sm font-medium text-slate-700">Attachments</label>
+                                <label className="cursor-pointer text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        onChange={handleFileChange}
+                                        disabled={uploading}
+                                    />
+                                    {uploading ? (
+                                        <><Loader2 size={16} className="animate-spin" /> Uploading...</>
+                                    ) : (
+                                        <><Paperclip size={16} /> Attach File</>
+                                    )}
+                                </label>
+                            </div>
+
+                            {(formData.file_attachments || []).length > 0 ? (
+                                <div className="space-y-2">
+                                    {formData.file_attachments.map((file, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-200 group">
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <Paperclip size={14} className="text-slate-400 flex-shrink-0" />
+                                                <span className="text-xs text-slate-600 truncate">{file.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <a
+                                                    href={file.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                                    title="Download"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <Download size={14} />
+                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeFile(idx)}
+                                                    className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                    title="Remove"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-slate-400 italic">No files attached yet.</p>
+                            )}
+                        </div>
+
                         <div className="flex gap-3 pt-4">
                             <button
                                 type="button"
@@ -423,7 +510,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                                 {loading ? 'Saving...' : (isEditMode ? 'Update Activity' : 'Create Activity')}
                             </button>
                         </div>
-                    </form >
+                    </form>
                 </div >
             </div >
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Clock, AlertCircle, CheckCircle2, ChevronRight, Plus } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle2, ChevronRight, Plus, Paperclip } from 'lucide-react';
 import { updateTask } from '../api';
 // import CreateTaskModal from './CreateTaskModal'; // Managed by parent
 import { useParams } from 'react-router-dom';
@@ -101,7 +101,12 @@ const KanbanBoard = ({ tasks, members = [], onTaskUpdate, onTaskClick, onAddTask
 
                                                             <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 pt-3">
                                                                 <span>{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No Deadline'}</span>
-
+                                                                {task.file_attachments && JSON.parse(task.file_attachments).length > 0 && (
+                                                                    <div className="flex items-center gap-1 text-slate-400">
+                                                                        <Paperclip size={12} />
+                                                                        <span>{JSON.parse(task.file_attachments).length}</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     )}
