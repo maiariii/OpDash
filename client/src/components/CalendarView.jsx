@@ -259,7 +259,7 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
                     <h2 className="text-lg font-bold text-slate-800">{title}</h2>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 w-full sm:w-auto">
                     {/* Activity Status & Type Filter */}
                     <div className="relative">
                         <button

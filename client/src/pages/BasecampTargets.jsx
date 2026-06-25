@@ -21,7 +21,7 @@ const BasecampTargets = () => {
     const [projects, setProjects] = useState([]);
     const [milestones, setMilestones] = useState([]);
     const [viewMode, setViewMode] = useState('table'); // 'table' | 'card'
-    const [expandedSections, setExpandedSections] = useState(new Set(BASECAMP_TARGETS)); // Default all open
+    const [expandedSections, setExpandedSections] = useState(new Set()); // Default all collapsed
 
     useEffect(() => {
         Promise.all([
@@ -113,18 +113,49 @@ const BasecampTargets = () => {
                     const isExpanded = expandedSections.has(target);
 
                     return (
-                        <div key={target} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div 
+                            key={target} 
+                            className={clsx(
+                                "bg-white rounded-xl border transition-all duration-200 overflow-hidden",
+                                isExpanded 
+                                    ? "border-blue-500 shadow-md ring-1 ring-blue-500/10" 
+                                    : "border-slate-200 shadow-sm hover:shadow hover:border-slate-300"
+                            )}
+                        >
                             <button
                                 onClick={() => toggleSection(target)}
-                                className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors border-b border-slate-100"
+                                className={clsx(
+                                    "w-full flex items-center justify-between p-4 text-left transition-colors relative",
+                                    isExpanded ? "bg-blue-50/20" : "bg-white hover:bg-slate-50/50"
+                                )}
                             >
-                                <div className="flex items-center gap-3">
-                                    {isExpanded ? <ChevronDown size={20} className="text-slate-400" /> : <ChevronRight size={20} className="text-slate-400" />}
-                                    <h3 className="font-bold text-slate-800 text-lg">{target}</h3>
-                                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200">
-                                        {targetMilestones.length}
-                                    </span>
+                                <div className={clsx(
+                                    "absolute left-0 top-0 bottom-0 w-1.5 transition-all duration-200",
+                                    isExpanded ? "bg-blue-600" : "bg-transparent"
+                                )} />
+                                
+                                <div className="flex items-center gap-3 pr-2 flex-1 min-w-0">
+                                    <div className={clsx(
+                                        "flex items-center justify-center w-7 h-7 rounded-lg transition-colors shrink-0",
+                                        isExpanded ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"
+                                    )}>
+                                        {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                    </div>
+                                    <h3 className={clsx(
+                                        "font-bold text-slate-800 text-sm sm:text-base leading-snug flex-1",
+                                        isExpanded && "text-blue-900"
+                                    )}>
+                                        {target}
+                                    </h3>
                                 </div>
+                                <span className={clsx(
+                                    "px-2.5 py-0.5 rounded-full text-xs font-black border transition-all shrink-0",
+                                    isExpanded 
+                                        ? "bg-blue-600 text-white border-blue-600 shadow-sm" 
+                                        : "bg-slate-100 text-slate-600 border-slate-200"
+                                )}>
+                                    {targetMilestones.length}
+                                </span>
                             </button>
 
                             {isExpanded && (

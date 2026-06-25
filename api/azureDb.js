@@ -18,8 +18,13 @@ if (!databaseUrl) {
     console.error("DATABASE_URL not found in .env");
 }
 
-// Modify URL to connect to 'OpDash' database
-const opDashUrl = databaseUrl ? databaseUrl.replace(/\/[^/]+$/, '/OpDash') : null;
+// Construct direct connection URL to direct database port 5432 using target database OpDash
+let opDashUrl = databaseUrl;
+if (opDashUrl) {
+    opDashUrl = opDashUrl
+        .replace('20.24.58.49', 'stride-posgre-prod-01.postgres.database.azure.com')
+        .replace(':6432', ':5432');
+}
 
 const pool = opDashUrl ? new Pool({
     connectionString: opDashUrl,
@@ -38,15 +43,9 @@ CREATE TABLE IF NOT EXISTS projects_list (
     assisting_personnel TEXT,
     status TEXT,
     basecamp_target TEXT,
-    total_budget NUMERIC,
-    program_id TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS programs_list (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    division TEXT, -- Tie program to a division
+    source_of_fund TEXT,
+    sof_allocation NUMERIC DEFAULT 0,
+    expenditure_framework TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -62,12 +61,14 @@ CREATE TABLE IF NOT EXISTS activities_list (
     estimated_hours NUMERIC,
     start_date DATE,
     due_date DATE,
-    gms_allocation NUMERIC,
+    allocation NUMERIC,
     obligated_amount NUMERIC,
     assignee_id TEXT,
     path TEXT,
     priority TEXT DEFAULT 'Medium',
     file_attachments TEXT, -- JSON string or comma-separated list of filenames/paths
+    key_result_area TEXT,
+    output TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -130,6 +131,13 @@ CREATE TABLE IF NOT EXISTS expense_list (
     date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS users_list (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 `;
 
 // Helper: Run generic query
@@ -177,34 +185,17 @@ async function initDB() {
                 ALTER TABLE activities_list ADD COLUMN estimated_hours NUMERIC; 
             END IF;
 
-            -- Migration: Rename budget -> gms_allocation
+            -- Migration: Rename budget / gms_allocation -> allocation
             IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='budget') THEN
-                ALTER TABLE activities_list RENAME COLUMN budget TO gms_allocation;
+                ALTER TABLE activities_list RENAME COLUMN budget TO allocation;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='gms_allocation') THEN
+                ALTER TABLE activities_list RENAME COLUMN gms_allocation TO allocation;
             END IF;
 
             -- Migration: Rename cost -> obligated_amount
             IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='cost') THEN
                 ALTER TABLE activities_list RENAME COLUMN cost TO obligated_amount;
-            END IF;
-
-            -- projects_list: gaa_allocation
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_allocation') THEN 
-                ALTER TABLE projects_list ADD COLUMN gaa_allocation NUMERIC DEFAULT 0; 
-            END IF;
-
-            -- projects_list: gms_allocation
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gms_allocation') THEN 
-                ALTER TABLE projects_list ADD COLUMN gms_allocation NUMERIC DEFAULT 0; 
-            END IF;
-
-            -- projects_list: gaa_ps
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_ps') THEN 
-                ALTER TABLE projects_list ADD COLUMN gaa_ps NUMERIC DEFAULT 0; 
-            END IF;
-
-            -- projects_list: gaa_mooe
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_mooe') THEN 
-                ALTER TABLE projects_list ADD COLUMN gaa_mooe NUMERIC DEFAULT 0; 
             END IF;
 
             -- projects_list: program_id
@@ -213,14 +204,117 @@ async function initDB() {
             END IF;
 
             -- programs_list: division
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='programs_list' AND column_name='division') THEN 
-                ALTER TABLE programs_list ADD COLUMN division TEXT; 
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='programs_list') THEN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='programs_list' AND column_name='division') THEN 
+                    ALTER TABLE programs_list ADD COLUMN division TEXT; 
+                END IF;
             END IF;
 
             -- activities_list: file_attachments
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='file_attachments') THEN 
                 ALTER TABLE activities_list ADD COLUMN file_attachments TEXT; 
             END IF;
+
+            -- projects_list: expenditure_framework
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='expenditure_framework') THEN 
+                ALTER TABLE projects_list ADD COLUMN expenditure_framework TEXT; 
+            END IF;
+
+            -- activities_list: key_result_area
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='key_result_area') THEN 
+                ALTER TABLE activities_list ADD COLUMN key_result_area TEXT; 
+            END IF;
+
+            -- activities_list: output
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='output') THEN 
+                ALTER TABLE activities_list ADD COLUMN output TEXT; 
+            END IF;
+
+            -- projects_list: source_of_fund
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='source_of_fund') THEN 
+                ALTER TABLE projects_list ADD COLUMN source_of_fund TEXT; 
+            END IF;
+
+            -- projects_list: sof_allocation
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='sof_allocation') THEN 
+                ALTER TABLE projects_list ADD COLUMN sof_allocation NUMERIC DEFAULT 0; 
+            END IF;
+
+            -- Migration: Set sof_allocation to total_budget if 0 or null
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='total_budget') THEN
+                UPDATE projects_list 
+                SET sof_allocation = COALESCE(total_budget, 0)
+                WHERE sof_allocation = 0 OR sof_allocation IS NULL;
+            END IF;
+
+            -- Migration: Set source_of_fund based on previous columns if null
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_ps') THEN
+                UPDATE projects_list 
+                SET source_of_fund = 
+                    CASE 
+                        WHEN gaa_ps > 0 THEN 'GAA-PS'
+                        WHEN gaa_mooe > 0 THEN 'GAA-MOOE'
+                        WHEN gms_allocation > 0 THEN 'GMS'
+                        WHEN apb_allocation > 0 THEN 'APB'
+                        WHEN hrd_allocation > 0 THEN 'HRD'
+                        WHEN hrdp_allocation > 0 THEN 'HRDP'
+                        WHEN basic_education_inputs_allocation > 0 THEN 'Basic Education Inputs Program'
+                        ELSE NULL
+                    END
+                WHERE source_of_fund IS NULL;
+            END IF;
+
+            -- Drop old deprecated columns
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_allocation') THEN
+                ALTER TABLE projects_list DROP COLUMN gaa_allocation;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gms_allocation') THEN
+                ALTER TABLE projects_list DROP COLUMN gms_allocation;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_ps') THEN
+                ALTER TABLE projects_list DROP COLUMN gaa_ps;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='gaa_mooe') THEN
+                ALTER TABLE projects_list DROP COLUMN gaa_mooe;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='apb_allocation') THEN
+                ALTER TABLE projects_list DROP COLUMN apb_allocation;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='hrd_allocation') THEN
+                ALTER TABLE projects_list DROP COLUMN hrd_allocation;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='hrdp_allocation') THEN
+                ALTER TABLE projects_list DROP COLUMN hrdp_allocation;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='basic_education_inputs_allocation') THEN
+                ALTER TABLE projects_list DROP COLUMN basic_education_inputs_allocation;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='nature_of_activity') THEN
+                ALTER TABLE projects_list DROP COLUMN nature_of_activity;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='total_budget') THEN
+                ALTER TABLE projects_list DROP COLUMN total_budget;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities_list' AND column_name='importance') THEN
+                ALTER TABLE activities_list DROP COLUMN importance;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='milestones_list' AND column_name='importance') THEN
+                ALTER TABLE milestones_list DROP COLUMN importance;
+            END IF;
+
+            -- Migration: Merge program_id/programs_list into project description
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects_list' AND column_name='program_id') THEN
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='programs_list') THEN
+                    UPDATE projects_list p
+                    SET description = '(Program: ' || pr.name || ') ' || COALESCE(p.description, '')
+                    FROM programs_list pr
+                    WHERE p.program_id = pr.id;
+                END IF;
+
+                ALTER TABLE projects_list DROP COLUMN program_id;
+            END IF;
+
+            DROP TABLE IF EXISTS programs_list;
         END $$;
     `);
 }
@@ -277,8 +371,9 @@ async function upsertProject(data) {
         INSERT INTO projects_list(
             id, name, description, division, lead_personnel,
             supervising_officer, assisting_personnel, status, 
-            basecamp_target, total_budget, gaa_allocation, gms_allocation, gaa_ps, gaa_mooe, program_id, created_at
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, COALESCE($16, CURRENT_TIMESTAMP))
+            basecamp_target, source_of_fund, sof_allocation, expenditure_framework,
+            created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13, CURRENT_TIMESTAMP))
         ON CONFLICT(id) DO UPDATE SET
             name = EXCLUDED.name,
             description = EXCLUDED.description,
@@ -288,22 +383,20 @@ async function upsertProject(data) {
             assisting_personnel = EXCLUDED.assisting_personnel,
             status = EXCLUDED.status,
             basecamp_target = EXCLUDED.basecamp_target,
-            total_budget = EXCLUDED.total_budget,
-            gaa_allocation = EXCLUDED.gaa_allocation,
-            gms_allocation = EXCLUDED.gms_allocation,
-            gaa_ps = EXCLUDED.gaa_ps,
-            gaa_mooe = EXCLUDED.gaa_mooe,
-            program_id = EXCLUDED.program_id
+            source_of_fund = EXCLUDED.source_of_fund,
+            sof_allocation = EXCLUDED.sof_allocation,
+            expenditure_framework = EXCLUDED.expenditure_framework
         RETURNING *;
     `;
     const values = [
         data.id, data.name, data.description || '', data.division || 'N/A',
         data.lead_personnel || 'N/A', data.supervising_officer || 'N/A',
         data.assisting_personnel || 'N/A', data.status || 'Planning',
-        data.basecamp_target || '', Number(data.total_budget) || 0,
-        Number(data.gaa_allocation) || 0, Number(data.gms_allocation) || 0,
-        Number(data.gaa_ps) || 0, Number(data.gaa_mooe) || 0,
-        data.program_id || null, data.created_at
+        data.basecamp_target || '',
+        data.source_of_fund || null,
+        Number(data.sof_allocation) || 0,
+        data.expenditure_framework || null,
+        data.created_at
     ];
     const res = await query(q, values);
     return res.rows[0];
@@ -366,9 +459,9 @@ async function upsertActivity(data) {
         INSERT INTO activities_list(
             id, project_id, title, objective, status,
             milestone_id, activity_type, nature_of_activity, estimated_hours,
-            start_date, due_date, gms_allocation, obligated_amount,
-            assignee_id, path, priority, file_attachments, created_at
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, COALESCE($18, CURRENT_TIMESTAMP))
+            start_date, due_date, allocation, obligated_amount,
+            assignee_id, path, priority, file_attachments, key_result_area, output, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, COALESCE($20, CURRENT_TIMESTAMP))
         ON CONFLICT(id) DO UPDATE SET
             title = EXCLUDED.title,
             objective = EXCLUDED.objective,
@@ -379,12 +472,14 @@ async function upsertActivity(data) {
             estimated_hours = EXCLUDED.estimated_hours,
             start_date = EXCLUDED.start_date,
             due_date = EXCLUDED.due_date,
-            gms_allocation = EXCLUDED.gms_allocation,
+            allocation = EXCLUDED.allocation,
             obligated_amount = EXCLUDED.obligated_amount,
             assignee_id = EXCLUDED.assignee_id,
             path = EXCLUDED.path,
             priority = EXCLUDED.priority,
-            file_attachments = EXCLUDED.file_attachments
+            file_attachments = EXCLUDED.file_attachments,
+            key_result_area = EXCLUDED.key_result_area,
+            output = EXCLUDED.output
         RETURNING *;
     `;
     const values = [
@@ -393,9 +488,10 @@ async function upsertActivity(data) {
         data.activity_type || 'Deskwork', data.nature_of_activity || '',
         Number(data.estimated_hours) || 0,
         data.start_date || null, data.due_date || null,
-        Number(data.gms_allocation) || 0, Number(data.obligated_amount) || 0,
+        Number(data.allocation !== undefined ? data.allocation : (data.gms_allocation !== undefined ? data.gms_allocation : data.budget)) || 0,
+        Number(data.obligated_amount) || 0,
         data.assignee_id || null, data.path || data.id,
-        data.priority || 'Medium', data.file_attachments || null, data.created_at
+        data.priority || 'Medium', data.file_attachments || null, data.key_result_area || null, data.output || '', data.created_at
     ];
     const res = await query(q, values);
     return res.rows[0];
@@ -520,26 +616,6 @@ async function upsertDivision(data) {
     return res.rows[0];
 }
 
-// --- PROGRAMS ---
-
-async function getPrograms() {
-    const res = await query('SELECT * FROM programs_list ORDER BY created_at ASC');
-    return res.rows;
-}
-
-async function upsertProgram(data) {
-    await initDB();
-    const q = `
-        INSERT INTO programs_list(id, name, division, created_at)
-        VALUES($1, $2, $3, COALESCE($4, CURRENT_TIMESTAMP))
-        ON CONFLICT(id) DO UPDATE SET name = EXCLUDED.name, division = COALESCE(programs_list.division, EXCLUDED.division)
-        RETURNING *;
-    `;
-    const values = [data.id, data.name, data.division || null, data.created_at];
-    const res = await query(q, values);
-    return res.rows[0];
-}
-
 async function getMilestones(projectId = null) {
     let text = `
         SELECT
@@ -627,6 +703,10 @@ async function deleteExpense(id) {
     await query('DELETE FROM expense_list WHERE id = $1', [id]);
 }
 
+async function deleteExpensesByActivityId(activityId) {
+    await query('DELETE FROM expense_list WHERE activity_id = $1', [activityId]);
+}
+
 // --- CATCHUPS ---
 async function upsertCatchup(data) {
     await initDB();
@@ -680,6 +760,29 @@ async function deleteCatchup(id) {
     await query('DELETE FROM catchup_list WHERE id = $1', [id]);
 }
 
+async function createUser(id, email, password) {
+    const q = 'INSERT INTO users_list (id, email, password) VALUES ($1, $2, $3) RETURNING *';
+    const res = await query(q, [id, email, password]);
+    return res.rows[0];
+}
+
+async function getUserByEmail(email) {
+    const q = 'SELECT * FROM users_list WHERE email = $1';
+    const res = await query(q, [email]);
+    return res.rows[0];
+}
+
+async function updateUserPassword(email, newPassword) {
+    const q = 'UPDATE users_list SET password = $2 WHERE email = $1 RETURNING *';
+    const res = await query(q, [email, newPassword]);
+    return res.rows[0];
+}
+
+async function truncateAllTables() {
+    await initDB();
+    await query('TRUNCATE TABLE projects_list, activities_list, task_list, milestones_list, catchup_list, users_list RESTART IDENTITY CASCADE');
+}
+
 module.exports = {
     initDB,
     generateControlCode,
@@ -688,10 +791,13 @@ module.exports = {
     getSubtasks, upsertSubtask, deleteSubtask,
     getEmployees, getEmployeeById, upsertEmployee, deleteEmployee,
     getDivisions, upsertDivision,
-    getPrograms, upsertProgram,
     getMilestones, upsertMilestone, deleteMilestone,
-    getExpenses, getExpensesByProject, addExpense, deleteExpense,
+    getExpenses, getExpensesByProject, addExpense, deleteExpense, deleteExpensesByActivityId,
     upsertCatchup, getCatchups, getCatchupsByProject, deleteCatchup,
+    truncateAllTables,
+    createUser,
+    getUserByEmail,
+    updateUserPassword,
     // Alias for backward compat / ease of refactor
     ensureTableAndInsertProject: upsertProject,
     ensureTableAndInsertActivity: upsertActivity,

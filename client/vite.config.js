@@ -4,7 +4,22 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   base: '/opdash/',
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'redirect-to-slashed-base',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === '/opdash') {
+            res.writeHead(302, { Location: '/opdash/' });
+            res.end();
+          } else {
+            next();
+          }
+        });
+      }
+    }
+  ],
   server: {
     proxy: {
       '/opdash/api': {

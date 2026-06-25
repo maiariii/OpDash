@@ -3,8 +3,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/\/[^/]+$/, '/OpDash') : null,
-    ssl: { rejectUnauthorized: false }
+    connectionString: process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/\/[^/]+$/, '/OpDash') : null
 });
 
 async function countData() {

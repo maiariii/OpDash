@@ -1,163 +1,220 @@
 import React, { useState, useEffect } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, FolderKanban, Menu, ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { LogOut, ChevronDown, LayoutDashboard, Users, FolderKanban, Target } from 'lucide-react';
 import { getDivisions } from '../api';
 
 const Layout = () => {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [divisions, setDivisions] = useState([]);
-    const [isProjectsOpen, setIsProjectsOpen] = useState(true);
+    const [isProjectsExpanded, setIsProjectsExpanded] = useState(false);
+    const [user, setUser] = useState(null);
     const location = useLocation();
+
+    const [activeHash, setActiveHash] = useState('#overview');
+    const navigate = useNavigate();
+
+    // Helper to determine if a route is active
+    const isActive = (path) => {
+        if (path === '/') {
+            return location.pathname === '/';
+        }
+        return location.pathname.startsWith(path);
+    };
+
+    const handleAnchorClick = (e, hash) => {
+        e.preventDefault();
+        setActiveHash(hash);
+        if (location.pathname !== '/') {
+            navigate('/' + hash);
+        } else {
+            const element = document.querySelector(hash);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+                window.history.pushState(null, '', hash);
+            }
+        }
+    };
 
     useEffect(() => {
         getDivisions().then(setDivisions).catch(console.error);
+        const storedUser = localStorage.getItem('opdash_user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        }
     }, []);
 
+    useEffect(() => {
+        if (location.pathname !== '/') return;
+
+        const handleScroll = () => {
+            const sections = ['#overview', '#distributionGraph', '#distributionDetails', '#distributionPanel', '#updates'];
+            let currentActive = '#overview';
+            
+            for (const section of sections) {
+                const el = document.querySelector(section);
+                if (el) {
+                    const rect = el.getBoundingClientRect();
+                    // If the section is scrolled into view (top is near/above top of screen)
+                    if (rect.top <= 200) {
+                        currentActive = section;
+                    }
+                }
+            }
+            setActiveHash(currentActive);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+
+        // Also check if initial URL has hash
+        if (window.location.hash) {
+            const hash = window.location.hash;
+            setActiveHash(hash);
+            setTimeout(() => {
+                const el = document.querySelector(hash);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 300);
+        }
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [location.pathname]);
+
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row transition-all duration-300">
-            {/* Sidebar / Navbar */}
-            <aside
-                className={`bg-[#002c5f] border-r border-[#001f44] flex-shrink-0 transition-all duration-300 ease-in-out
-                ${isSidebarOpen ? 'w-full md:w-72 opacity-100' : 'w-0 opacity-0 overflow-hidden'}
-                `}
-            >
-                <div className="p-5 border-b border-[#003d82] flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-blue-900 shadow-lg shadow-yellow-900/20">
-                            <span className="font-black text-xs tracking-tighter">HR</span>
-                        </div>
-                        <div className="flex flex-col">
-                            <h1 className="text-base font-bold text-white leading-tight tracking-wide">
-                                HRODI
-                            </h1>
-                            <span className="text-[10px] text-blue-200 font-medium tracking-wider uppercase">
-                                Operations Dashboard
-                            </span>
-                        </div>
-                    </div>
-                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-500">
-                        <ChevronLeft size={20} />
-                    </button>
+        <div className="app-container">
+            {/* Sidebar (Desktop left sidebar / Mobile bottom nav) */}
+            <aside className="sidebar">
+                {/* Brand Logo Card */}
+                <div className="brand">
+                    <img src="/opdash/insighted_logo_full.png" alt="InsightED Logo" className="logo-img logo-full" />
+                    <img src="/opdash/insighted_logo_collapsed.png" alt="InsightED Logo" className="logo-img logo-collapsed" />
                 </div>
-                <nav className="p-4 space-y-1">
-                    <Link to="/" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all whitespace-nowrap group ${location.pathname === '/' ? 'bg-[#003d82] text-white' : 'text-slate-300 hover:bg-[#003d82] hover:text-white'}`}>
-                        <LayoutDashboard size={20} className={location.pathname === '/' ? 'text-yellow-400' : 'group-hover:text-yellow-400 transition-colors'} />
-                        <span className="font-medium">Dashboard</span>
+
+                {/* Navigation Menu */}
+                <nav className="nav">
+                    {/* Overview Tab */}
+                    <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
+                        <LayoutDashboard size={18} className="nav-icon" />
+                        Overview
                     </Link>
 
-                    <Link to="/employees" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all whitespace-nowrap group ${location.pathname === '/employees' ? 'bg-[#003d82] text-white' : 'text-slate-300 hover:bg-[#003d82] hover:text-white'}`}>
-                        <Users size={20} className={location.pathname === '/employees' ? 'text-yellow-400' : 'group-hover:text-yellow-400 transition-colors'} />
-                        <span className="font-medium">Staff Registration</span>
+                    {/* Authorized Personnel Tab */}
+                    <Link to="/employees" className={location.pathname === '/employees' ? 'active' : ''}>
+                        <Users size={18} className="nav-icon" />
+                        Authorized Personnel
                     </Link>
 
-                    <div>
-                        <button
-                            onClick={() => setIsProjectsOpen(!isProjectsOpen)}
-                            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all whitespace-nowrap group ${location.pathname.startsWith('/projects') ? 'bg-[#003d82] text-white' : 'text-slate-300 hover:bg-[#003d82] hover:text-white'}`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <FolderKanban size={20} className={location.pathname.startsWith('/projects') ? 'text-yellow-400' : 'group-hover:text-yellow-400 transition-colors'} />
-                                <span className="font-medium">Projects</span>
-                            </div>
-                            <ChevronDown size={16} className={`transition-transform duration-300 ${isProjectsOpen ? 'rotate-180' : ''}`} />
-                        </button>
-
-                        <div
-                            className={`overflow-hidden transition-all duration-300 ease-in-out ${isProjectsOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
-                        >
-                            <div className="pl-11 pr-2 space-y-1 mt-1">
-                                <Link
-                                    to="/projects"
-                                    className={`block px-3 py-2 text-sm rounded-md transition-colors ${location.pathname === '/projects' && !location.search ? 'text-white bg-blue-900/50' : 'text-slate-400 hover:text-white hover:bg-blue-900/30'}`}
-                                >
-                                    All Projects
-                                </Link>
-                                {divisions.map(div => (
-                                    <Link
-                                        key={div.id}
-                                        to={`/projects?division=${encodeURIComponent(div.name)}`}
-                                        className={`block px-3 py-2 text-sm rounded-md transition-colors truncate ${location.search.includes(`division=${encodeURIComponent(div.name)}`) ? 'text-yellow-400 font-medium bg-blue-900/50' : 'text-slate-400 hover:text-white hover:bg-blue-900/30'}`}
-                                        title={div.name}
-                                    >
-                                        {div.name}
-                                    </Link>
-                                ))}
-                            </div>
+                    {/* Projects Tab */}
+                    <div className="flex flex-col w-full">
+                        <div className="flex items-center justify-between w-full">
+                            <Link to="/projects" className={`flex-1 ${location.pathname.startsWith('/projects') ? 'active' : ''}`}>
+                                <FolderKanban size={18} className="nav-icon" />
+                                Projects
+                            </Link>
+                            <button
+                                onClick={() => setIsProjectsExpanded(!isProjectsExpanded)}
+                                className="p-2 text-white/50 hover:text-white transition-colors"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                                <ChevronDown size={16} style={{ transform: isProjectsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                            </button>
                         </div>
+                        {isProjectsExpanded && (
+                            <div className="projects-sub-menu">
+                                {divisions.map(div => {
+                                    const isActiveSub = location.search.includes(`division=${encodeURIComponent(div.name)}`);
+                                    return (
+                                        <Link
+                                            key={div.id}
+                                            to={`/projects?division=${encodeURIComponent(div.name)}`}
+                                            className={`sub-item ${isActiveSub ? 'active-sub' : ''}`}
+                                            title={div.name}
+                                        >
+                                            {div.name}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
-                    <Link to="/basecamp-targets" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all whitespace-nowrap group ${location.pathname === '/basecamp-targets' ? 'bg-[#003d82] text-white' : 'text-slate-300 hover:bg-[#003d82] hover:text-white'}`}>
-                        {/* Using Flag icon for Targets/Goals */}
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={location.pathname === '/basecamp-targets' ? 'text-yellow-400' : 'group-hover:text-yellow-400 transition-colors'}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" x2="4" y1="22" y2="15" /></svg>
-                        <span className="font-medium">Basecamp Targets</span>
+                    {/* Basecamp Targets Tab */}
+                    <Link to="/basecamp-targets" className={location.pathname === '/basecamp-targets' ? 'active' : ''}>
+                        <Target size={18} className="nav-icon" />
+                        Basecamp Targets
                     </Link>
                 </nav>
-            </aside >
 
-            {/* Main Content */}
-            < main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative flex flex-col" >
-                <div className="absolute top-4 left-4 z-10">
-                    {!isSidebarOpen && (
+                {/* User Profile and Log Out — desktop sidebar only */}
+                {user && (
+                    <div className="sidebar-user-section mt-auto pt-4 border-t border-white/10 flex flex-col gap-3">
+                        <div className="flex items-center gap-3 px-3 py-2 bg-white/5 rounded-xl border border-white/10">
+                            <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm">
+                                {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-white truncate">{user.email}</p>
+                                <p className="text-[10px] text-slate-300 font-medium">DepEd Employee</p>
+                            </div>
+                        </div>
                         <button
-                            onClick={() => setIsSidebarOpen(true)}
-                            className="p-2 bg-white border border-slate-200 rounded-lg shadow-sm text-slate-500 hover:text-blue-600 hover:bg-slate-50 transition-colors"
-                            title="Show Sidebar"
+                            onClick={() => {
+                                localStorage.removeItem('opdash_token');
+                                localStorage.removeItem('opdash_user');
+                                window.location.href = '/opdash/login';
+                            }}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-red-300 hover:text-white hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20 w-full text-left"
                         >
-                            <Menu size={20} />
+                            <LogOut size={18} />
+                            <span>Log Out</span>
                         </button>
-                    )}
-                    {isSidebarOpen && (
-                        <button
-                            onClick={() => setIsSidebarOpen(false)}
-                            className="hidden md:block absolute -left-3 top-1/2 -translate-y-1/2 bg-white border border-slate-200 rounded-full p-1 shadow-sm text-slate-400 hover:text-slate-600 z-20"
-                            style={{ left: '-12px' }}
-                        >
-                            {/* This button might be tricky relative to main, let's just put a toggle inside the Sidebar header for closing, and this one for opening, or a common top bar.
-                                Actually simpler: Just a button in the top left of MAIN that toggles.
-                            */}
-                        </button>
-                    )}
-                </div>
+                    </div>
+                )}
+            </aside>
 
-                {/* Toggle Button for Desktop (Visible when open too? Or maybe inside sidebar to close?) 
-                    Let's put a toggle button always visible in the top left of main area if we want, or just relying on the one above.
-                    Better UX:
-                    - Sidebar has a "Collapse" button (ChevronLeft)
-                    - Main area has "Expand" button (Menu) when collapsed.
-                */}
+            {/* Main Content Area */}
+            <main className="main-content">
+                {location.pathname !== '/' && (
+                    <header className="topbar">
+                        <div>
+                            <div className="eyebrow">Department of Education</div>
+                            <h1>
+                                <span className="title-insight">Insight</span>
+                                <span className="title-ed">ED</span>
+                                <span className="title-rest"> Resource Dashboard</span>
+                            </h1>
+                        </div>
 
-                {
-                    isSidebarOpen && (
-                        <button
-                            onClick={() => setIsSidebarOpen(false)}
-                            className="hidden md:flex absolute top-4 left-[-12px] md:left-0 md:relative mb-4 items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors"
-                        >
-                            <Menu size={20} className="md:hidden" /> {/* Mobile maybe handled differently */}
-                            <div className="hidden md:block absolute -left-16 top-1/2 "></div>
-                        </button>
-                    )
-                }
+                        {/* Mobile user avatar + logout */}
+                        {user && (
+                            <div className="mobile-user-menu-wrapper">
+                                <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm shadow-md border-2 border-white/80">
+                                    {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        localStorage.removeItem('opdash_token');
+                                        localStorage.removeItem('opdash_user');
+                                        window.location.href = '/opdash/login';
+                                    }}
+                                    className="mobile-logout-btn"
+                                    aria-label="Log out"
+                                >
+                                    <LogOut size={18} />
+                                </button>
+                            </div>
+                        )}
+                    </header>
+                )}
 
-                {/* Let's redo the toggle button logic cleaner. */}
-                {/* Close button inside sidebar (desktop) */}
-
-
-                <div className="flex items-center gap-4 mb-2">
-                    <button
-                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                        {isSidebarOpen ? <ChevronLeft size={20} /> : <Menu size={20} />}
-                    </button>
-                </div>
-
-                <div className="max-w-7xl mx-auto w-full flex-1">
-                    <div key={location.pathname} className="animate-fade-in w-full h-full">
+                {/* Sub-page content */}
+                <div className="w-full flex-1">
+                    <div className="animate-fade-in w-full h-full">
                         <Outlet />
                     </div>
                 </div>
-            </main >
-        </div >
+            </main>
+        </div>
     );
 };
 

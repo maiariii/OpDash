@@ -1,32 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { createProject, getDivisions, getEmployees, getPrograms, createProgram } from '../api';
+import { createProject, getDivisions, getEmployees } from '../api';
 import { X } from 'lucide-react';
+import { useToast } from './ToastContext';
 
 const CreateProjectModal = ({ onClose, onProjectCreated }) => {
+    const { showToast } = useToast();
     const [divisions, setDivisions] = useState([]);
     const [employees, setEmployees] = useState([]);
-    const [programs, setPrograms] = useState([]);
 
     const [formData, setFormData] = useState({
-        program_id: '',
         name: '',
         description: '',
         division: '',
         lead_personnel: [], // Array for multi-select
-        supervising_officer: '',
-        assisting_personnel: [] // Array for multi-select
+        supervising_officer: [], // Array for multi-select
+        assisting_personnel: [], // Array for multi-select
+        expenditure_framework: ''
     });
 
     // Financial Optimizations
-    const [fundingSources, setFundingSources] = useState({ gaaPs: false, gaaMooe: false, gms: false });
-    const [allocations, setAllocations] = useState({ gaaPs: '', gaaMooe: '', gms: '' });
+    const [selectedFundingSource, setSelectedFundingSource] = useState('');
+    const [allocationAmount, setAllocationAmount] = useState('');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        Promise.all([getDivisions(), getEmployees(), getPrograms()]).then(([d, e, p]) => {
+        Promise.all([getDivisions(), getEmployees()]).then(([d, e]) => {
             setDivisions(d);
             setEmployees(e);
-            setPrograms(p);
         });
     }, []);
 
@@ -44,6 +44,36 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
     const availableEmployees = formData.division ? getEmployeesInDivision() : employees;
 
+    const [leadSearch, setLeadSearch] = useState('');
+    const [assistingSearch, setAssistingSearch] = useState('');
+    const [supervisorSearch, setSupervisorSearch] = useState('');
+
+    const filteredLeads = availableEmployees.filter(e =>
+        e.name.toLowerCase().includes(leadSearch.toLowerCase()) ||
+        (e.position && e.position.toLowerCase().includes(leadSearch.toLowerCase()))
+    );
+
+    const filteredAssisting = availableEmployees.filter(e =>
+        e.name.toLowerCase().includes(assistingSearch.toLowerCase()) ||
+        (e.position && e.position.toLowerCase().includes(assistingSearch.toLowerCase()))
+    );
+
+    const filteredSupervisors = availableEmployees.filter(e =>
+        e.name.toLowerCase().includes(supervisorSearch.toLowerCase()) ||
+        (e.position && e.position.toLowerCase().includes(supervisorSearch.toLowerCase()))
+    );
+
+    const handleSupervisorChange = (name) => {
+        setFormData(prev => {
+            const current = prev.supervising_officer;
+            if (current.includes(name)) {
+                return { ...prev, supervising_officer: current.filter(n => n !== name) };
+            } else {
+                return { ...prev, supervising_officer: [...current, name] };
+            }
+        });
+    };
+
     const handleLeadChange = (name) => {
         setFormData(prev => {
             const current = prev.lead_personnel;
@@ -55,33 +85,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
         });
     };
 
-    const [isAddingProgram, setIsAddingProgram] = useState(false);
-    const [newProgramName, setNewProgramName] = useState('');
-    const [creatingProgram, setCreatingProgram] = useState(false);
 
-    const handleCreateProgram = async () => {
-        if (!newProgramName.trim()) return;
-        if (!formData.division) {
-            alert('Please select a Division first to tie this program to.');
-            return;
-        }
-        setCreatingProgram(true);
-        try {
-            const newProg = await createProgram({
-                name: newProgramName.trim(),
-                division: formData.division
-            });
-            setPrograms([...programs, newProg]);
-            setFormData({ ...formData, program_id: newProg.id });
-            setIsAddingProgram(false);
-            setNewProgramName('');
-        } catch (error) {
-            console.error('Failed to create program:', error);
-            alert('Failed to create program');
-        } finally {
-            setCreatingProgram(false);
-        }
-    };
 
     const handleAssistingChange = (name) => {
         setFormData(prev => {
@@ -116,34 +120,73 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
         }
     };
 
-    // Update handleSubmit to include basecamp_target
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validation Checks to ensure complete detail
+        if (!formData.name || !formData.name.trim()) {
+            showToast("Project Name is required.", "warning");
+            return;
+        }
+        if (!formData.description || !formData.description.trim()) {
+            showToast("Description is required.", "warning");
+            return;
+        }
+        if (!selectedFundingSource) {
+            showToast("Source of Fund is required.", "warning");
+            return;
+        }
+        if (allocationAmount === '' || Number(allocationAmount) < 0) {
+            showToast("Allocation Amount is required and must be 0 or greater.", "warning");
+            return;
+        }
+        if (!formData.expenditure_framework) {
+            showToast("Expenditure Framework is required.", "warning");
+            return;
+        }
+        if (!formData.division) {
+            showToast("Division is required.", "warning");
+            return;
+        }
+        if (!formData.lead_personnel || formData.lead_personnel.length === 0) {
+            showToast("At least one Lead Personnel must be selected.", "warning");
+            return;
+        }
+        if (!formData.supervising_officer || formData.supervising_officer.length === 0) {
+            showToast("At least one Supervising Officer must be selected.", "warning");
+            return;
+        }
+        if (!formData.assisting_personnel || formData.assisting_personnel.length === 0) {
+            showToast("At least one Assisting Personnel must be selected.", "warning");
+            return;
+        }
+        if (!selectedBasecamp || selectedBasecamp.length === 0) {
+            showToast("At least one Basecamp Target must be selected.", "warning");
+            return;
+        }
+
         setLoading(true);
         try {
-            const gaaPs = Number(allocations.gaaPs) || 0;
-            const gaaMooe = Number(allocations.gaaMooe) || 0;
-            const gms = Number(allocations.gms) || 0;
-            const totalGaa = gaaPs + gaaMooe;
+            const amount = Number(allocationAmount) || 0;
 
             const projectData = {
                 ...formData,
                 lead_personnel: formData.lead_personnel.join(', '),
+                supervising_officer: formData.supervising_officer.join(', '),
                 assisting_personnel: formData.assisting_personnel.join(', '),
                 basecamp_target: selectedBasecamp.join(', '),
-                gaa_ps: gaaPs,
-                gaa_mooe: gaaMooe,
-                gaa_allocation: totalGaa, // Keep for backward compatibility or sum
-                gms_allocation: gms,
-                total_budget: totalGaa + gms
+                source_of_fund: selectedFundingSource,
+                sof_allocation: amount,
+                total_budget: amount
             };
 
             const newProject = await createProject(projectData);
+            showToast("Project created successfully!", "success");
             onProjectCreated(newProject);
             onClose();
         } catch (error) {
             console.error(error);
-            alert('Failed to create project');
+            showToast("Failed to create project", "error");
         } finally {
             setLoading(false);
         }
@@ -162,68 +205,10 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                 <h2 className="text-xl font-bold text-slate-800 mb-6">New Project</h2>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <div className="flex justify-between items-center mb-1">
-                            <label className="block text-sm font-medium text-slate-700">Program</label>
-                            {!isAddingProgram && (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsAddingProgram(true)}
-                                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"
-                                >
-                                    + New Program
-                                </button>
-                            )}
-                        </div>
-                        {isAddingProgram ? (
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    className="flex-1 px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="Enter program name..."
-                                    value={newProgramName}
-                                    onChange={e => setNewProgramName(e.target.value)}
-                                    disabled={creatingProgram}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleCreateProgram}
-                                    disabled={creatingProgram || !newProgramName.trim()}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
-                                >
-                                    {creatingProgram ? 'Saving...' : 'Save'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setIsAddingProgram(false);
-                                        setNewProgramName('');
-                                    }}
-                                    className="px-3 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-sm"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        ) : (
-                            <select
-                                required
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                value={formData.program_id}
-                                onChange={e => setFormData({ ...formData, program_id: e.target.value })}
-                            >
-                                <option value="">Select Program</option>
-                                {programs
-                                    .filter(p => !p.division || p.division === formData.division)
-                                    .map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                    ))}
-                            </select>
-                        )}
-                    </div>
 
                     <div>
                         <div className="flex justify-between">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Project Name</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Project Name <span className="text-red-500">*</span></label>
                             <span className="text-xs text-slate-400">{formData.name.length}/50</span>
                         </div>
                         <input
@@ -238,7 +223,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
                     <div>
                         <div className="flex justify-between">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Description <span className="text-red-500">*</span></label>
                             <span className="text-xs text-slate-400">{formData.description.length}/100</span>
                         </div>
                         <textarea
@@ -246,99 +231,86 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                             rows="3"
                             maxLength={100}
                             placeholder="Brief project summary..."
+                            required
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
                         />
                     </div>
 
                     {/* Source of Funds Section */}
-                    {/* Source of Funds Section */}
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
-                        <label className="block text-sm font-medium text-slate-700">Source of Funds</label>
-                        <div className="flex flex-wrap gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="rounded text-blue-600 focus:ring-blue-500"
-                                    checked={fundingSources.gaaPs}
-                                    onChange={e => setFundingSources({ ...fundingSources, gaaPs: e.target.checked })}
-                                />
-                                <span className="text-sm text-slate-700">GAA-PS</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="rounded text-blue-600 focus:ring-blue-500"
-                                    checked={fundingSources.gaaMooe}
-                                    onChange={e => setFundingSources({ ...fundingSources, gaaMooe: e.target.checked })}
-                                />
-                                <span className="text-sm text-slate-700">GAA-MOOE</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="rounded text-blue-600 focus:ring-blue-500"
-                                    checked={fundingSources.gms}
-                                    onChange={e => setFundingSources({ ...fundingSources, gms: e.target.checked })}
-                                />
-                                <span className="text-sm text-slate-700">GMS</span>
-                            </label>
+                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3 animate-fade-in">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Source of Fund <span className="text-red-500">*</span></label>
+                            <select
+                                required
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+                                value={selectedFundingSource}
+                                onChange={e => setSelectedFundingSource(e.target.value)}
+                            >
+                                <option value="">Select Source of Fund</option>
+                                <option value="GAA-PS">GAA-PS</option>
+                                <option value="GAA-MOOE">GAA-MOOE</option>
+                                <option value="GMS">GMS</option>
+                                <option value="APB">APB</option>
+                                <option value="HRD">HRD</option>
+                                <option value="HRDP">HRDP</option>
+                                <option value="Basic Education Inputs Program">Basic Education Inputs Program</option>
+                            </select>
                         </div>
 
-                        {/* Dynamic Allocation Inputs */}
-                        <div className="grid grid-cols-2 gap-4 mt-2">
-                            {fundingSources.gaaPs && (
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">GAA-PS Allocation (₱)</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                                        placeholder="0.00"
-                                        value={allocations.gaaPs}
-                                        onChange={e => setAllocations({ ...allocations, gaaPs: e.target.value })}
-                                    />
-                                </div>
-                            )}
-                            {fundingSources.gaaMooe && (
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">GAA-MOOE Allocation (₱)</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                                        placeholder="0.00"
-                                        value={allocations.gaaMooe}
-                                        onChange={e => setAllocations({ ...allocations, gaaMooe: e.target.value })}
-                                    />
-                                </div>
-                            )}
-                            {fundingSources.gms && (
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">GMS Allocation (₱)</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                                        placeholder="0.00"
-                                        value={allocations.gms}
-                                        onChange={e => setAllocations({ ...allocations, gms: e.target.value })}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                        {(fundingSources.gaaPs || fundingSources.gaaMooe || fundingSources.gms) && (
+                        {selectedFundingSource && (
+                            <div className="animate-slide-in">
+                                <label className="block text-xs font-medium text-slate-500 mb-1">{selectedFundingSource} Allocation (₱)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    required
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                    placeholder="0.00"
+                                    value={allocationAmount}
+                                    onChange={e => setAllocationAmount(e.target.value)}
+                                />
+                            </div>
+                        )}
+                        {selectedFundingSource && (
                             <div className="text-right text-xs font-bold text-slate-600 border-t border-slate-200 pt-2">
-                                Total Budget: ₱{((Number(allocations.gaaPs) || 0) + (Number(allocations.gaaMooe) || 0) + (Number(allocations.gms) || 0)).toLocaleString()}
+                                Total Budget: ₱{(Number(allocationAmount) || 0).toLocaleString()}
                             </div>
                         )}
                     </div>
 
+                    {/* Expenditure Framework Section */}
+                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                        <label className="block text-sm font-medium text-slate-700">Expenditure Framework <span className="text-red-500">*</span></label>
+                        <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="expenditure_framework"
+                                    value="PREXC"
+                                    checked={formData.expenditure_framework === 'PREXC'}
+                                    onChange={e => setFormData({ ...formData, expenditure_framework: e.target.value })}
+                                    className="text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-slate-700 font-medium">PREXC</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="expenditure_framework"
+                                    value="WFP"
+                                    checked={formData.expenditure_framework === 'WFP'}
+                                    onChange={e => setFormData({ ...formData, expenditure_framework: e.target.value })}
+                                    className="text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-slate-700 font-medium">WFP</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Division</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Division <span className="text-red-500">*</span></label>
                         <select
                             required
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
@@ -356,66 +328,112 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Lead Personnel (Select Multiple)
+                            Lead Personnel (Select Multiple) <span className="text-red-500">*</span>
                         </label>
-                        <div className="border border-slate-300 rounded-lg p-3 max-h-40 overflow-y-auto bg-slate-50">
-                            {availableEmployees.length === 0 ? (
-                                <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
-                            ) : availableEmployees.map(e => (
-                                <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.lead_personnel.includes(e.name)}
-                                        onChange={() => handleLeadChange(e.name)}
-                                        className="rounded text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <span className="text-sm text-slate-700">{e.name}</span>
-                                    <span className="text-xs text-slate-400">({e.position})</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Supervising Officer</label>
-                        <select
-                            required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                            value={formData.supervising_officer}
-                            onChange={e => setFormData({ ...formData, supervising_officer: e.target.value })}
-                        >
-                            <option value="">Select Supervisor</option>
-                            {availableEmployees.map(e => (
-                                <option key={e.id} value={e.name}>{e.name} ({e.position})</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Assisting Personnel (Select Multiple)
-                        </label>
-                        <div className="border border-slate-300 rounded-lg p-3 max-h-40 overflow-y-auto bg-slate-50">
-                            {availableEmployees.length === 0 ? (
-                                <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
-                            ) : availableEmployees.map(e => (
-                                <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.assisting_personnel.includes(e.name)}
-                                        onChange={() => handleAssistingChange(e.name)}
-                                        className="rounded text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <span className="text-sm text-slate-700">{e.name}</span>
-                                    <span className="text-xs text-slate-400">({e.position})</span>
-                                </label>
-                            ))}
+                        <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 space-y-2">
+                            {availableEmployees.length > 0 && (
+                                <input
+                                    type="text"
+                                    placeholder="Search lead personnel..."
+                                    value={leadSearch}
+                                    onChange={e => setLeadSearch(e.target.value)}
+                                    className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
+                                />
+                            )}
+                            <div className="max-h-32 overflow-y-auto space-y-1">
+                                {availableEmployees.length === 0 ? (
+                                    <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
+                                ) : filteredLeads.length === 0 ? (
+                                    <p className="text-xs text-slate-400">No matching employees found.</p>
+                                ) : filteredLeads.map(e => (
+                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.lead_personnel.includes(e.name)}
+                                            onChange={() => handleLeadChange(e.name)}
+                                            className="rounded text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-slate-700">{e.name}</span>
+                                        <span className="text-xs text-slate-400">({e.position})</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Basecamp Target (Select Multiple)
+                            Supervising Officer (Select Multiple) <span className="text-red-500">*</span>
+                        </label>
+                        <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 space-y-2">
+                            {availableEmployees.length > 0 && (
+                                <input
+                                    type="text"
+                                    placeholder="Search supervising officer..."
+                                    value={supervisorSearch}
+                                    onChange={e => setSupervisorSearch(e.target.value)}
+                                    className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
+                                />
+                            )}
+                            <div className="max-h-32 overflow-y-auto space-y-1">
+                                {availableEmployees.length === 0 ? (
+                                    <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
+                                ) : filteredSupervisors.length === 0 ? (
+                                    <p className="text-xs text-slate-400">No matching employees found.</p>
+                                ) : filteredSupervisors.map(e => (
+                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.supervising_officer.includes(e.name)}
+                                            onChange={() => handleSupervisorChange(e.name)}
+                                            className="rounded text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-slate-700">{e.name}</span>
+                                        <span className="text-xs text-slate-400">({e.position})</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Assisting Personnel (Select Multiple) <span className="text-red-500">*</span>
+                        </label>
+                        <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 space-y-2">
+                            {availableEmployees.length > 0 && (
+                                <input
+                                    type="text"
+                                    placeholder="Search assisting personnel..."
+                                    value={assistingSearch}
+                                    onChange={e => setAssistingSearch(e.target.value)}
+                                    className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
+                                />
+                            )}
+                            <div className="max-h-32 overflow-y-auto space-y-1">
+                                {availableEmployees.length === 0 ? (
+                                    <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
+                                ) : filteredAssisting.length === 0 ? (
+                                    <p className="text-xs text-slate-400">No matching employees found.</p>
+                                ) : filteredAssisting.map(e => (
+                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.assisting_personnel.includes(e.name)}
+                                            onChange={() => handleAssistingChange(e.name)}
+                                            className="rounded text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-slate-700">{e.name}</span>
+                                        <span className="text-xs text-slate-400">({e.position})</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Basecamp Target (Select Multiple) <span className="text-red-500">*</span>
                         </label>
                         <div className="border border-slate-300 rounded-lg p-3 max-h-40 overflow-y-auto bg-slate-50">
                             {basecampOptions.map((option, idx) => (

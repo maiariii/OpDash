@@ -222,7 +222,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                 {type === 'financial' && (
                                     <div className="text-xs text-slate-500 space-y-1 mt-2 pt-2 border-t border-slate-100">
                                         <div className="flex justify-between">
-                                            <span>GMS Allocation:</span>
+                                            <span>Allocation:</span>
                                             <span className="font-mono font-bold text-slate-700">₱{Number(item.total_budget || 0).toLocaleString()}</span>
                                         </div>
                                         <div className="flex justify-between">
@@ -258,17 +258,17 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-                <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-white shadow-sm z-10">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border-b border-slate-100 bg-white shadow-sm z-10 gap-3">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <div className="bg-blue-50 p-2 rounded-lg text-blue-600 flex-shrink-0">
                             {type === 'task' ? <Activity size={20} /> : type === 'employee' ? <Users size={20} /> : <DollarSign size={20} />}
                         </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800 leading-tight">{title}</h3>
+                        <div className="min-w-0">
+                            <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-tight truncate">{title}</h3>
                             <p className="text-xs text-slate-500">{data.length} records found</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0">
                         <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
                             <button
                                 onClick={() => setViewMode('list')}
@@ -285,7 +285,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                 <LayoutGrid size={18} />
                             </button>
                         </div>
-                        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-colors">
+                        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-colors ml-auto sm:ml-0">
                             <X size={24} />
                         </button>
                     </div>
@@ -477,7 +477,7 @@ const DashboardCharts = ({ metrics }) => {
     return (
         <div className="space-y-6">
             {/* Metric Cards Row 1 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <MetricCard
                     title="Total Activities"
                     value={totalActivities}
@@ -521,7 +521,7 @@ const DashboardCharts = ({ metrics }) => {
             </div>
 
             {/* Metric Cards Row 2 (Financials & People) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <MetricCard
                     title="Milestones Reached"
                     value={metrics.milestonesReached || 0}
@@ -536,14 +536,14 @@ const DashboardCharts = ({ metrics }) => {
                     }}
                 />
                 <MetricCard
-                    title="Total GMS Allocation"
+                    title="Total Allocation"
                     value={`₱${totalBudget.toLocaleString()}`}
                     icon={DollarSign}
                     color="bg-blue-600"
                     clickable
                     onClick={() => {
                         const withBudget = allProjects.filter(p => (p.total_budget || 0) > 0);
-                        openModal('GMS Allocation Breakdown', withBudget, 'financial');
+                        openModal('Allocation Breakdown', withBudget, 'financial');
                     }}
                 />
                 <MetricCard
@@ -572,7 +572,7 @@ const DashboardCharts = ({ metrics }) => {
                     <h3 className="text-lg font-bold text-slate-800 mb-6">Financial Overview</h3>
                     <div className="space-y-6 py-4">
                         <FinancialBar
-                            label="Total GMS Allocation"
+                            label="Total Allocation"
                             value={totalBudget}
                             max={Math.max(totalBudget, totalSpent) * 1.1} // Scale relative to max
                             color={COLORS.Budget}

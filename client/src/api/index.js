@@ -6,6 +6,18 @@ const api = axios.create({
     baseURL: API_URL,
 });
 
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('opdash_token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
+
+export const getProfile = () => api.get('/auth/me').then(res => res.data);
+
 export const getEmployees = () => api.get('/employees').then(res => res.data);
 export const createEmployee = (data) => api.post('/employees', data).then(res => res.data);
 export const deleteEmployee = (id) => api.delete(`/employees/${id}`).then(res => res.data);
@@ -15,8 +27,7 @@ export const getDivisions = () => api.get('/divisions').then(res => res.data);
 export const createDivision = (data) => api.post('/divisions', data).then(res => res.data);
 export const updateDivision = (id, data) => api.put(`/divisions/${id}`, data).then(res => res.data);
 
-export const getPrograms = () => api.get('/programs').then(res => res.data);
-export const createProgram = (data) => api.post('/programs', data).then(res => res.data);
+
 
 export const getProjects = () => api.get('/projects').then(res => res.data);
 export const createProject = (data) => api.post('/projects', data).then(res => res.data);

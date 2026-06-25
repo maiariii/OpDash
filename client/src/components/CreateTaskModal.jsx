@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Paperclip, Upload, Trash2, Loader2, Download } from 'lucide-react';
 import { createTask, updateTask, getProjectMilestones, uploadFile } from '../api';
+import { useToast } from './ToastContext';
 
 const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMilestones = [], onClose, onCreated, initialDate = null }) => {
+    const { showToast } = useToast();
     // console.log("CreateTaskModal received milestones:", initialMilestones);
     const isEditMode = !!task;
 
@@ -45,7 +47,6 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
     const initialDates = getInitialDates();
 
 
-    // Initial State
     const [formData, setFormData] = useState({
         title: '',
         objective: '',
@@ -53,10 +54,12 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
         start_date: initialDates.start,
         due_date: initialDates.end,
         obligated_amount: 0,
-        gms_allocation: 0,
+        allocation: 0,
         milestone_id: '', // Add milestone_id
         activity_type: '', // No preselection
         nature_of_activity: '', // No preselection
+        key_result_area: '', // Select only one KRA
+        output: '', // Add output
         expenses: [],
         subtasks: [], // Initialize subtasks
         file_attachments: [] // Initialize file attachments as array
@@ -97,10 +100,12 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 })() : '',
                 obligated_amount: task.obligated_amount || task.cost || 0, // Fallback to old field
-                gms_allocation: task.gms_allocation || task.budget || 0,   // Fallback to old field
+                allocation: task.allocation || task.gms_allocation || task.budget || 0,   // Fallback to old field
                 milestone_id: task.milestone_id || '', // Populate milestone_id
                 activity_type: task.activity_type || '', // Wait, if existing task has type, use it. If not, default? Usually tasks have type. Let's assume passed task has valid type.
                 nature_of_activity: task.nature_of_activity || '',
+                key_result_area: task.key_result_area || '',
+                output: task.output || '',
                 expenses: task.expenses || [],
                 subtasks: task.subtasks || [],
                 file_attachments: task.file_attachments ? JSON.parse(task.file_attachments) : []
@@ -196,7 +201,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
 
         // Date Validation
         if (formData.start_date && formData.due_date && formData.due_date < formData.start_date) {
-            alert("End Date cannot be earlier than Start Date.");
+            showToast("End Date cannot be earlier than Start Date.", "warning");
             return;
         }
 
@@ -207,18 +212,20 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                     ...formData,
                     file_attachments: JSON.stringify(formData.file_attachments)
                 });
+                showToast("Activity updated successfully!", "success");
             } else {
                 await createTask({
                     ...formData,
                     project_id: projectId,
                     file_attachments: JSON.stringify(formData.file_attachments)
                 });
+                showToast("Activity created successfully!", "success");
             }
             onCreated();
             onClose();
         } catch (error) {
             console.error(error);
-            alert(`Failed to ${isEditMode ? 'update' : 'create'} task`);
+            showToast(`Failed to ${isEditMode ? 'update' : 'create'} activity`, "error");
         } finally {
             setLoading(false);
         }
@@ -249,6 +256,21 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                                 {milestones.map(m => (
                                     <option key={m.id} value={m.id} className="text-slate-800">{m.title}</option>
                                 ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Key Result Area <span className="text-red-500">*</span></label>
+                            <select
+                                className={`w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white focus:ring-2 focus:ring-blue-500 ${formData.key_result_area === "" ? "text-slate-400" : "text-slate-800"}`}
+                                value={formData.key_result_area}
+                                onChange={e => setFormData({ ...formData, key_result_area: e.target.value })}
+                                required
+                            >
+                                <option value="" disabled hidden>Select Key Result Area...</option>
+                                <option value="Management Support" className="text-slate-800">Management Support</option>
+                                <option value="Policy and Direction Setting" className="text-slate-800">Policy and Direction Setting</option>
+                                <option value="Strategic Leadership and Performance Management" className="text-slate-800">Strategic Leadership and Performance Management</option>
                             </select>
                         </div>
 
@@ -323,6 +345,20 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                             />
                         </div>
 
+                        <div>
+                            <div className="flex justify-between">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Output</label>
+                                <span className="text-xs text-slate-400">{(formData.output || '').length}/100</span>
+                            </div>
+                            <textarea
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                placeholder="Expected output..."
+                                rows="2"
+                                value={formData.output || ''}
+                                onChange={e => e.target.value.length <= 100 && setFormData({ ...formData, output: e.target.value })}
+                            />
+                        </div>
+
                         <div className="grid grid-cols-1 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
@@ -379,16 +415,16 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                             !['Deskwork', 'Communications'].includes(formData.activity_type) && (
                                 <div className="grid grid-cols-2 gap-4 mt-2">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">GMS Allocation</label>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Allocation</label>
                                         <input
                                             type="text"
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                                             placeholder="0.00"
-                                            value={formData.gms_allocation ? Number(formData.gms_allocation).toLocaleString() : ''}
+                                            value={formData.allocation ? Number(formData.allocation).toLocaleString() : ''}
                                             onChange={e => {
                                                 const val = e.target.value.replace(/,/g, '');
                                                 if (!isNaN(val)) {
-                                                    setFormData({ ...formData, gms_allocation: val });
+                                                    setFormData({ ...formData, allocation: val });
                                                 }
                                             }}
                                         />

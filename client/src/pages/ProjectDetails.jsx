@@ -11,7 +11,7 @@ import {
     getProjects, getProjectTasks, getProjectFinancials,
     getProjectMilestones,
     updateTask, createTask, predictRisk,
-    updateProject, getDivisions, getEmployees, getPrograms
+    updateProject, getDivisions, getEmployees
 } from '../api';
 
 import KanbanBoard from '../components/KanbanBoard';
@@ -28,16 +28,17 @@ import DashboardCharts from '../components/DashboardCharts';
 
 import CalendarView from '../components/CalendarView';
 import Loader from '../components/Loader';
+import { useToast } from '../components/ToastContext';
 
 
 const TabButton = ({ active, children, onClick, icon: Icon }) => (
     <button
         onClick={onClick}
         className={clsx(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border",
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all border-2",
             active
-                ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                : "bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
+                ? "bg-[#075985] text-white border-[#075985] shadow-sm"
+                : "bg-white text-[#64748B] border-[#BAE6FD] hover:text-[#08315F] hover:bg-sky-50 shadow-sm"
         )}
     >
         <Icon size={16} />
@@ -46,6 +47,7 @@ const TabButton = ({ active, children, onClick, icon: Icon }) => (
 );
 
 const ProjectDetails = () => {
+    const { showToast } = useToast();
     const { id } = useParams();
     const navigate = useNavigate();
     const [project, setProject] = useState(null);
@@ -59,19 +61,23 @@ const ProjectDetails = () => {
     // Edit Mode State
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
-    const [fundingSources, setFundingSources] = useState({ gaaPs: false, gaaMooe: false, gms: false });
+    const [selectedFundingSource, setSelectedFundingSource] = useState('');
+    const [allocationAmount, setAllocationAmount] = useState('');
     const [editingTask, setEditingTask] = useState(null); // For Task Modal
 
     const [isCreatingTask, setIsCreatingTask] = useState(false); // For Creating New Task
     const [showCreateSubtask, setShowCreateSubtask] = useState(false); // For New Subtask Modal
     const [editingSubtask, setEditingSubtask] = useState(null); // For Subtask Modal
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Sidebar State
+    const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1280); // Sidebar State
     const [initialTaskDate, setInitialTaskDate] = useState(null); // Initial Date for New Task
 
     // Dropdown Data
     const [divisions, setDivisions] = useState([]);
     const [employees, setEmployees] = useState([]);
-    const [programs, setPrograms] = useState([]);
+
+    const [leadSearch, setLeadSearch] = useState('');
+    const [memberSearch, setMemberSearch] = useState('');
+    const [supervisorSearch, setSupervisorSearch] = useState('');
 
     useEffect(() => {
         // Load initial data
@@ -81,9 +87,8 @@ const ProjectDetails = () => {
             getProjectFinancials(id),
             getProjectMilestones(id), // Fetch Milestones
             getDivisions(),
-            getEmployees(),
-            getPrograms()
-        ]).then(([projects, tasks, fin, ms, divs, emps, progs]) => {
+            getEmployees()
+        ]).then(([projects, tasks, fin, ms, divs, emps]) => {
             const p = projects.find(p => p.id === id);
             setProject(p);
             setTasks(tasks);
@@ -91,10 +96,13 @@ const ProjectDetails = () => {
             setMilestones(ms); // Set Milestones
             setDivisions(divs);
             setEmployees(emps);
-            setPrograms(progs);
 
             // Init Edit Form
-            if (p) setEditForm(p);
+            if (p) {
+                setEditForm({
+                    ...p
+                });
+            }
 
             // AI Risk Check
             predictRisk({ burnRate: fin.burn_rate_percent, progress: 40 }) // Mock progress
@@ -115,18 +123,8 @@ const ProjectDetails = () => {
 
     useEffect(() => {
         if (isEditing && project) {
-            setFundingSources({
-                gaaPs: Number(project.gaa_ps) > 0,
-                gaaMooe: Number(project.gaa_mooe) > 0,
-                gms: Number(project.gms_allocation) > 0
-            });
-            // Ensure editForm has numeric values or at least 0
-            setEditForm(prev => ({
-                ...prev,
-                gaa_ps: Number(prev.gaa_ps) || 0,
-                gaa_mooe: Number(prev.gaa_mooe) || 0,
-                gms_allocation: Number(prev.gms_allocation) || 0
-            }));
+            setSelectedFundingSource(project.source_of_fund || '');
+            setAllocationAmount(project.sof_allocation ? String(project.sof_allocation) : (project.total_budget ? String(project.total_budget) : ''));
         }
     }, [isEditing, project]);
 
@@ -141,9 +139,48 @@ const ProjectDetails = () => {
 
     const handleSaveProject = async () => {
         try {
-            // Clean up members list before saving:
-            // 1. Split, trim, filter valid strings
-            // 2. Validate against actual employee list
+            // Validation Checks to ensure complete detail
+            if (!editForm.name || !editForm.name.trim()) {
+                showToast("Project Name is required.", "warning");
+                return;
+            }
+            if (!editForm.description || !editForm.description.trim()) {
+                showToast("Description is required.", "warning");
+                return;
+            }
+            if (!editForm.division) {
+                showToast("Division is required.", "warning");
+                return;
+            }
+            if (!selectedFundingSource) {
+                showToast("Source of Fund is required.", "warning");
+                return;
+            }
+            if (allocationAmount === '' || Number(allocationAmount) < 0) {
+                showToast("Allocation Amount is required and must be 0 or greater.", "warning");
+                return;
+            }
+            if (!editForm.expenditure_framework) {
+                showToast("Expenditure Framework is required.", "warning");
+                return;
+            }
+            if (!editForm.lead_personnel || !editForm.lead_personnel.split(',').map(s => s.trim()).filter(Boolean).length) {
+                showToast("At least one Lead Personnel is required.", "warning");
+                return;
+            }
+            if (!editForm.supervising_officer || !editForm.supervising_officer.split(',').map(s => s.trim()).filter(Boolean).length) {
+                showToast("At least one Supervising Officer is required.", "warning");
+                return;
+            }
+            if (!editForm.assisting_personnel || !editForm.assisting_personnel.split(',').map(s => s.trim()).filter(Boolean).length) {
+                showToast("At least one Assisting Personnel is required.", "warning");
+                return;
+            }
+            if (!editForm.basecamp_target || !editForm.basecamp_target.split(',').map(s => s.trim()).filter(Boolean).length) {
+                showToast("At least one Basecamp Target is required.", "warning");
+                return;
+            }
+
             const cleanForm = { ...editForm };
             if (cleanForm.assisting_personnel || cleanForm.lead_personnel) {
                 // Create a Set of valid employee names for O(1) lookup
@@ -153,35 +190,35 @@ const ProjectDetails = () => {
 
                 if (cleanForm.assisting_personnel) {
                     cleanForm.assisting_personnel = cleanForm.assisting_personnel
-                        .split(',')
-                        .map(s => s.trim())
-                        .filter(s => s && s.toLowerCase() !== 'n/a' && validNames.has(s))
-                        .join(', ');
+                         .split(',')
+                         .map(s => s.trim())
+                         .filter(s => s && s.toLowerCase() !== 'n/a' && validNames.has(s))
+                         .join(', ');
                 }
 
                 if (cleanForm.lead_personnel) {
                     cleanForm.lead_personnel = cleanForm.lead_personnel
-                        .split(',')
-                        .map(s => s.trim())
-                        .filter(s => s && s.toLowerCase() !== 'n/a' && validNames.has(s))
-                        .join(', ');
+                         .split(',')
+                         .map(s => s.trim())
+                         .filter(s => s && s.toLowerCase() !== 'n/a' && validNames.has(s))
+                         .join(', ');
                 }
             }
 
             const updated = { ...cleanForm };
 
-            updated.gaa_ps = Number(cleanForm.gaa_ps) || 0;
-            updated.gaa_mooe = Number(cleanForm.gaa_mooe) || 0;
-            updated.gaa_allocation = updated.gaa_ps + updated.gaa_mooe;
-            updated.gms_allocation = Number(cleanForm.gms_allocation) || 0;
-            updated.total_budget = updated.gaa_allocation + updated.gms_allocation;
+            const amount = Number(allocationAmount) || 0;
+            updated.source_of_fund = selectedFundingSource;
+            updated.sof_allocation = amount;
+            updated.total_budget = amount;
 
             const savedProject = await updateProject(id, updated);
+            showToast("Project updated successfully!", "success");
             setProject(savedProject);
             setIsEditing(false);
         } catch (err) {
             console.error(err);
-            alert("Failed to update project");
+            showToast("Failed to update project", "error");
         }
     };
 
@@ -217,6 +254,18 @@ const ProjectDetails = () => {
             currentMembers.push(empName);
         }
         setEditForm({ ...editForm, assisting_personnel: currentMembers.join(', ') });
+    };
+
+    const toggleSupervisor = (empName) => {
+        let currentSups = editForm.supervising_officer ? editForm.supervising_officer.split(',').map(s => s.trim()) : [];
+        currentSups = currentSups.filter(m => m && m.toLowerCase() !== 'n/a');
+
+        if (currentSups.includes(empName)) {
+            currentSups = currentSups.filter(m => m !== empName);
+        } else {
+            currentSups.push(empName);
+        }
+        setEditForm({ ...editForm, supervising_officer: currentSups.join(', ') });
     };
 
     const basecampOptions = [
@@ -275,6 +324,24 @@ const ProjectDetails = () => {
     if (!project) return <div className="p-8 flex justify-center"><Loader text="Loading project details..." /></div>;
 
     const filteredEmployees = getDivisionEmployees();
+
+    const searchFilteredLeads = filteredEmployees.filter(e => {
+        const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+        return name.toLowerCase().includes(leadSearch.toLowerCase()) ||
+               (e.position && e.position.toLowerCase().includes(leadSearch.toLowerCase()));
+    });
+
+    const searchFilteredMembers = filteredEmployees.filter(e => {
+        const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+        return name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+               (e.position && e.position.toLowerCase().includes(memberSearch.toLowerCase()));
+    });
+
+    const searchFilteredSupervisors = filteredEmployees.filter(e => {
+        const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+        return name.toLowerCase().includes(supervisorSearch.toLowerCase()) ||
+               (e.position && e.position.toLowerCase().includes(supervisorSearch.toLowerCase()));
+    });
 
     // Calculate Project Metrics for Dashboard
     const calculateDashboardMetrics = () => {
@@ -379,7 +446,7 @@ const ProjectDetails = () => {
             }
 
             // Sum Financials
-            totalActivityGms += Number(t.gms_allocation) || 0;
+            totalActivityGms += Number(t.allocation || t.gms_allocation) || 0;
             totalActivityObligated += Number(t.obligated_amount) || 0;
         });
 
@@ -390,11 +457,11 @@ const ProjectDetails = () => {
 
         // Prepare Activity Data for Financial Breakdown
         // Map tasks to fields compatible with DashboardCharts ('name', 'total_budget', 'actual_cost')
-        // Using 'gms_allocation' and 'obligated_amount' properties from task objects
+        // Using 'allocation' and 'obligated_amount' properties from task objects
         const activityFinancials = enrichedTasks.map(t => ({
             ...t,
             name: t.title, // Map title to name for the card
-            total_budget: t.gms_allocation || 0,
+            total_budget: t.allocation || t.gms_allocation || 0,
             actual_cost: t.obligated_amount || 0
         })).sort((a, b) => b.total_budget - a.total_budget); // Sort by allocation desc
 
@@ -425,7 +492,7 @@ const ProjectDetails = () => {
             accomplishedTasks: accomplishedList,
             delayedTasks: delayedList,
             waitlistedTasks: waitlistedList,
-            allMilestones: milestones.map(m => ({ ...m, project_name: project.name, division_name: project.division, importance: m.importance }))
+            allMilestones: milestones.map(m => ({ ...m, project_name: project.name, division_name: project.division }))
         };
     };
 
@@ -464,8 +531,8 @@ const ProjectDetails = () => {
                     </div>
                 </div>
 
-                <div className="flex justify-between items-center gap-2">
-                    <div className="flex justify-start items-center gap-2">
+                <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                    <div className="flex justify-start items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none whitespace-nowrap -mx-6 px-6 md:mx-0 md:px-0">
                         {/* Renamed Kanban to Dashboard */}
                         <TabButton active={activeTab === 'kanban'} onClick={() => setActiveTab('kanban')} icon={Layout}>Dashboard</TabButton>
                         <TabButton active={activeTab === 'milestones'} onClick={() => setActiveTab('milestones')} icon={Target}>Milestones</TabButton>
@@ -477,7 +544,7 @@ const ProjectDetails = () => {
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                         className={clsx(
-                            "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border",
+                            "flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border w-full md:w-auto",
                             isSidebarOpen
                                 ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
                                 : "bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
@@ -495,14 +562,11 @@ const ProjectDetails = () => {
             </div>
 
 
-            {/* Main Content Grid */}
-            <div className="flex-1 overflow-hidden grid grid-cols-1 xl:grid-cols-4 transition-all duration-300">
+            {/* Main Content Flex Layout */}
+            <div className="flex-1 overflow-hidden flex flex-row transition-all duration-300">
 
                 {/* Center Workspace */}
-                <div className={clsx(
-                    "overflow-y-auto p-6 transition-all duration-300",
-                    isSidebarOpen ? "xl:col-span-3" : "xl:col-span-4"
-                )}>
+                <div className="flex-1 overflow-y-auto p-6 transition-all duration-300">
                     {activeTab === 'kanban' && dashboardMetrics && (
                         <div className="max-w-6xl mx-auto space-y-8">
                             <DashboardCharts metrics={dashboardMetrics} />
@@ -639,26 +703,26 @@ const ProjectDetails = () => {
                         <div className="max-w-4xl">
                             <h2 className="text-lg font-bold text-slate-800 mb-4">Project Financials</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total GMS Allocation</h3>
-                                    <p className="text-3xl font-bold text-slate-800 tracking-tight mt-1">
+                                <div className="p-6 card-outlined">
+                                    <h3 className="text-sm font-bold text-[#08315F] uppercase tracking-wider">Total Allocation</h3>
+                                    <p className="text-3xl font-bold text-[#08315F] tracking-tight mt-1">
                                         ₱{dashboardMetrics?.totalBudget?.toLocaleString() || '0'}
                                     </p>
                                 </div>
-                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Obligated Funds</h3>
-                                    <p className="text-3xl font-bold text-slate-800 tracking-tight mt-1">
+                                <div className="p-6 card-outlined">
+                                    <h3 className="text-sm font-bold text-[#08315F] uppercase tracking-wider">Obligated Funds</h3>
+                                    <p className="text-3xl font-bold text-[#08315F] tracking-tight mt-1">
                                         ₱{dashboardMetrics?.totalSpent?.toLocaleString() || '0'}
                                     </p>
                                 </div>
-                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Remaining Budget</h3>
+                                <div className="p-6 card-outlined">
+                                    <h3 className="text-sm font-bold text-[#08315F] uppercase tracking-wider">Remaining Budget</h3>
                                     <p className={`text-3xl font-bold tracking-tight mt-1 ${(dashboardMetrics?.remainingBudget || 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                                         ₱{dashboardMetrics?.remainingBudget?.toLocaleString() || '0'}
                                     </p>
                                 </div>
-                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Utilization Rate</h3>
+                                <div className="p-6 card-outlined">
+                                    <h3 className="text-sm font-bold text-[#08315F] uppercase tracking-wider mb-2">Utilization Rate</h3>
                                     <p className="text-3xl font-bold text-orange-500 tracking-tight">
                                         {dashboardMetrics?.burnRate?.toFixed(1) || 0}%
                                     </p>
@@ -673,7 +737,7 @@ const ProjectDetails = () => {
 
                 {/* Right Sidebar - Project Details */}
                 {!isSidebarOpen ? (
-                    <div className="border-l border-slate-200 bg-white w-12 flex flex-col items-center justify-end py-6 transition-all duration-300">
+                    <div className="hidden xl:flex border-l border-slate-200 bg-white w-12 flex-col items-center justify-end py-6 transition-all duration-300 flex-shrink-0">
                         <button
                             onClick={() => setIsSidebarOpen(true)}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 mb-4"
@@ -686,40 +750,40 @@ const ProjectDetails = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="border-l border-slate-200 bg-white p-6 overflow-y-auto xl:col-span-1 transition-all duration-300">
+                    <>
+                        <div 
+                            className="fixed inset-0 bg-black/40 z-40 xl:hidden animate-fade-in"
+                            onClick={() => setIsSidebarOpen(false)}
+                        />
+                        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-lg max-h-[85vh] bg-white p-6 overflow-y-auto shadow-2xl rounded-xl xl:static xl:top-auto xl:left-auto xl:translate-x-0 xl:translate-y-0 xl:w-96 xl:max-w-none xl:shadow-none xl:border-t-0 xl:border-l xl:col-span-1 transition-all duration-300 flex-shrink-0">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="font-bold text-slate-800 flex items-center gap-2">
                                 <Layers size={18} /> Project Details
                             </h3>
-                            {!isEditing ? (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setIsSidebarOpen(false)}
-                                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-500"
-                                        title="Minimize Sidebar"
-                                    >
-                                        <ArrowLeft className="rotate-180" size={16} />
-                                    </button>
-                                    <button onClick={() => setIsEditing(true)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
-                                        <Edit2 size={16} />
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="flex gap-2">
-                                    <button onClick={handleSaveProject} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">
-                                        <Save size={16} />
-                                    </button>
-                                    <button onClick={() => { setIsEditing(false); setEditForm(project); }} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
-                                        <X size={16} />
-                                    </button>
-                                </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {/* Only visible on mobile/tablet to close modal */}
+                                <button
+                                    onClick={() => setIsSidebarOpen(false)}
+                                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 xl:hidden"
+                                    title="Close"
+                                >
+                                    <X size={18} />
+                                </button>
+                                
+                                <button
+                                    onClick={() => setIsSidebarOpen(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hidden xl:inline-flex"
+                                    title="Minimize Sidebar"
+                                >
+                                    <ArrowLeft className="rotate-180" size={16} />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="space-y-6">
                             {isEditing && (
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Name</label>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Name<span className="text-red-500"> *</span></label>
                                     <input
                                         type="text"
                                         className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
@@ -730,30 +794,7 @@ const ProjectDetails = () => {
                             )}
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Program</label>
-                                {isEditing ? (
-                                    <select
-                                        className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={editForm.program_id || ''}
-                                        onChange={e => setEditForm({ ...editForm, program_id: e.target.value })}
-                                    >
-                                        <option value="">Select Program</option>
-                                        {programs
-                                            .filter(p => !p.division || p.division === editForm.division)
-                                            .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                    </select>
-                                ) : (
-                                    <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                        <span className="text-sm font-medium text-blue-800">
-                                            {project.program_id ? programs.find(p => p.id === project.program_id)?.name || "Unknown Program" : "No Program Assigned"}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description</label>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description{isEditing && <span className="text-red-500"> *</span>}</label>
                                 {isEditing ? (
                                     <textarea
                                         className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -769,7 +810,7 @@ const ProjectDetails = () => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Division</label>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Division{isEditing && <span className="text-red-500"> *</span>}</label>
                                 {isEditing ? (
                                     <select
                                         className="w-full border border-slate-300 rounded-lg p-2 text-sm"
@@ -788,131 +829,64 @@ const ProjectDetails = () => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Funding</label>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Funding{isEditing && <span className="text-red-500"> *</span>}</label>
                                 {isEditing ? (
                                     <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
-                                        <div className="flex flex-wrap gap-4 mb-3">
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    className="rounded text-blue-600 focus:ring-blue-500"
-                                                    checked={fundingSources.gaaPs}
-                                                    onChange={e => {
-                                                        const checked = e.target.checked;
-                                                        setFundingSources(prev => ({ ...prev, gaaPs: checked }));
-                                                        if (!checked) setEditForm(prev => ({ ...prev, gaa_ps: 0 }));
-                                                    }}
-                                                />
-                                                <span className="text-sm font-medium text-slate-700">GAA-PS</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    className="rounded text-blue-600 focus:ring-blue-500"
-                                                    checked={fundingSources.gaaMooe}
-                                                    onChange={e => {
-                                                        const checked = e.target.checked;
-                                                        setFundingSources(prev => ({ ...prev, gaaMooe: checked }));
-                                                        if (!checked) setEditForm(prev => ({ ...prev, gaa_mooe: 0 }));
-                                                    }}
-                                                />
-                                                <span className="text-sm font-medium text-slate-700">GAA-MOOE</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    className="rounded text-blue-600 focus:ring-blue-500"
-                                                    checked={fundingSources.gms}
-                                                    onChange={e => {
-                                                        const checked = e.target.checked;
-                                                        setFundingSources(prev => ({ ...prev, gms: checked }));
-                                                        if (!checked) setEditForm(prev => ({ ...prev, gms_allocation: 0 }));
-                                                    }}
-                                                />
-                                                <span className="text-sm font-medium text-slate-700">GMS</span>
-                                            </label>
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-500 mb-1">Source of Fund<span className="text-red-500"> *</span></label>
+                                            <select
+                                                required
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+                                                value={selectedFundingSource}
+                                                onChange={e => setSelectedFundingSource(e.target.value)}
+                                            >
+                                                <option value="">Select Source of Fund</option>
+                                                <option value="GAA-PS">GAA-PS</option>
+                                                <option value="GAA-MOOE">GAA-MOOE</option>
+                                                <option value="GMS">GMS</option>
+                                                <option value="APB">APB</option>
+                                                <option value="HRD">HRD</option>
+                                                <option value="HRDP">HRDP</option>
+                                                <option value="Basic Education Inputs Program">Basic Education Inputs Program</option>
+                                            </select>
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            {fundingSources.gaaPs && (
-                                                <div>
-                                                    <label className="block text-xs text-slate-500 mb-1">GAA-PS Allocation (₱)</label>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        className="w-full border border-slate-300 rounded p-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                                        value={editForm.gaa_ps || ''}
-                                                        onChange={e => setEditForm({ ...editForm, gaa_ps: e.target.value })}
-                                                        placeholder="0.00"
-                                                    />
-                                                </div>
-                                            )}
-                                            {fundingSources.gaaMooe && (
-                                                <div>
-                                                    <label className="block text-xs text-slate-500 mb-1">GAA-MOOE Allocation (₱)</label>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        className="w-full border border-slate-300 rounded p-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                                        value={editForm.gaa_mooe || ''}
-                                                        onChange={e => setEditForm({ ...editForm, gaa_mooe: e.target.value })}
-                                                        placeholder="0.00"
-                                                    />
-                                                </div>
-                                            )}
-                                            {fundingSources.gms && (
-                                                <div>
-                                                    <label className="block text-xs text-slate-500 mb-1">GMS Allocation (₱)</label>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        className="w-full border border-slate-300 rounded p-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                                        value={editForm.gms_allocation || ''}
-                                                        onChange={e => setEditForm({ ...editForm, gms_allocation: e.target.value })}
-                                                        placeholder="0.00"
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
+                                        {selectedFundingSource && (
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">{selectedFundingSource} Allocation (₱)<span className="text-red-500"> *</span></label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    required
+                                                    className="w-full border border-slate-300 rounded p-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                                    placeholder="0.00"
+                                                    value={allocationAmount}
+                                                    onChange={e => setAllocationAmount(e.target.value)}
+                                                />
+                                            </div>
+                                        )}
 
-                                        <div className="text-right text-xs font-bold text-slate-700 border-t border-slate-200 pt-2">
-                                            Total: ₱{((Number(editForm.gaa_ps) || 0) + (Number(editForm.gaa_mooe) || 0) + (Number(editForm.gms_allocation) || 0)).toLocaleString()}
-                                        </div>
+                                        {selectedFundingSource && (
+                                            <div className="text-right text-xs font-bold text-slate-700 border-t border-slate-200 pt-2">
+                                                Total: ₱{(Number(allocationAmount) || 0).toLocaleString()}
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
-                                        {(Number(project.gaa_allocation) > 0 || Number(project.gms_allocation) > 0) ? (
+                                        {project.source_of_fund ? (
                                             <div className="text-sm space-y-1">
-                                                {Number(project.gaa_ps) > 0 && (
-                                                    <div className="flex justify-between">
-                                                        <span className="text-slate-500">GAA-PS:</span>
-                                                        <span className="font-mono text-slate-700 font-medium">₱{Number(project.gaa_ps).toLocaleString()}</span>
-                                                    </div>
-                                                )}
-                                                {Number(project.gaa_mooe) > 0 && (
-                                                    <div className="flex justify-between">
-                                                        <span className="text-slate-500">GAA-MOOE:</span>
-                                                        <span className="font-mono text-slate-700 font-medium">₱{Number(project.gaa_mooe).toLocaleString()}</span>
-                                                    </div>
-                                                )}
-                                                {/* Fallback for old GAA allocation if specific split is missing but total exists */}
-                                                {(Number(project.gaa_allocation) > 0 && Number(project.gaa_ps) === 0 && Number(project.gaa_mooe) === 0) && (
-                                                    <div className="flex justify-between">
-                                                        <span className="text-slate-500">GAA (Total):</span>
-                                                        <span className="font-mono text-slate-700 font-medium">₱{Number(project.gaa_allocation).toLocaleString()}</span>
-                                                    </div>
-                                                )}
-                                                {Number(project.gms_allocation) > 0 && (
-                                                    <div className="flex justify-between">
-                                                        <span className="text-slate-500">GMS:</span>
-                                                        <span className="font-mono text-slate-700 font-medium">₱{Number(project.gms_allocation).toLocaleString()}</span>
-                                                    </div>
-                                                )}
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">Source of Fund:</span>
+                                                    <span className="text-slate-700 font-medium">{project.source_of_fund}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">SOF Allocation:</span>
+                                                    <span className="font-mono text-slate-700 font-medium">₱{Number(project.sof_allocation || project.total_budget || 0).toLocaleString()}</span>
+                                                </div>
                                                 <div className="flex justify-between border-t border-slate-100 pt-1 mt-1 font-bold">
-                                                    <span className="text-slate-800">Total:</span>
+                                                    <span className="text-slate-800">Total Budget:</span>
                                                     <span className="font-mono text-slate-800">₱{Number(project.total_budget || 0).toLocaleString()}</span>
                                                 </div>
                                             </div>
@@ -921,17 +895,45 @@ const ProjectDetails = () => {
                                                 <p className="text-sm font-medium text-slate-800">
                                                     ₱{Number(project.total_budget || 0).toLocaleString()}
                                                 </p>
-                                                <p className="text-xs text-slate-400 italic">No specific source breakdown</p>
+                                                <p className="text-xs text-slate-400 italic">No source of fund specified</p>
                                             </div>
                                         )}
+                                    </div>
+                                )}
+                            </div>
 
-                                        {/* Activity Rollup comparison */}
-                                        <div className="pt-2 mt-2 border-t border-slate-100">
-                                            <p className="text-xs text-slate-400">Allocated to Activities:</p>
-                                            <p className="text-sm font-bold text-blue-600">
-                                                ₱{Number(financials?.total_gms_allocation || financials?.total_budget || 0).toLocaleString()}
-                                            </p>
-                                        </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Expenditure Framework{isEditing && <span className="text-red-500"> *</span>}</label>
+                                {isEditing ? (
+                                    <div className="flex gap-4 p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="expenditure_framework_edit"
+                                                value="PREXC"
+                                                checked={editForm.expenditure_framework === 'PREXC'}
+                                                onChange={e => setEditForm({ ...editForm, expenditure_framework: e.target.value })}
+                                                className="text-blue-600 focus:ring-blue-500"
+                                            />
+                                            <span className="text-sm text-slate-700 font-medium">PREXC</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="expenditure_framework_edit"
+                                                value="WFP"
+                                                checked={editForm.expenditure_framework === 'WFP'}
+                                                onChange={e => setEditForm({ ...editForm, expenditure_framework: e.target.value })}
+                                                className="text-blue-600 focus:ring-blue-500"
+                                            />
+                                            <span className="text-sm text-slate-700 font-medium">WFP</span>
+                                        </label>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100 font-normal">
+                                        <span className="text-sm font-semibold text-slate-700">
+                                            {project.expenditure_framework || "Not Specified"}
+                                        </span>
                                     </div>
                                 )}
                             </div>
@@ -943,25 +945,39 @@ const ProjectDetails = () => {
 
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Lead Personnel</label>
+                                        <label className="block text-xs text-slate-500 mb-1">Lead Personnel{isEditing && <span className="text-red-500"> *</span>}</label>
                                         {isEditing ? (
-                                            <div className="border border-slate-300 rounded-lg p-2 max-h-40 overflow-y-auto space-y-2">
-                                                {filteredEmployees.length === 0 && <span className="text-xs text-slate-400">No employees found in this division.</span>}
-                                                {filteredEmployees.map(e => {
-                                                    const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
-                                                    const isSelected = editForm.lead_personnel?.includes(name);
-                                                    return (
-                                                        <div key={e.id} onClick={() => toggleLead(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                                            {isSelected ?
-                                                                <CheckSquare size={16} className="text-blue-600" /> :
-                                                                <Square size={16} className="text-slate-300" />
-                                                            }
-                                                            <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
-                                                                {name}
-                                                            </span>
-                                                        </div>
-                                                    )
-                                                })}
+                                            <div className="border border-slate-300 rounded-lg p-2 bg-white space-y-2">
+                                                {filteredEmployees.length > 0 && (
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search lead personnel..."
+                                                        value={leadSearch}
+                                                        onChange={e => setLeadSearch(e.target.value)}
+                                                        className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none font-normal"
+                                                    />
+                                                )}
+                                                <div className="max-h-32 overflow-y-auto space-y-1">
+                                                    {filteredEmployees.length === 0 ? (
+                                                        <span className="text-xs text-slate-400">No employees found in this division.</span>
+                                                    ) : searchFilteredLeads.length === 0 ? (
+                                                        <span className="text-xs text-slate-400">No matching employees found.</span>
+                                                    ) : searchFilteredLeads.map(e => {
+                                                        const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+                                                        const isSelected = editForm.lead_personnel?.includes(name);
+                                                        return (
+                                                            <div key={e.id} onClick={() => toggleLead(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                                {isSelected ?
+                                                                    <CheckSquare size={16} className="text-blue-600" /> :
+                                                                    <Square size={16} className="text-slate-300" />
+                                                                }
+                                                                <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
+                                                                    {name}
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
                                             </div>
                                         ) : (
                                             <p className="text-sm text-slate-600 leading-relaxed">{project.lead_personnel}</p>
@@ -969,44 +985,79 @@ const ProjectDetails = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Supervising Officer</label>
+                                        <label className="block text-xs text-slate-500 mb-1">Supervising Officer{isEditing && <span className="text-red-500"> *</span>}</label>
                                         {isEditing ? (
-                                            <select
-                                                className="w-full border border-slate-300 rounded p-2 text-sm"
-                                                value={editForm.supervising_officer}
-                                                onChange={e => setEditForm({ ...editForm, supervising_officer: e.target.value })}
-                                            >
-                                                <option value="">Select Supervisor</option>
-                                                {filteredEmployees.map(e => {
-                                                    const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
-                                                    return <option key={e.id} value={name}>{name}</option>
-                                                })}
-                                            </select>
+                                            <div className="border border-slate-300 rounded-lg p-2 bg-white space-y-2">
+                                                {filteredEmployees.length > 0 && (
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search supervising officer..."
+                                                        value={supervisorSearch}
+                                                        onChange={e => setSupervisorSearch(e.target.value)}
+                                                        className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none font-normal"
+                                                    />
+                                                )}
+                                                <div className="max-h-32 overflow-y-auto space-y-1">
+                                                    {filteredEmployees.length === 0 ? (
+                                                        <span className="text-xs text-slate-400">No employees found in this division.</span>
+                                                    ) : searchFilteredSupervisors.length === 0 ? (
+                                                        <span className="text-xs text-slate-400">No matching employees found.</span>
+                                                    ) : searchFilteredSupervisors.map(e => {
+                                                        const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+                                                        const isSelected = editForm.supervising_officer?.includes(name);
+                                                        return (
+                                                            <div key={e.id} onClick={() => toggleSupervisor(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                                {isSelected ?
+                                                                    <CheckSquare size={16} className="text-blue-600" /> :
+                                                                    <Square size={16} className="text-slate-300" />
+                                                                }
+                                                                <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
+                                                                    {name}
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
                                         ) : (
-                                            <p className="text-sm font-medium text-slate-800">{project.supervising_officer}</p>
+                                            <p className="text-sm text-slate-600 leading-relaxed">{project.supervising_officer}</p>
                                         )}
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Members</label>
+                                        <label className="block text-xs text-slate-500 mb-1">Members{isEditing && <span className="text-red-500"> *</span>}</label>
                                         {isEditing ? (
-                                            <div className="border border-slate-300 rounded-lg p-2 max-h-40 overflow-y-auto space-y-2">
-                                                {filteredEmployees.length === 0 && <span className="text-xs text-slate-400">No employees found in this division.</span>}
-                                                {filteredEmployees.map(e => {
-                                                    const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
-                                                    const isSelected = editForm.assisting_personnel?.includes(name);
-                                                    return (
-                                                        <div key={e.id} onClick={() => toggleMember(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                                            {isSelected ?
-                                                                <CheckSquare size={16} className="text-blue-600" /> :
-                                                                <Square size={16} className="text-slate-300" />
-                                                            }
-                                                            <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
-                                                                {name}
-                                                            </span>
-                                                        </div>
-                                                    )
-                                                })}
+                                            <div className="border border-slate-300 rounded-lg p-2 bg-white space-y-2">
+                                                {filteredEmployees.length > 0 && (
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search members..."
+                                                        value={memberSearch}
+                                                        onChange={e => setMemberSearch(e.target.value)}
+                                                        className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none font-normal"
+                                                    />
+                                                )}
+                                                <div className="max-h-32 overflow-y-auto space-y-1">
+                                                    {filteredEmployees.length === 0 ? (
+                                                        <span className="text-xs text-slate-400">No employees found in this division.</span>
+                                                    ) : searchFilteredMembers.length === 0 ? (
+                                                        <span className="text-xs text-slate-400">No matching employees found.</span>
+                                                    ) : searchFilteredMembers.map(e => {
+                                                        const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+                                                        const isSelected = editForm.assisting_personnel?.includes(name);
+                                                        return (
+                                                            <div key={e.id} onClick={() => toggleMember(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                                {isSelected ?
+                                                                    <CheckSquare size={16} className="text-blue-600" /> :
+                                                                    <Square size={16} className="text-slate-300" />
+                                                                }
+                                                                <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
+                                                                    {name}
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
                                             </div>
                                         ) : (
                                             <p className="text-sm text-slate-600 leading-relaxed">{project.assisting_personnel}</p>
@@ -1016,7 +1067,7 @@ const ProjectDetails = () => {
                             </div>
 
                             <div className="pt-4 border-t border-slate-100">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Basecamp Target</label>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Basecamp Target{isEditing && <span className="text-red-500"> *</span>}</label>
                                 {isEditing ? (
                                     <div className="border border-slate-300 rounded-lg p-2 max-h-60 overflow-y-auto space-y-2">
                                         {basecampOptions.map((option, idx) => {
@@ -1092,8 +1143,39 @@ const ProjectDetails = () => {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Action Buttons at the bottom */}
+                            <div className="pt-6 border-t border-slate-100 flex flex-col gap-2">
+                                {!isEditing ? (
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors"
+                                    >
+                                        <Edit2 size={16} />
+                                        Edit Project Details
+                                    </button>
+                                ) : (
+                                    <div className="flex gap-2 w-full">
+                                        <button
+                                            onClick={handleSaveProject}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors"
+                                        >
+                                            <Save size={16} />
+                                            Save Changes
+                                        </button>
+                                        <button
+                                            onClick={() => { setIsEditing(false); setEditForm(project); }}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors border border-slate-200"
+                                        >
+                                            <X size={16} />
+                                            Cancel
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
+                    </>
                 )}
             </div>
             {

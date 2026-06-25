@@ -8,7 +8,9 @@
         "debug_log.txt",
         "api/debug_log.txt",
         ".git/*",
-        "package-lock.json"
+        "package-lock.json",
+        "client/*",
+        "client/**/*"
     ],
     "keywords": []
 }

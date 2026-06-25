@@ -8,20 +8,26 @@ import BasecampTargets from './pages/BasecampTargets';
 
 import Projects from './pages/Projects';
 import Employees from './pages/Employees';
+import { ToastProvider } from './components/ToastContext';
+import Login from './pages/Login';
+import AuthRoute from './components/AuthRoute';
 
 function App() {
   return (
-    <BrowserRouter basename="/opdash">
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="basecamp-targets" element={<BasecampTargets />} />
-          <Route path="projects" element={<Projects />} />
-          <Route path="projects/:id" element={<ProjectDetails />} />
-          <Route path="employees" element={<Employees />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter basename="/opdash">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<AuthRoute><Layout /></AuthRoute>}>
+            <Route index element={<Dashboard />} />
+            <Route path="basecamp-targets" element={<BasecampTargets />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="projects/:id" element={<ProjectDetails />} />
+            <Route path="employees" element={<Employees />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }
 

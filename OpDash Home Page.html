@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InsightED Executive Activity & Budget Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Quicksand:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+--navy:#08315F;--blue:#075985;--blue-600:#0284C7;--blue-400:#7DD3FC;--blue-100:#E0F2FE;--blue-50:#F0F9FF;
+--gold:#FBBF24;--amber:#D97706;--red:#B91C1C;--green:#16A34A;--purple:#7C3AED;--slate:#475569;
+--card:#FFFFFF;--text:#0F172A;--muted:#64748B;--line:#BAE6FD;
+--font-heading:Quicksand,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+--font-body:"Comic Neue",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+--radius:22px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+margin:0;min-height:100vh;color:var(--text);font-family:var(--font-body);background-color:var(--blue-50);background-attachment:fixed;
+background-image:
+radial-gradient(43.5% 49.5% at 10% 12%,rgba(7,89,133,.30) 0 34%,transparent 78%),
+radial-gradient(46.5% 54% at 92% 10%,rgba(251,191,36,.42) 0 36%,transparent 80%),
+radial-gradient(40.5% 48% at 84% 92%,rgba(125,211,252,.30) 0 34%,transparent 78%),
+radial-gradient(45% 52.5% at 8% 92%,rgba(217,119,6,.26) 0 28%,rgba(251,191,36,.18) 42%,transparent 80%);
+}
+.app{display:grid;grid-template-columns:72px 1fr;min-height:100vh}
+.sidebar{
+position:relative;color:white;padding:24px;display:flex;flex-direction:column;gap:28px;
+background:linear-gradient(180deg,color-mix(in srgb,var(--navy) 92%,transparent),color-mix(in srgb,var(--blue) 72%,var(--navy) 28%));
+border-right:1px solid rgba(255,255,255,.24);box-shadow:18px 0 42px rgba(11,31,77,.16);overflow:hidden;
+}
+.sidebar:before{content:"";position:absolute;inset:-100px -90px auto auto;width:230px;height:230px;border-radius:999px;background:radial-gradient(circle,rgba(251,191,36,.22),transparent 68%)}
+@media(min-width:1001px){
+.sidebar{width:72px;transition:width .18s ease;z-index:50}
+.sidebar:hover{width:280px}
+.sidebar:not(:hover){padding-left:10px;padding-right:10px}
+.sidebar:not(:hover) .brand{width:44px;height:44px;overflow:hidden;font-size:0;padding:10px}
+.sidebar:not(:hover) .brand:before{content:"IE";font-size:16px;color:var(--blue)}
+.sidebar:not(:hover) .nav a{font-size:0;justify-content:center;padding:12px}
+.sidebar:not(:hover) .nav a:before{margin:0}
+}
+.brand{position:relative;z-index:1;width:max-content;padding:10px 12px;border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(255,255,255,.88));box-shadow:0 10px 24px rgba(8,49,95,.18);font-family:var(--font-heading);font-size:22px;font-weight:950;line-height:1}
+.brand span{color:var(--blue)}.brand b{color:var(--red)}
+.nav{position:relative;z-index:1;display:grid;gap:8px}
+.nav a{min-height:44px;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid transparent;border-radius:14px;color:rgba(255,255,255,.78);font-size:14px;font-weight:850;text-decoration:none;cursor:pointer;white-space:nowrap}
+.nav a:before{content:"";width:18px;height:18px;border:2px solid currentColor;border-radius:6px;flex:0 0 18px}
+.nav a:hover,.nav a.active{background:rgba(255,255,255,.16);color:white;border-color:rgba(255,255,255,.28);box-shadow:inset 0 -3px 0 var(--gold),0 0 18px color-mix(in srgb,var(--blue-400) 26%,transparent)}
+.main{min-width:0;padding:18px 24px 28px;display:grid;gap:18px;align-content:start}
+.topbar{
+position:relative;isolation:isolate;display:flex;justify-content:space-between;align-items:center;gap:25px;min-height:130px;padding:28px 44px;
+border:2.5px solid color-mix(in srgb,var(--blue) 64%,var(--navy) 36%);border-radius:var(--radius);background:linear-gradient(135deg,var(--blue-50),white);
+box-shadow:0 16px 34px color-mix(in srgb,var(--navy) 12%,transparent);overflow:hidden;
+}
+.topbar:before{content:"";position:absolute;left:0;top:0;bottom:0;width:76%;background:radial-gradient(circle at 18% 20%,color-mix(in srgb,var(--blue-400) 24%,transparent),transparent 32%),linear-gradient(135deg,var(--navy),var(--blue));clip-path:polygon(0 0,92% 0,100% 100%,0 100%);z-index:0}
+.topbar:after{content:"";position:absolute;width:112px;height:112px;right:18px;top:50%;transform:translateY(-50%);border-radius:999px;background:radial-gradient(circle,color-mix(in srgb,var(--gold) 20%,white 80%) 0 44%,color-mix(in srgb,var(--gold) 10%,transparent) 45% 68%,transparent 74%);box-shadow:0 0 0 12px color-mix(in srgb,var(--gold) 8%,transparent),0 0 28px color-mix(in srgb,var(--gold) 24%,transparent);z-index:0}
+.topbar>*{position:relative;z-index:1}.eyebrow{color:var(--gold);font-family:var(--font-heading);font-size:13px;font-weight:950;letter-spacing:.18em;text-transform:uppercase;margin-bottom:8px}
+.topbar h1{margin:0;max-width:880px;font-family:var(--font-heading);font-size:clamp(30px,3.2vw,40px);line-height:1.12;font-weight:950;letter-spacing:.01em;color:white;text-shadow:0 4px 10px rgba(11,31,77,.34),0 12px 28px rgba(15,23,42,.26)}
+.title-blue{color:var(--blue-400)}.title-red{color:#FCA5A5}.top-note{max-width:300px;text-align:right;color:var(--blue);font-size:13px;line-height:1.35;font-weight:850}
+.card{background:var(--card);border:2.5px solid color-mix(in srgb,var(--blue) 64%,var(--navy) 36%);border-radius:var(--radius);box-shadow:none;padding:16px}
+.filters{background:rgba(255,255,255,.94);backdrop-filter:blur(10px)}
+.filter-grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:8px;align-items:end}
+label{display:grid;gap:6px;min-width:0}
+label span,.label,.kpi small{display:block;color:var(--muted);font-family:var(--font-heading);font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:.13em}
+.select,.button{width:100%;height:42px;min-width:0;background:white;border:2px solid var(--line);border-radius:14px;padding:10px 12px;color:var(--navy);font-family:var(--font-body);font-size:12px;font-weight:850;outline:none}
+.button{border:0;background:var(--blue);color:white;font-family:var(--font-heading);font-weight:950;cursor:pointer}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.kpi{position:relative;overflow:visible;border-left:8px solid var(--blue-600)}
+.kpi.gold{border-left-color:var(--gold)}.kpi.red{border-left-color:var(--red)}.kpi.green{border-left-color:var(--green)}.kpi.purple{border-left-color:var(--purple)}
+.kpi h2{margin:5px 0 2px;color:var(--navy);font-family:var(--font-heading);font-size:30px;line-height:1;font-weight:950}.kpi p,.subtext{margin:0;color:var(--muted);font-size:12px;line-height:1.35;font-weight:750}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.wide{grid-column:1/-1}.section-title{margin:0 0 10px;color:var(--navy);font-family:var(--font-heading);font-size:22px;font-weight:950;letter-spacing:-.02em}
+.section-head{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:10px}.badge{display:inline-flex;align-items:center;width:max-content;border-radius:999px;padding:6px 10px;background:#DBEAFE;color:#1E40AF;font-family:var(--font-heading);font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
+.badge.gold{background:#FEF3C7;color:#92400E}.badge.red{background:#FEE2E2;color:#991B1B}.badge.green{background:#DCFCE7;color:#166534}.badge.purple{background:#EDE9FE;color:#5B21B6}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.legend-item{display:inline-flex;align-items:center;gap:6px;border:1px solid #DBEAFE;border-radius:999px;background:#F8FAFC;padding:7px 10px;color:var(--navy);font-size:11px;font-weight:900}
+.dot{width:9px;height:9px;border-radius:999px;display:inline-block;flex:0 0 9px}.bars{display:grid;gap:9px}.bar-row{display:grid;grid-template-columns:190px minmax(0,1fr) 100px;gap:10px;align-items:center;font-size:13px;font-weight:850}
+.bar-row[data-division],.heat-division[data-division]{cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+.bar-row[data-division]:hover,.heat-division[data-division]:hover{transform:translateY(-1px)}
+.fund-heatmap{display:grid;grid-template-columns:minmax(190px,1.15fr) repeat(var(--heat-cols,6),minmax(86px,1fr)) 78px;gap:8px;align-items:stretch;overflow-x:auto}
+.heat-cell{min-height:46px;display:grid;place-items:center;padding:10px 8px;border:1px solid #DBEAFE;border-radius:14px;background:#F8FAFC;color:var(--navy);font-size:12px;font-weight:950;text-align:center;line-height:1.15}
+.heat-head{min-height:34px;background:#EFF6FF;color:var(--blue);font-family:var(--font-heading);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.heat-division{justify-items:start;text-align:left;background:white;font-family:var(--font-heading);font-size:12px}
+.heat-total{background:#F1F5F9;color:var(--slate)}
+.heat-empty{background:transparent;border-color:transparent}
+.heat-zero{color:#94A3B8;background:#F8FAFC!important}
+.drilldown{margin-top:14px;padding:14px;border:1px solid #DBEAFE;border-radius:18px;background:#F8FAFC}
+.drilldown-empty{margin:0;color:var(--muted);font-size:12px;font-weight:850}
+.drilldown-head{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:12px}
+.drilldown-head h3{margin:0;color:var(--navy);font-family:var(--font-heading);font-size:18px;font-weight:950}
+.drilldown-head p{margin:4px 0 0;color:var(--muted);font-size:12px;font-weight:850}
+.mini-button{border:0;border-radius:999px;background:var(--blue);color:white;padding:8px 10px;font-family:var(--font-heading);font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}
+.project-list{display:grid;gap:10px}
+.project-card{padding:12px;border:1px solid #DBEAFE;border-radius:16px;background:white}
+.project-top{display:grid;grid-template-columns:minmax(180px,1fr) minmax(240px,1.4fr) 92px;gap:10px;align-items:center;margin-bottom:10px}
+.project-name{color:var(--navy);font-family:var(--font-heading);font-size:13px;font-weight:950}
+.project-total{text-align:right;color:var(--navy);font-family:var(--font-heading);font-size:12px;font-weight:950}
+.activity-list{display:grid;gap:6px}
+.activity-row{display:grid;grid-template-columns:minmax(220px,1fr) 105px 90px 90px;gap:8px;align-items:center;padding:7px 8px;border-radius:12px;background:#F8FAFC;color:var(--slate);font-size:11px;font-weight:850}
+.status-pill{display:inline-flex;justify-content:center;border-radius:999px;padding:4px 8px;color:white;font-family:var(--font-heading);font-size:9px;font-weight:950;text-transform:uppercase}
+.status-pending{background:var(--gold);color:#78350F}.status-accomplished{background:var(--green)}.status-delayed{background:var(--red)}
+.track{display:flex;height:20px;background:var(--blue-100);border-radius:10px;overflow:hidden}.progress-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--blue),var(--blue-600))}
+.progress-fill.gold{background:linear-gradient(90deg,var(--gold),var(--amber))}.progress-fill.red{background:linear-gradient(90deg,var(--red),#EF4444)}.progress-fill.green{background:linear-gradient(90deg,#15803D,var(--green))}.progress-fill.purple{background:linear-gradient(90deg,#5B21B6,var(--purple))}
+.segment{height:100%;min-width:0;display:flex;align-items:center;justify-content:center;overflow:hidden;color:white;font-family:var(--font-heading);font-size:8px;font-weight:950;text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap;padding:0 3px}
+.seg-blue{background:linear-gradient(90deg,var(--blue),var(--blue-600))}.seg-green{background:linear-gradient(90deg,#15803D,var(--green))}.seg-gold{background:linear-gradient(90deg,var(--gold),var(--amber))}.seg-red{background:linear-gradient(90deg,var(--red),#EF4444)}.seg-purple{background:linear-gradient(90deg,#5B21B6,var(--purple))}.seg-slate{background:linear-gradient(90deg,#334155,var(--slate))}
+.split-row{display:grid;grid-template-columns:190px minmax(0,1fr) 2px minmax(0,1fr) 100px;gap:8px;align-items:center;font-size:13px;font-weight:850}.axis{height:28px;background:#0F172A;opacity:.25;border-radius:999px}.left,.right{height:22px;background:var(--blue-100);border-radius:999px;overflow:hidden}.left .progress-fill,.right .progress-fill{display:flex;align-items:center;justify-content:center;min-width:0;overflow:hidden;color:white;font-family:var(--font-heading);font-size:8px;font-weight:950;text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap;padding:0 3px}.left .progress-fill{margin-left:auto;background:linear-gradient(90deg,var(--red),var(--gold))}.right .progress-fill{background:linear-gradient(90deg,var(--blue),var(--green))}
+.donut-layout{display:grid;grid-template-columns:minmax(210px,.85fr) minmax(260px,1.15fr);gap:12px;align-items:center;min-height:300px}.donut{width:240px;height:240px;border-radius:50%;margin:auto;display:grid;place-items:center;box-shadow:inset 0 0 0 46px white,0 12px 24px rgba(8,49,95,.12)}.donut-center{width:116px;height:116px;border-radius:999px;background:white;display:grid;place-items:center;text-align:center;color:var(--navy);font-family:var(--font-heading);font-weight:950;box-shadow:0 0 0 1px var(--blue-100);line-height:1.15}
+.histogram{height:300px;display:grid;grid-template-columns:repeat(var(--cols,5),minmax(54px,1fr));gap:12px;align-items:end;padding:24px 8px 50px;border-left:2px solid #DBEAFE;border-bottom:2px solid #DBEAFE;background:linear-gradient(to top,#F8FAFC 1px,transparent 1px) 0 0/100% 20%;overflow-x:auto}
+.hist-col{height:100%;min-width:54px;display:grid;grid-template-rows:1fr auto;gap:8px}.hist-area{height:100%;display:flex;align-items:flex-end;justify-content:center}.hist-bar-wrap{width:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px}.hist-value{text-align:center;color:var(--navy);font-family:var(--font-heading);font-size:11px;font-weight:950}.hist-bar{min-height:16px;border-radius:14px 14px 4px 4px}.hist-label{text-align:center;color:var(--muted);font-size:10px;font-weight:900}
+table{width:100%;max-width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}th,td{display:table-cell;padding:10px 8px;border-bottom:1px solid #E2E8F0;text-align:left;vertical-align:middle;overflow-wrap:anywhere;word-break:break-word}th{color:var(--muted);font-family:var(--font-heading);font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:.13em;white-space:normal}td b{color:var(--navy);font-family:var(--font-heading)}
+.schema-note{grid-column:1/-1;margin:0;padding:10px 12px;border-radius:14px;background:#EFF6FF;color:var(--blue);font-size:11px;font-weight:850;line-height:1.35}.schema-note b{font-family:var(--font-heading);color:var(--navy)}
+@media(max-width:1120px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.button{grid-column:1/-1}.grid,.donut-layout{grid-template-columns:1fr}}
+@media(max-width:1000px){
+body{padding-bottom:82px;background-attachment:scroll}.app{grid-template-columns:1fr}.sidebar{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:40;display:block;padding:8px 10px max(8px,env(safe-area-inset-bottom));border:0;border-top:1px solid rgba(255,255,255,.46);background:linear-gradient(90deg,color-mix(in srgb,var(--blue) 80%,var(--navy) 20%),var(--blue-600));box-shadow:0 -18px 44px rgba(11,31,77,.26),inset 0 1px 0 rgba(255,255,255,.18);overflow:auto}.brand{display:none}.nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:min(860px,100%);margin:0 auto}.nav a{display:grid;place-items:center;gap:2px;min-height:48px;padding:6px 2px;border-radius:16px;font-size:8px;line-height:1;text-align:center}.nav a:before{display:block;width:18px;height:18px}.main{padding:10px;gap:10px}.topbar{min-height:98px;padding:15px 23px;border-width:2px;border-radius:14px}.topbar:before{width:84%}.topbar:after{width:78px;height:78px;right:10px}.eyebrow{font-size:10px;letter-spacing:.14em}.topbar h1{font-size:clamp(23px,8.75vw,29px)}.top-note{display:none}.card{border-width:2px;border-radius:14px;padding:12px}.kpis{grid-template-columns:repeat(2,1fr)}.kpi h2{font-size:21px}.bar-row{grid-template-columns:100px minmax(0,1fr) 64px;gap:7px;font-size:11px}.split-row{grid-template-columns:100px minmax(0,1fr) 2px minmax(0,1fr) 64px;gap:7px;font-size:11px}.track{height:12px;border-radius:6px}.left,.right{height:12px}.histogram{height:240px;gap:8px}.donut{width:210px;height:210px;box-shadow:inset 0 0 0 40px white,0 12px 24px rgba(8,49,95,.12)}
+}
+@media(max-width:640px){.filter-grid,.kpis{grid-template-columns:1fr}.split-row,.project-top,.activity-row{grid-template-columns:1fr}.axis{display:none}.project-total{text-align:left}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+<div class="brand"><span>Insight</span><b>ED</b></div>
+<nav class="nav" aria-label="Dashboard sections">
+<a class="active" href="#overview">Overview</a>
+<a href="#distributionGraph">Distribution</a>
+<a href="#distributionDetails">Details</a>
+<a href="#distributionPanel">Snapshot</a>
+<a href="#updates">Updates</a>
+</nav>
+</aside>
+<main class="main">
+<section class="topbar" id="overview">
+<div>
+<div class="eyebrow">Executive Activity Command Center</div>
+<h1><span class="title-blue">Insight</span><span class="title-red">ED</span> Executive Activity Status & Budget Utilization Dashboard</h1>
+</div>
+<p class="top-note">One-page executive view: activity status, division performance, budget utilization, stale updates, risks, and action priorities without switching tabs.</p>
+</section>
+
+<section class="card filters">
+<div class="filter-grid">
+<label><span>Division</span><select id="divisionFilter" class="select"></select></label>
+<label><span>Distribution by</span><select id="distributionMode" class="select"><option value="status">Activity status</option><option value="budget">Budget utilization</option><option value="fund">Sources of fund</option></select></label>
+<label><span>Units</span><select id="unitMode" class="select"><option value="count">Number of activities</option><option value="budget">Budget</option></select></label>
+<p class="schema-note"><b>Executive intent:</b> the page now exposes all core status, budget, and source-of-fund answers in one continuous dashboard. The side links only jump to sections; they do not hide information behind tabs.</p>
+</div>
+</section>
+
+<section class="grid">
+<article class="card wide" id="distributionGraph">
+<div class="section-head"><div><h2 class="section-title" id="distributionTitle">Distribution by Division</h2><p class="subtext" id="distributionSubtext">Primary comparison view. Click a division to replace this graph with project-level statistics for that division.</p></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><button id="viewToggleButton" class="mini-button" type="button">Heatmap</button><span class="badge" id="divisionDistributionBadge">Activity Status</span><button id="clearProjectFilter" class="mini-button" type="button" style="display:none">Back to divisions</button></div></div>
+<div class="legend" id="distributionLegend"></div><div class="bars" id="distributionBars"></div>
+</article>
+
+<article class="card" id="distributionDetails">
+<div class="section-head"><div><h2 class="section-title">Distribution Details</h2><p class="subtext">Histogram using the same variables selected in Distribution by.</p></div><span class="badge" id="detailDistributionBadge">Activity Status</span></div>
+<div id="distributionDetailHistogram" class="histogram"></div>
+</article>
+
+<article class="card" id="distributionPanel">
+<div class="section-head"><div><h2 class="section-title">Executive Distribution Snapshot</h2><p class="subtext">Snapshot chart aligned with the same distribution variables.</p></div><span class="badge" id="snapshotDistributionBadge">Activity Status</span></div>
+<div class="donut-layout"><div id="distributionDonut" class="donut"></div><div id="distributionDonutTable"></div></div>
+</article>
+
+<article class="card wide" id="updates">
+<div class="section-head"><div><h2 class="section-title" id="updateComplianceTitle">Update Compliance by Division</h2><p class="subtext" id="updateComplianceSubtext">Uses the selected distribution variables: for budget, used is shown on the right while obligated-not-used and unobligated are on the left.</p></div><span class="badge purple" id="updateDistributionBadge">Reporting Freshness</span></div>
+<div class="legend" id="updateComplianceLegend"></div>
+<div id="updateComplianceBars" class="bars"></div>
+</article>
+</section>
+</main>
+</div>
+
+<script>
+const fmt=v=>Number(v||0).toLocaleString("en-PH");
+const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH");
+const pct=v=>Math.round(v||0)+"%";
+const colors={blue:"#0284C7",gold:"#FBBF24",red:"#B91C1C",green:"#16A34A",purple:"#7C3AED",slate:"#475569"};
+const today=new Date("2026-06-24T09:07:00+08:00");
+const daysAgo=n=>{const d=new Date(today);d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)};
+const daysAhead=n=>daysAgo(-n);
+const daysBetween=dateStr=>Math.floor((today-new Date(dateStr+"T00:00:00+08:00"))/(1000*60*60*24));
+const activities=[
+{id:"ACT-001",name:"External L&D Intervention for CO Employees",division:"Employee Welfare Division",owner:"HRDD",status:"Pending",budget:3200000,obligated:2400000,used:680000,lastUpdate:daysAgo(2),due:daysAhead(18),blocker:"Procurement",risk:"Medium",liquidation:"Not started",decision:"Approve procurement timeline",impact:78},
+{id:"ACT-002",name:"Regional Rollout Orientation",division:"Organization Effectiveness Division",owner:"Field Ops",status:"Accomplished",budget:1800000,obligated:1800000,used:1710000,lastUpdate:daysAgo(1),due:daysAgo(12),blocker:"None",risk:"Low",liquidation:"Complete",decision:"None",impact:45},
+{id:"ACT-003",name:"Division Coaching Sessions Batch 1",division:"Personnel Division",owner:"Program Team",status:"Pending",budget:2650000,obligated:1300000,used:410000,lastUpdate:daysAgo(8),due:daysAhead(7),blocker:"Participant confirmation",risk:"Medium",liquidation:"Not started",decision:"Send follow-up order",impact:66},
+{id:"ACT-004",name:"Dashboard Data Validation Workshop",division:"Education and Facilities Division",owner:"Data Team",status:"Accomplished",budget:950000,obligated:930000,used:900000,lastUpdate:daysAgo(0),due:daysAgo(5),blocker:"None",risk:"Low",liquidation:"For review",decision:"None",impact:52},
+{id:"ACT-005",name:"Learning Resource Package Development",division:"Employee Welfare Division",owner:"Content Team",status:"Delayed",budget:4200000,obligated:2650000,used:770000,lastUpdate:daysAgo(19),due:daysAgo(3),blocker:"Approval",risk:"High",liquidation:"Not started",decision:"Decide scope reduction",impact:92},
+{id:"ACT-006",name:"School Head Strategic Planning Clinic",division:"School Effectiveness Division",owner:"Field Ops",status:"Pending",budget:1450000,obligated:1000000,used:260000,lastUpdate:daysAgo(4),due:daysAhead(14),blocker:"Participant confirmation",risk:"Medium",liquidation:"Not started",decision:"None",impact:58},
+{id:"ACT-007",name:"Monitoring Visit Package",division:"Human Resource and Development Division",owner:"Monitoring Team",status:"Delayed",budget:2250000,obligated:700000,used:210000,lastUpdate:daysAgo(31),due:daysAgo(1),blocker:"Approval",risk:"High",liquidation:"Not started",decision:"Approve travel exception",impact:88},
+{id:"ACT-008",name:"Technical Assistance for SIIF Encoders",division:"Organization Effectiveness Division",owner:"Data Team",status:"Accomplished",budget:780000,obligated:780000,used:760000,lastUpdate:daysAgo(0),due:daysAgo(8),blocker:"None",risk:"Low",liquidation:"Complete",decision:"None",impact:43},
+{id:"ACT-009",name:"Quarterly Progress Review",division:"Personnel Division",owner:"Monitoring Team",status:"Pending",budget:1200000,obligated:850000,used:310000,lastUpdate:daysAgo(13),due:daysAhead(6),blocker:"Reporting",risk:"Medium",liquidation:"Not started",decision:"None",impact:70},
+{id:"ACT-010",name:"Procurement of Training Materials",division:"Education and Facilities Division",owner:"Procurement",status:"Pending",budget:1900000,obligated:0,used:0,lastUpdate:daysAgo(22),due:daysAhead(20),blocker:"Budget",risk:"Medium",liquidation:"Not started",decision:"Decide funding priority",impact:62},
+{id:"ACT-011",name:"Executive Results Presentation",division:"Employee Welfare Division",owner:"Executive Office",status:"Pending",budget:600000,obligated:250000,used:120000,lastUpdate:daysAgo(6),due:daysAhead(3),blocker:"Reporting",risk:"Low",liquidation:"Not started",decision:"Confirm message",impact:74},
+{id:"ACT-012",name:"Division Performance Calibration",division:"School Effectiveness Division",owner:"Program Team",status:"Accomplished",budget:1100000,obligated:1050000,used:970000,lastUpdate:daysAgo(1),due:daysAgo(2),blocker:"None",risk:"Low",liquidation:"For review",decision:"None",impact:49},
+{id:"ACT-013",name:"BARMM Catch-up Implementation Support",division:"Human Resource and Development Division",owner:"Field Ops",status:"Pending",budget:2800000,obligated:1650000,used:390000,lastUpdate:daysAgo(15),due:daysAhead(5),blocker:"Venue",risk:"High",liquidation:"Not started",decision:"Approve alternate venue",impact:90},
+{id:"ACT-014",name:"Financial Liquidation Review",division:"Organization Effectiveness Division",owner:"Finance",status:"Pending",budget:920000,obligated:880000,used:520000,lastUpdate:daysAgo(9),due:daysAhead(2),blocker:"Reporting",risk:"Medium",liquidation:"Incomplete",decision:"None",impact:61},
+{id:"ACT-015",name:"Post-Activity Evaluation Survey",division:"Personnel Division",owner:"Monitoring Team",status:"Accomplished",budget:430000,obligated:410000,used:390000,lastUpdate:daysAgo(3),due:daysAgo(1),blocker:"None",risk:"Low",liquidation:"Complete",decision:"None",impact:40},
+{id:"ACT-016",name:"Regional Learning Summit",division:"Education and Facilities Division",owner:"HRDD",status:"Delayed",budget:3300000,obligated:2100000,used:820000,lastUpdate:daysAgo(27),due:daysAhead(1),blocker:"Venue",risk:"High",liquidation:"Not started",decision:"Approve backup venue",impact:87},
+{id:"ACT-017",name:"Data Quality Spot Check",division:"School Effectiveness Division",owner:"Data Team",status:"Pending",budget:680000,obligated:420000,used:150000,lastUpdate:daysAgo(7),due:daysAhead(10),blocker:"Reporting",risk:"Low",liquidation:"Not started",decision:"None",impact:48},
+{id:"ACT-018",name:"Knowledge Management Upload",division:"Employee Welfare Division",owner:"Content Team",status:"Accomplished",budget:520000,obligated:500000,used:480000,lastUpdate:daysAgo(0),due:daysAgo(4),blocker:"None",risk:"Low",liquidation:"Complete",decision:"None",impact:36}
+];
+const extraDivisions=["Employee Welfare Division","Organization Effectiveness Division","Personnel Division","Education and Facilities Division","School Effectiveness Division","Human Resource and Development Division"];
+const extraOwners=["HRDD","Field Ops","Program Team","Data Team","Monitoring Team","Finance","Procurement","Executive Office","Content Team"];
+const extraStatuses=["Pending","Accomplished","Pending","Delayed","Accomplished","Pending","Pending","Accomplished"];
+const extraBlockers=["None","Procurement","Participant confirmation","Approval","Reporting","Budget","Venue","None"];
+const extraRisks=["Low","Medium","Medium","High","Low","Medium","High","Low"];
+const extraActivityTypes=["Capacity Building Workshop","Policy Review Session","Field Validation Visit","Technical Assistance Clinic","Budget Reconciliation Meeting","Learning Resource Development","Regional Coordination Forum","Data Quality Audit","Performance Calibration","Documentation and Liquidation Sprint"];
+const extraLiquidation=["Not started","For review","Complete","Incomplete"];
+activities.push(...Array.from({length:100},(_,i)=>{
+const n=i+19,status=extraStatuses[i%extraStatuses.length],budget=650000+((i*137000)%4600000),utilized=Math.round(budget*(status==="Accomplished"?(.72+(i%18)/100):status==="Delayed"?(.08+(i%24)/100):(.18+(i%35)/100))),obligated=Math.min(budget,Math.max(utilized,Math.round(budget*(.42+(i%40)/100))));
+return {id:`ACT-${String(n).padStart(3,"0")}`,name:`${extraActivityTypes[i%extraActivityTypes.length]} ${String(i+1).padStart(2,"0")}`,division:extraDivisions[i%extraDivisions.length],owner:extraOwners[i%extraOwners.length],status,budget,obligated,used:utilized,lastUpdate:daysAgo((i*3)%36),due:i%5===0?daysAgo((i%9)+1):daysAhead((i*2)%45+1),blocker:status==="Accomplished"?"None":extraBlockers[i%extraBlockers.length],risk:status==="Delayed"?"High":extraRisks[i%extraRisks.length],liquidation:status==="Accomplished"?extraLiquidation[(i+1)%extraLiquidation.length]:extraLiquidation[i%extraLiquidation.length],decision:i%11===0?"Management decision needed":i%7===0?"Finance follow-up required":"None",impact:35+((i*7)%65)}
+}));
+const fundSources=[
+{label:"GAA",full:"General Appropriations Act",color:colors.blue,seg:"seg-blue"},
+{label:"PS",full:"Personal Services",color:colors.purple,seg:"seg-purple"},
+{label:"MOOE",full:"Maintenance and Other Operating Expenses",color:colors.green,seg:"seg-green"},
+{label:"HRD",full:"Human Resource Development",color:colors.gold,seg:"seg-gold"},
+{label:"ATB",full:"Additional Targeted Budget",color:colors.red,seg:"seg-red"},
+{label:"BEIP",full:"Basic Education Inputs Program",color:colors.slate,seg:"seg-slate"}
+];
+activities.forEach((a,i)=>{a.sourceOfFund=fundSources[(i*3+Math.floor(i/2))%fundSources.length].label});
+const projectPools={
+"Employee Welfare Division":["Employee Welfare Enablement","Learning Resource Development","Executive Results Management","CO Employee L&D Support","Wellness Program Expansion","Employee Assistance Rollout","Recognition and Incentives Package","Workplace Climate Survey","Benefits Orientation Series","HR Helpdesk Improvement"],
+"Organization Effectiveness Division":["Regional Rollout Support","SIIF Technical Assistance","Financial Liquidation Review","Process Mapping Sprint","Quality Management System Review","Change Management Clinic","Division Performance Dashboard","Service Delivery Standards","Records Digitization Support","Organizational Assessment","Workflow Automation Pilot"],
+"Personnel Division":["Coaching and Calibration","Quarterly Progress Review","Post-Activity Evaluation","Recruitment Pipeline Improvement","Promotion Review Support","Personnel Data Cleansing","Appointment Processing Clinic","Competency Profiling","Performance Management Support","Leave Administration Review","Staffing Pattern Validation","Employee Records Audit"],
+"Education and Facilities Division":["Data Validation and Procurement","Regional Learning Summit","Facilities Support Package","School Building Inventory","Classroom Repair Monitoring","Furniture Procurement Package","Facilities Data Quality Review","Site Validation Visit","Construction Coordination Forum","Engineering Technical Assistance","Asset Management Cleanup","Project Completion Validation","Maintenance Planning Workshop"],
+"School Effectiveness Division":["Strategic Planning Clinic","Performance Calibration","Data Quality Spot Check","School Head Mentoring","Instructional Leadership Support","School Improvement Planning","Learning Recovery Monitoring","Cluster Coaching Sessions","SIP Validation Review","School Governance Clinic","Reading Program Support","Numeracy Program Support","Assessment Data Review","Technical Assistance Rounds"],
+"Human Resource and Development Division":["Monitoring Visit Package","BARMM Catch-up Support","HRD Field Operations","Training Needs Analysis","L&D Program Design","Facilitator Development Program","Regional Training Coordination","Scholarship Monitoring","Professional Development Tracking","HRD Resource Library","Learning Evaluation System","Capacity Building Roadshow","Training Quality Assurance","Coaching Pool Development","HRD Policy Orientation"]
+};
+const projectCounters={};
+activities.forEach(a=>{const pool=projectPools[a.division]||["General Implementation"];const idx=projectCounters[a.division]||0;a.project=pool[idx%pool.length];projectCounters[a.division]=idx+1});
+let selectedDivision=null;
+let distributionView="bar";
+const unique=(rows,key)=>["all",...Array.from(new Set(rows.map(r=>r[key]))).sort()];
+function scoped(){
+const d=document.getElementById("divisionFilter")?.value||"all";
+return activities.filter(a=>d==="all"||a.division===d);
+}
+function activeRows(){
+const base=scoped();
+if(selectedDivision&&!base.some(a=>a.division===selectedDivision))selectedDivision=null;
+return selectedDivision?base.filter(a=>a.division===selectedDivision):base;
+}
+function populateFilters(){
+const d=document.getElementById("divisionFilter");
+const cur=d.value||"all";
+d.innerHTML=unique(activities,"division").map(v=>`<option value="${v}">${v==="all"?"All divisions":v}</option>`).join("");
+d.value=cur;
+}
+function sum(rows,key){return rows.reduce((t,r)=>t+(r[key]||0),0)}
+function count(rows,key,val){return rows.filter(r=>r[key]===val).length}
+function getUnitMode(){return document.getElementById("unitMode")?.value||"count"}
+function metricValue(rows){return getUnitMode()==="budget"?sum(rows,"budget"):rows.length}
+function metricFormat(value){return getUnitMode()==="budget"?peso(value):fmt(value)}
+function metricLabel(){return getUnitMode()==="budget"?"budget":"activities"}
+function grouped(rows,key){return rows.reduce((m,r)=>{(m[r[key]] ||= []).push(r);return m},{})}
+function tone(rate){if(rate>=80)return "green";if(rate>=55)return "gold";return "red"}
+function kpi(label,value,note,toneClass=""){const el=document.createElement("article");el.className="card kpi "+toneClass;el.innerHTML=`<small>${label}</small><h2>${value}</h2><p>${note}</p>`;return el}
+function legend(id,items){document.getElementById(id).innerHTML=items.map(([label,color])=>`<span class="legend-item"><i class="dot" style="background:${color}"></i>${label}</span>`).join("")}
+function esc(v){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+function activityStatusClass(status){return status==="Accomplished"?"status-accomplished":status==="Delayed"?"status-delayed":"status-pending"}
+function selectDivision(division){selectedDivision=selectedDivision===division?null:division;renderAll()}
+function stackedSegments(values,scale,classes,labels,formatValue=fmt){return values.map((v,i)=>`<div class="segment ${classes[i]}" style="width:${scale?Math.max(v/scale*100,0):0}%" title="${labels[i]}: ${formatValue(v)}">${v?formatValue(v):""}</div>`).join("")}
+function barRow(name,value,total,toneClass="",unit="count"){const row=document.createElement("div");row.className="bar-row";const rate=value/Math.max(total,1)*100;row.innerHTML=`<span>${name}</span><div class="track"><div class="progress-fill ${toneClass||tone(rate)}" style="width:${Math.min(rate,100)}%"></div></div><b>${unit==="peso"?peso(value):unit==="pct"?pct(value):fmt(value)}</b>`;return row}
+function splitRow(name,left,right,total,leftLabel,rightLabel){const safe=Math.max(total,left+right,1),lr=left/safe*100,rr=right/safe*100;const row=document.createElement("div");row.className="split-row";row.innerHTML=`<span>${name}</span><div class="left" title="${leftLabel}: ${fmt(left)}"><div class="progress-fill" style="width:${lr}%">${left?fmt(left):""}</div></div><div class="axis"></div><div class="right" title="${rightLabel}: ${fmt(right)}"><div class="progress-fill" style="width:${rr}%">${right?fmt(right):""}</div></div><b>${pct(right/safe*100)}</b>`;return row}
+function splitStackedRow(name,leftValues,rightValues,total,leftLabels,rightLabels,leftClasses,rightClasses,summary,formatValue=fmt){const leftTotal=leftValues.reduce((s,v)=>s+v,0),rightTotal=rightValues.reduce((s,v)=>s+v,0),safe=Math.max(total,leftTotal+rightTotal,1),lr=leftTotal/safe*100,rr=rightTotal/safe*100;const row=document.createElement("div");row.className="split-row";row.innerHTML=`<span>${name}</span><div class="left" title="${leftLabels.join(' + ')}: ${formatValue(leftTotal)}"><div style="display:flex;width:${lr}%;height:100%;margin-left:auto">${stackedSegments(leftValues,leftTotal||1,leftClasses,leftLabels,formatValue)}</div></div><div class="axis"></div><div class="right" title="${rightLabels.join(' + ')}: ${formatValue(rightTotal)}"><div style="display:flex;width:${rr}%;height:100%">${stackedSegments(rightValues,rightTotal||1,rightClasses,rightLabels,formatValue)}</div></div><b>${summary}</b>`;return row}
+function renderDonut(id,tableId,rows,totalLabel){const total=rows.reduce((s,r)=>s+r.value,0)||1,valueFormat=v=>rows.some(r=>r.format==="peso")?peso(v):metricFormat(v);let start=0;const stops=rows.map(r=>{const p=r.value/total*100,s=`${r.color} ${start.toFixed(2)}% ${(start+p).toFixed(2)}%`;start+=p;return s});document.getElementById(id).style.background=`conic-gradient(${stops.join(",")})`;document.getElementById(id).innerHTML=`<div class="donut-center">${valueFormat(total)}<br>${totalLabel}</div>`;const table=document.getElementById(tableId);table.innerHTML="<table><tr><th>Segment</th><th>Value</th><th>Share</th></tr></table>";const t=table.querySelector("table");rows.forEach(r=>{const tr=document.createElement("tr");tr.innerHTML=`<td><span class="dot" style="background:${r.color};margin-right:7px"></span>${r.label}</td><td><b>${r.format==="peso"?peso(r.value):metricFormat(r.value)}</b></td><td><b>${pct(r.value/total*100)}</b></td>`;t.appendChild(tr)})}
+function renderHistogram(id,rows){const max=Math.max(...rows.map(r=>r.value),1),el=document.getElementById(id);el.style.setProperty("--cols",rows.length);el.replaceChildren();rows.forEach(r=>{const h=Math.max(r.value/max*100,8);const col=document.createElement("div");col.className="hist-col";col.innerHTML=`<div class="hist-area"><div class="hist-bar-wrap" style="height:${h}%"><div class="hist-value">${r.format==="peso"?peso(r.value):metricFormat(r.value)}</div><div class="hist-bar" style="height:calc(100% - 22px);background:${r.color}"></div></div></div><div class="hist-label">${r.label}</div>`;el.appendChild(col)})}
+function table(id,headers,rows){const t=document.getElementById(id);t.innerHTML=`<tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr>`;rows.forEach(r=>{const tr=document.createElement("tr");tr.innerHTML=r.map((v,i)=>i===0||i===2?`<td><b>${v}</b></td>`:`<td>${v}</td>`).join("");t.appendChild(tr)})}
+function statusRows(rows){return [{label:"Pending",value:metricValue(rows.filter(r=>r.status==="Pending")),color:colors.gold},{label:"Accomplished",value:metricValue(rows.filter(r=>r.status==="Accomplished")),color:colors.green},{label:"Delayed",value:metricValue(rows.filter(r=>r.status==="Delayed")),color:colors.red}]}
+function fundRows(rows){return fundSources.map(f=>{const scopedRows=rows.filter(r=>r.sourceOfFund===f.label);return {label:`${f.label} — ${f.full}`,shortLabel:f.label,value:metricValue(scopedRows),color:f.color,seg:f.seg}})}
+function renderFundHeatmap(container,divisionGroups){
+container.className="fund-heatmap";container.style.setProperty("--heat-cols",fundSources.length);container.replaceChildren();
+const divisions=Object.entries(divisionGroups);
+const sourceValue=(rows,source)=>metricValue(rows.filter(r=>r.sourceOfFund===source.label));
+const maxValue=Math.max(...divisions.flatMap(([d,r])=>fundSources.map(f=>sourceValue(r,f))),1);
+container.insertAdjacentHTML("beforeend",`<div class="heat-cell heat-empty"></div>${fundSources.map(f=>`<div class="heat-cell heat-head" title="${f.full}">${f.label}</div>`).join("")}<div class="heat-cell heat-head">Total</div>`);
+divisions.forEach(([d,r])=>{
+container.insertAdjacentHTML("beforeend",selectedDivision?`<div class="heat-cell heat-division">${d}</div>`:`<div class="heat-cell heat-division" data-division="${esc(d)}" title="Click to view projects">${d}</div>`);
+fundSources.forEach(f=>{
+const value=sourceValue(r,f),intensity=value/maxValue,blend=Math.round(16+(intensity*72)),textColor=intensity>.58?"white":"var(--navy)";
+container.insertAdjacentHTML("beforeend",`<div class="heat-cell ${value?"":"heat-zero"}" style="background:color-mix(in srgb, ${f.color} ${blend}%, white);border-color:color-mix(in srgb, ${f.color} 48%, #DBEAFE);color:${textColor}" title="${d} · ${f.label} — ${f.full}: ${metricFormat(value)}">${metricFormat(value)}</div>`);
+});
+container.insertAdjacentHTML("beforeend",`<div class="heat-cell heat-total">${metricFormat(metricValue(r))}</div>`);
+});
+if(!selectedDivision)container.querySelectorAll("[data-division]").forEach(el=>el.addEventListener("click",()=>selectDivision(el.dataset.division)));
+}
+function renderDistributionHeatmap(container,divisionGroups,categories,formatValue=metricFormat,totalValueFn=metricValue){
+container.className="fund-heatmap";container.style.setProperty("--heat-cols",categories.length);container.replaceChildren();
+const groups=Object.entries(divisionGroups);
+const maxValue=Math.max(...groups.flatMap(([d,r])=>categories.map(c=>c.value(r))),1);
+container.insertAdjacentHTML("beforeend",`<div class="heat-cell heat-empty"></div>${categories.map(c=>`<div class="heat-cell heat-head" title="${c.title||c.label}">${c.label}</div>`).join("")}<div class="heat-cell heat-head">Total</div>`);
+groups.forEach(([d,r])=>{
+container.insertAdjacentHTML("beforeend",selectedDivision?`<div class="heat-cell heat-division">${d}</div>`:`<div class="heat-cell heat-division" data-division="${esc(d)}" title="Click to view projects">${d}</div>`);
+categories.forEach(c=>{
+const value=c.value(r),intensity=value/maxValue,blend=Math.round(16+(intensity*72)),textColor=intensity>.58?"white":"var(--navy)";
+container.insertAdjacentHTML("beforeend",`<div class="heat-cell ${value?"":"heat-zero"}" style="background:color-mix(in srgb, ${c.color} ${blend}%, white);border-color:color-mix(in srgb, ${c.color} 48%, #DBEAFE);color:${textColor}" title="${d} · ${c.label}: ${formatValue(value)}">${formatValue(value)}</div>`);
+});
+container.insertAdjacentHTML("beforeend",`<div class="heat-cell heat-total">${formatValue(totalValueFn(r))}</div>`);
+});
+if(!selectedDivision)container.querySelectorAll("[data-division]").forEach(el=>el.addEventListener("click",()=>selectDivision(el.dataset.division)));
+}
+function priorityScore(a){return (a.risk==="High"?40:a.risk==="Medium"?20:5)+(a.status==="Delayed"?35:0)+Math.max(daysBetween(a.due),0)*4+(daysBetween(a.lastUpdate)>15?18:0)+(a.used/a.budget<.35?16:0)+(a.impact/5)+(a.decision!=="None"?15:0)}
+function renderAll(){
+populateFilters();
+const rows=activeRows(),total=metricValue(rows),done=metricValue(rows.filter(r=>r.status==="Accomplished")),pending=metricValue(rows.filter(r=>r.status==="Pending")),delayed=metricValue(rows.filter(r=>r.status==="Delayed")),budget=sum(rows,"budget"),used=sum(rows,"used"),obligated=sum(rows,"obligated");
+/* KPI cards removed from the overview for now. */
+const distributionMode=document.getElementById("distributionMode")?.value||"status";
+const groupKey=selectedDivision?"project":"division",divisionGroups=grouped(rows,groupKey);
+const bars=document.getElementById("distributionBars");bars.className="bars";bars.style.removeProperty("--heat-cols");bars.replaceChildren();
+const viewToggleButton=document.getElementById("viewToggleButton");
+if(viewToggleButton){viewToggleButton.textContent=distributionView==="bar"?"Heatmap":"Stacked bar";viewToggleButton.onclick=()=>{distributionView=distributionView==="bar"?"heatmap":"bar";renderAll()}}
+document.getElementById("distributionTitle").textContent=selectedDivision?`${selectedDivision} — Distribution by Project`:"Distribution by Division";
+document.getElementById("distributionSubtext").textContent=selectedDivision?"Project-level distribution for the selected division. All other graphs are filtered to this division.":"Primary comparison view. Click a division to replace this graph with project-level statistics for that division.";
+document.getElementById("updateComplianceTitle").textContent=selectedDivision?"Update Compliance by Project":"Update Compliance by Division";
+document.getElementById("updateComplianceSubtext").textContent=selectedDivision?"Filtered to the selected division and grouped by project. For budget, used is shown on the right while obligated-not-used and unobligated are on the left.":"Uses the selected distribution variables: for budget, used is shown on the right while obligated-not-used and unobligated are on the left.";
+const clearProjectFilter=document.getElementById("clearProjectFilter");
+if(clearProjectFilter){clearProjectFilter.style.display=selectedDivision?"inline-flex":"none";clearProjectFilter.onclick=()=>{selectedDivision=null;renderAll()}}
+const updates=document.getElementById("updates");
+const updateBars=document.getElementById("updateComplianceBars");updateBars.replaceChildren();
+updates.style.display=distributionMode==="fund"?"none":"";
+
+if(distributionMode==="budget"){
+renderDonut("distributionDonut","distributionDonutTable",[{label:"Utilized",value:used,color:colors.blue,format:"peso"},{label:"Obligated",value:Math.max(obligated-used,0),color:colors.green,format:"peso"},{label:"Unutilized",value:Math.max(budget-obligated,0),color:colors.gold,format:"peso"}],"budget");
+renderHistogram("distributionDetailHistogram",[{label:"Utilized",value:used,color:colors.blue,format:"peso"},{label:"Obligated",value:Math.max(obligated-used,0),color:colors.green,format:"peso"},{label:"Unutilized",value:Math.max(budget-obligated,0),color:colors.gold,format:"peso"}]);
+legend("distributionLegend",[["Utilized",colors.blue],["Obligated",colors.green],["Unutilized",colors.gold]]);
+legend("updateComplianceLegend",[["Utilized",colors.blue],["Obligated",colors.green],["Unutilized",colors.gold]]);
+["snapshotDistributionBadge","divisionDistributionBadge","detailDistributionBadge"].forEach(id=>{document.getElementById(id).textContent="Budget Utilization";document.getElementById(id).className="badge gold"});
+document.getElementById("updateDistributionBadge").textContent="Budget Utilization";
+document.getElementById("updateDistributionBadge").className="badge gold";
+if(distributionView==="heatmap"){
+renderDistributionHeatmap(bars,divisionGroups,[
+{label:"Utilized",color:colors.blue,value:r=>sum(r,"used")},
+{label:"Obligated",color:colors.green,value:r=>Math.max(sum(r,"obligated")-sum(r,"used"),0)},
+{label:"Unutilized",color:colors.gold,value:r=>Math.max(sum(r,"budget")-sum(r,"obligated"),0)}
+],peso,r=>sum(r,"budget"));
+}else{
+const maxBudgetTotal=Math.max(...Object.values(divisionGroups).map(r=>sum(r,"budget")),1);
+Object.entries(divisionGroups).forEach(([d,r])=>{const b=sum(r,"budget"),u=sum(r,"used"),o=sum(r,"obligated"),obligatedOnly=Math.max(o-u,0),unutilized=Math.max(b-o,0),vals=[u,obligatedOnly,unutilized];const row=document.createElement("div");row.className="bar-row";if(!selectedDivision){row.dataset.division=d;row.title="Click to view projects";row.addEventListener("click",()=>selectDivision(d))}row.innerHTML=`<span>${d}</span><div class="track">${stackedSegments(vals,maxBudgetTotal,["seg-blue","seg-green","seg-gold"],["Utilized","Obligated","Unutilized"],peso)}</div><b>${peso(b)}</b>`;bars.appendChild(row)});
+}
+Object.entries(divisionGroups).forEach(([d,r])=>{const b=sum(r,"budget"),u=sum(r,"used"),o=sum(r,"obligated"),obligatedOnly=Math.max(o-u,0),unutilized=Math.max(b-o,0);updateBars.appendChild(splitStackedRow(d,[obligatedOnly,unutilized],[u],b,["Obligated","Unutilized"],["Utilized"],["seg-green","seg-gold"],["seg-blue"],`${peso(u)} utilized`,peso))});
+}else if(distributionMode==="fund"){
+const fundDistribution=fundRows(rows);
+renderDonut("distributionDonut","distributionDonutTable",fundDistribution,metricLabel());
+renderHistogram("distributionDetailHistogram",fundDistribution.map(r=>({label:r.shortLabel,value:r.value,color:r.color})));
+legend("distributionLegend",fundSources.map(f=>[`${f.label} — ${f.full}`,f.color]));
+["snapshotDistributionBadge","divisionDistributionBadge","detailDistributionBadge"].forEach(id=>{document.getElementById(id).textContent="Sources of Fund";document.getElementById(id).className="badge purple"});
+if(distributionView==="heatmap"){
+renderFundHeatmap(bars,divisionGroups);
+}else{
+const maxFundTotal=Math.max(...Object.values(divisionGroups).map(r=>metricValue(r)),1);
+Object.entries(divisionGroups).forEach(([d,r])=>{const vals=fundSources.map(f=>metricValue(r.filter(a=>a.sourceOfFund===f.label)));const row=document.createElement("div");row.className="bar-row";if(!selectedDivision){row.dataset.division=d;row.title="Click to view projects";row.addEventListener("click",()=>selectDivision(d))}row.innerHTML=`<span>${d}</span><div class="track">${stackedSegments(vals,maxFundTotal,fundSources.map(f=>f.seg),fundSources.map(f=>f.label),metricFormat)}</div><b>${metricFormat(metricValue(r))}</b>`;bars.appendChild(row)});
+}
+}else{
+renderDonut("distributionDonut","distributionDonutTable",statusRows(rows),metricLabel());
+renderHistogram("distributionDetailHistogram",[{label:"Pending",value:pending,color:colors.gold},{label:"Accomplished",value:done,color:colors.green},{label:"Delayed",value:delayed,color:colors.red}]);
+legend("distributionLegend",[["Pending",colors.gold],["Accomplished",colors.green],["Delayed",colors.red]]);
+legend("updateComplianceLegend",[["Pending",colors.gold],["Accomplished",colors.green],["Delayed",colors.red]]);
+["snapshotDistributionBadge","divisionDistributionBadge","detailDistributionBadge"].forEach(id=>{document.getElementById(id).textContent="Activity Status";document.getElementById(id).className="badge"});
+document.getElementById("updateDistributionBadge").textContent="Activity Status";
+document.getElementById("updateDistributionBadge").className="badge";
+if(distributionView==="heatmap"){
+renderDistributionHeatmap(bars,divisionGroups,[
+{label:"Pending",color:colors.gold,value:r=>metricValue(r.filter(a=>a.status==="Pending"))},
+{label:"Accomplished",color:colors.green,value:r=>metricValue(r.filter(a=>a.status==="Accomplished"))},
+{label:"Delayed",color:colors.red,value:r=>metricValue(r.filter(a=>a.status==="Delayed"))}
+],metricFormat,metricValue);
+}else{
+const maxStatusTotal=Math.max(...Object.values(divisionGroups).map(r=>metricValue(r)),1);
+Object.entries(divisionGroups).forEach(([d,r])=>{const pendingCount=metricValue(r.filter(a=>a.status==="Pending")),accomplishedCount=metricValue(r.filter(a=>a.status==="Accomplished")),delayedCount=metricValue(r.filter(a=>a.status==="Delayed")),divisionTotal=metricValue(r),vals=[pendingCount,accomplishedCount,delayedCount];const row=document.createElement("div");row.className="bar-row";if(!selectedDivision){row.dataset.division=d;row.title="Click to view projects";row.addEventListener("click",()=>selectDivision(d))}row.innerHTML=`<span>${d}</span><div class="track">${stackedSegments(vals,maxStatusTotal,["seg-gold","seg-green","seg-red"],["Pending","Accomplished","Delayed"],metricFormat)}</div><b>${metricFormat(divisionTotal)}</b>`;bars.appendChild(row)});
+}
+Object.entries(divisionGroups).forEach(([d,r])=>{const pendingCount=metricValue(r.filter(a=>a.status==="Pending")),accomplishedCount=metricValue(r.filter(a=>a.status==="Accomplished")),delayedCount=metricValue(r.filter(a=>a.status==="Delayed")),divisionTotal=metricValue(r);updateBars.appendChild(splitStackedRow(d,[pendingCount,delayedCount],[accomplishedCount],divisionTotal,["Pending","Delayed"],["Accomplished"],["seg-gold","seg-red"],["seg-green"],`${metricFormat(accomplishedCount)} done`,metricFormat))});
+}
+}
+["divisionFilter","distributionMode","unitMode"].forEach(id=>document.getElementById(id)?.addEventListener("change",()=>{selectedDivision=null;renderAll()}));
+renderAll();
+</script>
+</body>
+</html>

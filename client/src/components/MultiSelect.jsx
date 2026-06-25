@@ -49,13 +49,13 @@ const MultiSelect = ({ label, options, selected, onChange, placeholder = "Select
     };
 
     return (
-        <div className="relative" ref={dropdownRef}>
+        <div className={`relative ${className}`} ref={dropdownRef}>
             {label && <div className="text-xs font-semibold text-slate-500 mb-1">{label}</div>}
 
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full min-w-[200px] flex items-center justify-between text-left bg-white border border-slate-300 rounded-md px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
+                className="w-full flex items-center justify-between text-left bg-white border border-slate-300 rounded-md px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
                 <span className="block truncate">{getDisplayValue()}</span>
                 <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
