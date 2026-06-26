@@ -343,7 +343,7 @@ apiRouter.get('/projects/:id/financials', async (req, res) => {
 
         // Add up activity.obligated_amount (formerly cost) + expenses (if any)
         activities.forEach(a => {
-            obligatedFunds += Number(a.obligated_amount) || 0;
+            obligatedFunds += Number(a.obligated_amount || a.cost) || 0;
         });
 
         // If expense_list is used separately, keep this. If expenses are now embedded in activities (via obligated_amount), this might be double counting if both exist. 
@@ -360,7 +360,7 @@ apiRouter.get('/projects/:id/financials', async (req, res) => {
         console.log(`[Financials] Calculated Obligated Funds: ${obligatedFunds}`);
 
         // Dynamic Total Allocation (formerly Budget/GMS Allocation)
-        let totalAllocation = activities.reduce((sum, a) => sum + (Number(a.allocation || a.gms_allocation) || 0), 0);
+        let totalAllocation = activities.reduce((sum, a) => sum + (Number(a.allocation || a.gms_allocation || a.budget) || 0), 0);
 
         // Fall back to overall project budget if activity allocations are not defined (sum to 0)
         const finalAllocation = totalAllocation > 0 ? totalAllocation : (Number(project.sof_allocation) || 0);
@@ -421,12 +421,16 @@ apiRouter.get('/projects/:id/tasks', async (req, res) => {
             };
         });
 
-        // Now fetch Subtasks for these activities
+        // Now fetch Subtasks and Expenses for these activities
         const allSubtasks = await azureDb.getSubtasks();
+        const allExpenses = await azureDb.getExpensesByProject(projectId);
 
         mapped.forEach(activity => {
             const subs = allSubtasks.filter(s => s.activity_id === activity.id);
             activity.subtasks = subs;
+            
+            const exps = allExpenses.filter(e => e.activity_id === activity.id);
+            activity.expenses = exps;
         });
 
         // Sort

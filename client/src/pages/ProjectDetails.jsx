@@ -445,9 +445,9 @@ const ProjectDetails = () => {
                 }
             }
 
-            // Sum Financials
-            totalActivityGms += Number(t.allocation || t.gms_allocation) || 0;
-            totalActivityObligated += Number(t.obligated_amount) || 0;
+            // Sum Financials (with fallback to legacy 'budget' and 'cost' fields)
+            totalActivityGms += Number(t.allocation || t.gms_allocation || t.budget) || 0;
+            totalActivityObligated += Number(t.obligated_amount || t.cost) || 0;
         });
 
 
@@ -461,8 +461,8 @@ const ProjectDetails = () => {
         const activityFinancials = enrichedTasks.map(t => ({
             ...t,
             name: t.title, // Map title to name for the card
-            total_budget: t.allocation || t.gms_allocation || 0,
-            actual_cost: t.obligated_amount || 0
+            total_budget: t.allocation || t.gms_allocation || t.budget || 0,
+            actual_cost: t.obligated_amount || t.cost || 0
         })).sort((a, b) => b.total_budget - a.total_budget); // Sort by allocation desc
 
         // Mock AI Message construction based on single project
@@ -477,10 +477,10 @@ const ProjectDetails = () => {
             accomplishedActivities: accomplishedCount,
             delayedActivities: delayedCount,
             waitlistedActivities: waitlistedCount,
-            totalBudget: totalActivityGms, // Use Sum of Activities
-            totalSpent: totalActivityObligated, // Use Sum of Activities
-            remainingBudget: totalActivityGms - totalActivityObligated,
-            burnRate: totalActivityGms > 0 ? (totalActivityObligated / totalActivityGms) * 100 : 0,
+            totalBudget: Number(project.sof_allocation || project.total_budget) || totalActivityGms,
+            totalSpent: totalActivityObligated,
+            remainingBudget: (Number(project.sof_allocation || project.total_budget) || totalActivityGms) - totalActivityObligated,
+            burnRate: (Number(project.sof_allocation || project.total_budget) || totalActivityGms) > 0 ? (totalActivityObligated / (Number(project.sof_allocation || project.total_budget) || totalActivityGms)) * 100 : 0,
             milestonesReached: completedMilestones.length,
             // Detailed Arrays
             // IMPORTANT: Passing 'activityFinancials' as 'allProjects' allows the "Total GMS Allocation" and "Obligated Funds" 

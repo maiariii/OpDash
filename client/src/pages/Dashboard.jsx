@@ -57,6 +57,11 @@ const Dashboard = () => {
         return p.source_of_fund || 'GAA-PS';
     };
 
+    const normalizeDivision = (div) => {
+        if (!div || div.trim().toLowerCase() === 'n/a') return 'Unassigned';
+        return div;
+    };
+
     // Load API Data
     useEffect(() => {
         const fetchData = async () => {
@@ -147,12 +152,12 @@ const Dashboard = () => {
                     list.push({
                         id: t.id,
                         name: t.title,
-                        division: p.division || 'Unassigned',
+                        division: normalizeDivision(p.division),
                         project: p.name,
                         status: t.status === 'Accomplished' || t.status === 'Done' || t.status === 'Completed' ? 'Accomplished' : (t.status === 'Delayed' ? 'Delayed' : 'Pending'),
                         budget: taskBudget,
                         obligated: Number(t.obligated_amount || 0),
-                        used: Number(t.obligated_amount || 0) * 0.75,
+                        used: Number(t.obligated_amount || 0),
                         sourceOfFund: projectSourceOfFund,
                         lastUpdate: lastUpdateDate.toISOString().slice(0, 10),
                         due: t.due_date ? t.due_date.slice(0, 10) : new Date().toISOString().slice(0, 10),
@@ -164,7 +169,7 @@ const Dashboard = () => {
                 list.push({
                     id: `${p.id}-placeholder`,
                     name: 'Project Initialization',
-                    division: p.division || 'Unassigned',
+                    division: normalizeDivision(p.division),
                     project: p.name,
                     status: 'Pending',
                     budget: projectTotalBudget,
@@ -325,8 +330,7 @@ const Dashboard = () => {
         if (distributionMode === 'budget') {
             return [
                 { label: "Utilized", value: totals.used, color: colors.blue, format: "peso" },
-                { label: "Obligated", value: Math.max(totals.obligated - totals.used, 0), color: colors.green, format: "peso" },
-                { label: "Unutilized", value: Math.max(totals.budget - totals.obligated, 0), color: colors.gold, format: "peso" }
+                { label: "Unutilized", value: Math.max(totals.budget - totals.used, 0), color: colors.gold, format: "peso" }
             ];
         } else if (distributionMode === 'fund') {
             return fundSources.map(f => {
@@ -465,7 +469,6 @@ const Dashboard = () => {
                         {distributionMode === 'budget' && (
                             <>
                                 <span className="legend-item"><i className="dot bg-[#0284C7]" />Utilized</span>
-                                <span className="legend-item"><i className="dot bg-[#16A34A]" />Obligated</span>
                                 <span className="legend-item"><i className="dot bg-[#FBBF24]" />Unutilized</span>
                             </>
                         )}
@@ -498,13 +501,12 @@ const Dashboard = () => {
                                         <div className="track flex">
                                             {distributionMode === 'budget' && (() => {
                                                 const u = r.reduce((s, a) => s + a.used, 0);
-                                                const o = r.reduce((s, a) => s + a.obligated, 0);
                                                 const b = r.reduce((s, a) => s + a.budget, 0);
                                                 return renderStackedSegments(
-                                                    [u, Math.max(o - u, 0), Math.max(b - o, 0)],
+                                                    [u, Math.max(b - u, 0)],
                                                     maxBudgetTotal,
-                                                    ["seg-blue", "seg-green", "seg-gold"],
-                                                    ["Utilized", "Obligated", "Unutilized"],
+                                                    ["seg-blue", "seg-gold"],
+                                                    ["Utilized", "Unutilized"],
                                                     peso
                                                 );
                                             })()}
@@ -539,13 +541,12 @@ const Dashboard = () => {
                     ) : (
                         <div 
                             className="fund-heatmap overflow-x-auto grid gap-2 mt-4"
-                            style={{ '--heat-cols': distributionMode === 'fund' ? fundSources.length : 3 }}
+                            style={{ '--heat-cols': distributionMode === 'fund' ? fundSources.length : (distributionMode === 'budget' ? 2 : 3) }}
                         >
                             <div className="heat-cell heat-empty"></div>
                             {distributionMode === 'budget' && (
                                 <>
                                     <div className="heat-cell heat-head">Utilized</div>
-                                    <div className="heat-cell heat-head">Obligated</div>
                                     <div className="heat-cell heat-head">Unutilized</div>
                                 </>
                             )}
@@ -568,25 +569,20 @@ const Dashboard = () => {
 
                                 if (distributionMode === 'budget') {
                                     const u = r.reduce((s, a) => s + a.used, 0);
-                                    const o = r.reduce((s, a) => s + a.obligated, 0);
                                     const b = r.reduce((s, a) => s + a.budget, 0);
-                                    const oOnly = Math.max(o - u, 0);
-                                    const un = Math.max(b - o, 0);
+                                    const un = Math.max(b - u, 0);
 
                                     const maxVal = Math.max(...Object.values(groupedActivities).flatMap(g => {
                                         const gu = g.reduce((s, a) => s + a.used, 0);
-                                        const go = g.reduce((s, a) => s + a.obligated, 0);
                                         const gb = g.reduce((s, a) => s + a.budget, 0);
-                                        return [gu, Math.max(go - gu, 0), Math.max(gb - go, 0)];
+                                        return [gu, Math.max(gb - gu, 0)];
                                     }), 1);
 
                                     const uIntensity = u / maxVal;
-                                    const oIntensity = oOnly / maxVal;
                                     const unIntensity = un / maxVal;
 
                                     cells.push(
                                         <div key="u" className={`heat-cell ${u === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.blue} ${Math.round(16 + uIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.blue} 48%, #DBEAFE)`, color: uIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(u)}</div>,
-                                        <div key="o" className={`heat-cell ${oOnly === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.green} ${Math.round(16 + oIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.green} 48%, #DBEAFE)`, color: oIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(oOnly)}</div>,
                                         <div key="un" className={`heat-cell ${un === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + unIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: unIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(un)}</div>
                                     );
                                 } else if (distributionMode === 'fund') {
@@ -745,16 +741,14 @@ const Dashboard = () => {
 
                                 if (distributionMode === 'budget') {
                                     const u = r.reduce((s, a) => s + a.used, 0);
-                                    const o = r.reduce((s, a) => s + a.obligated, 0);
                                     const b = r.reduce((s, a) => s + a.budget, 0);
-                                    const oOnly = Math.max(o - u, 0);
-                                    const un = Math.max(b - o, 0);
+                                    const unutilized = Math.max(b - u, 0);
 
-                                    leftVals = [oOnly, un];
+                                    leftVals = [unutilized];
                                     rightVals = [u];
-                                    leftClasses = ["seg-green", "seg-gold"];
+                                    leftClasses = ["seg-gold"];
                                     rightClasses = ["seg-blue"];
-                                    leftLabels = ["Obligated-not-used", "Unobligated"];
+                                    leftLabels = ["Unutilized"];
                                     rightLabels = ["Utilized"];
                                     summaryText = `${peso(u)} utilized`;
                                 } else {
