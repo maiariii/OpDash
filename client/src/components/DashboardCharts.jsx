@@ -400,20 +400,31 @@ const SimplePieChart = ({ data, onSliceClick }) => {
                     ))}
                 </svg>
             </div>
-            <div className="space-y-2">
-                {data.map((item, i) => (
-                    <div
-                        key={i}
-                        className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-1 rounded"
-                        onMouseEnter={() => setHoveredIndex(i)}
-                        onMouseLeave={() => setHoveredIndex(null)}
-                        onClick={() => onSliceClick && onSliceClick(item)}
-                    >
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span className="font-medium text-slate-700">{item.label}</span>
-                        <span className="text-slate-500">({item.value})</span>
-                    </div>
-                ))}
+            <div className="flex-1 w-full min-w-[200px]">
+                <table className="w-full text-sm">
+                    <tbody>
+                        {slices.map((item, i) => (
+                            <tr
+                                key={i}
+                                className="cursor-pointer hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
+                                onMouseEnter={() => setHoveredIndex(i)}
+                                onMouseLeave={() => setHoveredIndex(null)}
+                                onClick={() => onSliceClick && onSliceClick(item)}
+                            >
+                                <td className="py-2.5 pr-4 flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: item.color }} />
+                                    <span className="font-medium text-slate-700">{item.label}</span>
+                                </td>
+                                <td className="py-2.5 px-4 text-right font-bold text-slate-700">
+                                    {item.value}
+                                </td>
+                                <td className="py-2.5 pl-4 text-right font-black text-slate-900">
+                                    {item.percent}%
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -505,8 +516,8 @@ const DashboardCharts = ({ metrics }) => {
 
     return (
         <div className="space-y-6">
-            {/* Metric Cards Row 1 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Metric Cards Row (Activities & Milestones) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <MetricCard
                     title="Total Activities"
                     value={totalActivities}
@@ -516,35 +527,6 @@ const DashboardCharts = ({ metrics }) => {
                     isFeatured
                     onClick={() => openModal('All Activities', allTasks, 'task')}
                 />
-                <MetricCard
-                    title="Pending"
-                    value={pendingActivities}
-                    icon={Clock}
-                    color="bg-amber-500"
-                    clickable
-                    onClick={() => openModal('Pending Activities', pendingTasks, 'task')}
-                />
-                <MetricCard
-                    title="Accomplished"
-                    value={accomplishedActivities}
-                    icon={CheckCircle2}
-                    color="bg-emerald-500"
-                    clickable
-                    onClick={() => openModal('Accomplished Activities', accomplishedTasks, 'task')}
-                />
-
-                <MetricCard
-                    title="Delayed"
-                    value={delayedActivities}
-                    icon={AlertTriangle}
-                    color="bg-red-500"
-                    clickable
-                    onClick={() => openModal('Delayed Activities', delayedTasks, 'task')}
-                />
-            </div>
-
-            {/* Metric Cards Row 2 (Financials & People) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <MetricCard
                     title="Milestones Reached"
                     value={metrics.milestonesReached || 0}
@@ -556,30 +538,6 @@ const DashboardCharts = ({ metrics }) => {
                             ['Accomplished', 'Completed', 'Done'].includes(m.status)
                         );
                         openModal('Milestones Reached', reached, 'milestone');
-                    }}
-                />
-                <MetricCard
-                    title="Total Allocation"
-                    value={`₱${totalBudget.toLocaleString()}`}
-                    icon={PesoIcon}
-                    color="bg-blue-600"
-                    clickable
-                    onClick={() => {
-                        const withBudget = allProjects.filter(p => (p.total_budget || 0) > 0);
-                        openModal('Allocation Breakdown', withBudget, 'financial');
-                    }}
-                />
-                <MetricCard
-                    title="Obligated Funds"
-                    value={`₱${totalSpent.toLocaleString()}`}
-                    icon={BarChart3}
-                    color="bg-violet-600"
-                    clickable
-                    isWarning={totalSpent > totalBudget}
-                    subtext={totalSpent > totalBudget ? `Exceeds allocation by ₱${(totalSpent - totalBudget).toLocaleString()}` : null}
-                    onClick={() => {
-                        const withSpend = allProjects.filter(p => (p.actual_cost || 0) > 0);
-                        openModal('Obligated Funds Breakdown', withSpend, 'financial');
                     }}
                 />
             </div>
@@ -608,7 +566,13 @@ const DashboardCharts = ({ metrics }) => {
                             max={Math.max(totalBudget, totalSpent) * 1.1}
                             color={COLORS.Spent}
                         />
-                        <div className="mt-8 pt-6 border-t border-slate-100">
+                        <div className="mt-8 pt-6 border-t border-slate-100 space-y-3">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium text-slate-500">Remaining Budget</span>
+                                <span className={clsx("text-lg font-bold", (totalBudget - totalSpent) < 0 ? "text-red-500" : "text-emerald-600")}>
+                                    ₱{(totalBudget - totalSpent).toLocaleString()}
+                                </span>
+                            </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium text-slate-500">Utilization Rate</span>
                                 <span className={clsx("text-lg font-bold", totalSpent > totalBudget ? "text-red-500" : "text-emerald-600")}>

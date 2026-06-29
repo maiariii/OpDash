@@ -558,7 +558,6 @@ const ProjectDetails = () => {
                         <TabButton active={activeTab === 'table'} onClick={() => setActiveTab('table')} icon={Table}>Activities</TabButton>
                         <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={CheckSquare}>Tasks</TabButton>
                         <TabButton active={activeTab === 'spillovers'} onClick={() => setActiveTab('spillovers')} icon={Layers}>Spillovers</TabButton>
-                        <TabButton active={activeTab === 'financials'} onClick={() => setActiveTab('financials')} icon={PieChart}>Financials</TabButton>
                     </div>
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -718,105 +717,7 @@ const ProjectDetails = () => {
                         <MilestonesTab projectId={id} activities={dashboardMetrics?.allTasks || []} />
                     )}
 
-                    {activeTab === 'financials' && financials && (
-                        <div className="max-w-4xl space-y-6 animate-slide-in">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h2 className="text-xl font-bold text-slate-800">Project Financials</h2>
-                                    <p className="text-slate-500 text-sm mt-0.5">Real-time budget overview and utilization metrics.</p>
-                                </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Total Allocation */}
-                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex justify-between items-start">
-                                    <div className="space-y-1">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Allocation</span>
-                                        <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                                            ₱{dashboardMetrics?.totalBudget?.toLocaleString() || '0'}
-                                        </p>
-                                    </div>
-                                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                                        <PieChart size={20} />
-                                    </div>
-                                </div>
 
-                                {/* Obligated Funds */}
-                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex justify-between items-start">
-                                    <div className="space-y-1">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Obligated Funds</span>
-                                        <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                                            ₱{dashboardMetrics?.totalSpent?.toLocaleString() || '0'}
-                                        </p>
-                                    </div>
-                                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-                                        <Activity size={20} />
-                                    </div>
-                                </div>
-
-                                {/* Remaining Budget */}
-                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex justify-between items-start">
-                                    <div className="space-y-1">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Remaining Budget</span>
-                                        <p className={clsx(
-                                            "text-3xl font-extrabold tracking-tight",
-                                            (dashboardMetrics?.remainingBudget || 0) < 0 ? 'text-rose-600' : 'text-emerald-600'
-                                        )}>
-                                            ₱{dashboardMetrics?.remainingBudget?.toLocaleString() || '0'}
-                                        </p>
-                                    </div>
-                                    <div className={clsx(
-                                        "p-3 rounded-xl",
-                                        (dashboardMetrics?.remainingBudget || 0) < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
-                                    )}>
-                                        <Target size={20} />
-                                    </div>
-                                </div>
-
-                                {/* Utilization Rate */}
-                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex justify-between items-start">
-                                    <div className="space-y-1">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Utilization Rate</span>
-                                        <p className="text-3xl font-extrabold text-amber-600 tracking-tight">
-                                            {dashboardMetrics?.burnRate?.toFixed(1) || 0}%
-                                        </p>
-                                    </div>
-                                    <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
-                                        <Layers size={20} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Budget Progress Bar Card */}
-                            <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm">
-                                <div className="flex justify-between items-center mb-3">
-                                    <span className="text-sm font-bold text-slate-700">Budget Consumption</span>
-                                    <span className="text-sm font-black text-blue-600">
-                                        {dashboardMetrics?.burnRate?.toFixed(1) || 0}% Utilized
-                                    </span>
-                                </div>
-                                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
-                                    <div 
-                                        className={clsx(
-                                            "h-full rounded-full transition-all duration-500",
-                                            (dashboardMetrics?.burnRate || 0) >= 90 ? 'bg-rose-500' : (dashboardMetrics?.burnRate || 0) >= 75 ? 'bg-amber-500' : 'bg-blue-600'
-                                        )} 
-                                        style={{ width: `${Math.min(100, dashboardMetrics?.burnRate || 0)}%` }} 
-                                    />
-                                </div>
-                                <div className="flex justify-between items-center mt-3 text-xs text-slate-500 font-medium">
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="w-2.5 h-2.5 bg-blue-600 rounded-full inline-block" />
-                                        Obligated: ₱{dashboardMetrics?.totalSpent?.toLocaleString() || '0'}
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="w-2.5 h-2.5 bg-slate-200 rounded-full inline-block border border-slate-300" />
-                                        Remaining: ₱{dashboardMetrics?.remainingBudget?.toLocaleString() || '0'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
 
                 </div>
