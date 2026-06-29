@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Paperclip, Upload, Trash2, Loader2, Download } from 'lucide-react';
-import { createTask, updateTask, getProjectMilestones, uploadFile } from '../api';
+import { createTask, updateTask, getProjectMilestones, uploadFile, getProjects, getProjectTasks } from '../api';
 import { useToast } from './ToastContext';
 
 const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMilestones = [], onClose, onCreated, initialDate = null }) => {
@@ -9,13 +9,30 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
     const isEditMode = !!task;
 
     const [milestones, setMilestones] = useState(initialMilestones);
+    const [projectBudget, setProjectBudget] = useState(0);
+    const [existingObligatedSum, setExistingObligatedSum] = useState(0);
 
-    // Fetch milestones on mount to ensure we have them
+    // Fetch milestones and project details on mount
     useEffect(() => {
         if (projectId) {
             getProjectMilestones(projectId).then(setMilestones).catch(err => console.error(err));
+
+            // Fetch project budget details
+            getProjects().then(projects => {
+                const project = projects.find(p => p.id === projectId);
+                if (project) {
+                    setProjectBudget(Number(project.sof_allocation || project.total_budget || 0));
+                }
+            }).catch(err => console.error(err));
+
+            // Fetch other activities to sum their obligated_amount
+            getProjectTasks(projectId).then(tasks => {
+                const otherTasks = isEditMode ? tasks.filter(t => t.id !== task.id) : tasks;
+                const obligatedSum = otherTasks.reduce((sum, t) => sum + (Number(t.obligated_amount || t.cost) || 0), 0);
+                setExistingObligatedSum(obligatedSum);
+            }).catch(err => console.error(err));
         }
-    }, [projectId]);
+    }, [projectId, isEditMode, task]);
 
     // Parse members string into array if needed, or use passed array
     const availableMembers = members;
@@ -205,6 +222,15 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
             return;
         }
 
+        // Obligated Amount Validation against Project Budget
+        const newObligatedAmount = Number(formData.obligated_amount) || 0;
+        const totalObligatedAfterSubmit = existingObligatedSum + newObligatedAmount;
+
+        if (projectBudget > 0 && totalObligatedAfterSubmit > projectBudget) {
+            showToast(`Action Blocked: Total obligated amount (₱${totalObligatedAfterSubmit.toLocaleString()}) would exceed the project's allocated budget (₱${projectBudget.toLocaleString()}).`, "error");
+            return;
+        }
+
         setLoading(true);
         try {
             if (isEditMode) {
@@ -225,7 +251,8 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
             onClose();
         } catch (error) {
             console.error(error);
-            showToast(`Failed to ${isEditMode ? 'update' : 'create'} activity`, "error");
+            const errMsg = error.response?.data?.error || `Failed to ${isEditMode ? 'update' : 'create'} activity`;
+            showToast(errMsg, "error");
         } finally {
             setLoading(false);
         }
@@ -245,7 +272,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
 
                     <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Parent Milestone <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Parent Milestone <span className="text-red-500">*</span></label>
                             <select
                                 className={`w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white focus:ring-2 focus:ring-blue-500 ${formData.milestone_id === "" ? "text-slate-400" : "text-slate-800"}`}
                                 value={formData.milestone_id}
@@ -260,7 +287,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Key Result Area <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Key Result Area <span className="text-red-500">*</span></label>
                             <select
                                 className={`w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white focus:ring-2 focus:ring-blue-500 ${formData.key_result_area === "" ? "text-slate-400" : "text-slate-800"}`}
                                 value={formData.key_result_area}
@@ -276,7 +303,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
 
                         <div>
                             <div className="flex justify-between">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Activity Title <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Activity Title <span className="text-red-500">*</span></label>
                                 <span className="text-xs text-slate-400">{formData.title.length}/50</span>
                             </div>
                             <input
@@ -291,7 +318,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
 
                         {/* Activity Type Dropdown */}
                         <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">
                                 Activity Type <span className="text-red-500">*</span>
                             </label>
                             <select
@@ -311,7 +338,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
 
                         {/* Nature of Activity Dropdown */}
                         <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">
                                 Nature of Activity <span className="text-red-500">*</span>
                             </label>
                             <select
@@ -333,7 +360,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
 
                         <div>
                             <div className="flex justify-between">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Objective</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Objective</label>
                                 <span className="text-xs text-slate-400">{formData.objective.length}/100</span>
                             </div>
                             <textarea
@@ -347,7 +374,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
 
                         <div>
                             <div className="flex justify-between">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Output</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Output</label>
                                 <span className="text-xs text-slate-400">{(formData.output || '').length}/100</span>
                             </div>
                             <textarea
@@ -361,7 +388,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
 
                         <div className="grid grid-cols-1 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Status</label>
                                 <select
                                     className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white"
                                     value={formData.status}
@@ -377,7 +404,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Start Date</label>
                                 <div className="relative">
                                     <Calendar size={16} className="absolute left-3 top-3 text-slate-400" />
                                     <input
@@ -396,7 +423,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">End Date</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">End Date</label>
                                 <div className="relative">
                                     <Calendar size={16} className="absolute left-3 top-3 text-slate-400" />
                                     <input
@@ -415,7 +442,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                             !['Deskwork', 'Communications'].includes(formData.activity_type) && (
                                 <div className="grid grid-cols-2 gap-4 mt-2">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Allocation</label>
+                                        <label className="block text-sm font-bold text-slate-700 mb-1">Allocation</label>
                                         <input
                                             type="text"
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
@@ -430,7 +457,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Obligated Amount</label>
+                                        <label className="block text-sm font-bold text-slate-700 mb-1">Obligated Amount</label>
                                         <div className="flex gap-2">
                                             <div className="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-700 font-mono">
                                                 ₱{(formData.expenses || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toLocaleString()}
@@ -451,7 +478,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                         {/* Tasks / Sub-Activities Section */}
                         <div className="mt-4 border-t border-slate-100 pt-4">
                             <div className="flex justify-between items-center mb-2">
-                                <label className="block text-sm font-medium text-slate-700">Tasks</label>
+                                <label className="block text-sm font-bold text-slate-700">Tasks</label>
                                 <button
                                     type="button"
                                     onClick={() => setShowTasks(true)}
@@ -478,7 +505,7 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
                         {/* File Attachments Section */}
                         <div className="mt-4 border-t border-slate-100 pt-4">
                             <div className="flex justify-between items-center mb-2">
-                                <label className="block text-sm font-medium text-slate-700">Attachments</label>
+                                <label className="block text-sm font-bold text-slate-700">Attachments</label>
                                 <label className="cursor-pointer text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
                                     <input
                                         type="file"

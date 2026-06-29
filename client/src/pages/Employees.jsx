@@ -217,7 +217,7 @@ const Employees = () => {
                             <form onSubmit={handleAddEmployee} className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-1">
-                                        <label className="text-xs font-medium text-slate-500 uppercase">First Name</label>
+                                        <label className="text-xs font-bold text-slate-500 uppercase">First Name</label>
                                         <input
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                             placeholder="First Name"
@@ -227,7 +227,7 @@ const Employees = () => {
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-xs font-medium text-slate-500 uppercase">Middle Name</label>
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Middle Name</label>
                                         <input
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                             placeholder="Middle Name"
@@ -236,7 +236,7 @@ const Employees = () => {
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-xs font-medium text-slate-500 uppercase">Last Name</label>
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Last Name</label>
                                         <input
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                             placeholder="Last Name"
@@ -249,7 +249,7 @@ const Employees = () => {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                        <label className="text-xs font-medium text-slate-500 uppercase">Division</label>
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Division</label>
                                         <select
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                             value={newEmp.division_id}
@@ -263,7 +263,7 @@ const Employees = () => {
                                         </select>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-xs font-medium text-slate-500 uppercase">Position</label>
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Position</label>
                                         <select
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                             value={newEmp.position}

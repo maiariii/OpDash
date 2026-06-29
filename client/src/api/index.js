@@ -36,6 +36,7 @@ export const updateProject = (id, data) => api.put(`/projects/${id}`, data).then
 // Project specific
 export const getProjectTasks = (projectId) => api.get(`/projects/${projectId}/tasks`).then(res => res.data);
 export const getProjectFinancials = (projectId) => api.get(`/projects/${projectId}/financials`).then(res => res.data);
+export const getBulkActivities = () => api.get('/projects/activities/bulk').then(res => res.data);
 
 export const createTask = (data) => api.post('/tasks', data).then(res => res.data);
 export const createSubtask = (activityId, data) => api.post(`/activities/${activityId}/tasks`, data).then(res => res.data);

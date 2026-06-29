@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
-import { getEmployees, getProjects, getProjectTasks, getProjectFinancials, getDivisions, getAllCatchUps, getAllMilestones } from '../api';
+import { getEmployees, getProjects, getProjectTasks, getProjectFinancials, getDivisions, getAllCatchUps, getAllMilestones, getBulkActivities } from '../api';
 import CalendarView from '../components/CalendarView';
 import SpilloverTracker from '../components/SpilloverTracker';
 import Loader from '../components/Loader';
@@ -79,15 +79,13 @@ const Dashboard = () => {
                     division_name: fetchedDivisions.find(d => d.id === emp.division_id)?.name || 'Unassigned'
                 }));
 
-                const projectDetails = await Promise.all(
-                    fetchedProjects.map(async (project) => {
-                        const [tasks, financials] = await Promise.all([
-                            getProjectTasks(project.id),
-                            getProjectFinancials(project.id)
-                        ]);
-                        return { ...project, tasks, financials };
-                    })
-                );
+                const bulkData = await getBulkActivities();
+                const allActivities = bulkData?.activities || [];
+
+                const projectDetails = fetchedProjects.map(project => {
+                    const tasks = allActivities.filter(a => a.project_id === project.id);
+                    return { ...project, tasks };
+                });
 
                 setRawData({
                     projects: fetchedProjects,
@@ -133,9 +131,10 @@ const Dashboard = () => {
         projectDetails.forEach(p => {
             const projectSourceOfFund = getProjectSourceOfFund(p);
             
-            // Check if tasks sum to 0 budget
+            // Prioritize overall project budget (sof_allocation or total_budget)
+            const projectSofAllocation = Number(p.sof_allocation || p.total_budget || 0);
             const tasksBudgetSum = p.tasks ? p.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
-            const projectTotalBudget = tasksBudgetSum > 0 ? tasksBudgetSum : (Number(p.sof_allocation || p.total_budget || 0));
+            const projectTotalBudget = projectSofAllocation > 0 ? projectSofAllocation : tasksBudgetSum;
 
             if (p.tasks && p.tasks.length > 0) {
                 p.tasks.forEach((t, idx) => {
@@ -143,10 +142,13 @@ const Dashboard = () => {
                     const lastUpdateDate = new Date();
                     lastUpdateDate.setDate(lastUpdateDate.getDate() - daysAgo);
 
-                    // If task allocations are 0, assign the fallback project budget to the first task
+                    // Use individual task allocation, adding any unallocated project budget to the first activity
                     let taskBudget = Number(t.allocation || t.gms_allocation || 0);
-                    if (tasksBudgetSum === 0 && idx === 0) {
-                        taskBudget = projectTotalBudget;
+                    if (idx === 0) {
+                        const unallocated = projectTotalBudget - tasksBudgetSum;
+                        if (unallocated > 0) {
+                            taskBudget += unallocated;
+                        }
                     }
 
                     list.push({
@@ -203,13 +205,18 @@ const Dashboard = () => {
     const groupKey = selectedDivision ? 'project' : 'division';
     const groupedActivities = useMemo(() => {
         const groups = {};
+        if (!selectedDivision) {
+            rawData.divisions.forEach(d => {
+                groups[d.name] = [];
+            });
+        }
         activeActivities.forEach(a => {
             const key = a[groupKey];
             if (!groups[key]) groups[key] = [];
             groups[key].push(a);
         });
         return groups;
-    }, [activeActivities, groupKey]);
+    }, [activeActivities, groupKey, selectedDivision, rawData.divisions]);
 
     const metricValue = (rows) => {
         return unitMode === 'budget' ? rows.reduce((s, r) => s + r.budget, 0) : rows.length;
@@ -400,7 +407,7 @@ const Dashboard = () => {
                             className="select"
                         >
                             <option value="all">All divisions</option>
-                            {Array.from(new Set(processedActivities.map(a => a.division))).sort().map(div => (
+                            {rawData.divisions.map(d => d.name).sort().map(div => (
                                 <option key={div} value={div}>{div}</option>
                             ))}
                         </select>
@@ -431,11 +438,10 @@ const Dashboard = () => {
                     <p className="schema-note"><b>Executive intent:</b> the page now exposes all core status, budget, and source-of-fund answers in one continuous dashboard. The side links only jump to sections; they do not hide information behind tabs.</p>
                 </div>
             </section>
-
             {/* Main Graphs Layout Grid */}
-            <section className="flex flex-col gap-[10px]">
+            <section className="flex flex-col gap-6">
                 {/* Distribution Main bar graph */}
-                <article className="card wide" id="distributionGraph">
+                <article className="card animate-slide-in" id="distributionGraph">
                     <div className="section-head">
                         <div>
                             <h2 className="section-title">
@@ -501,7 +507,7 @@ const Dashboard = () => {
                                         <div className="track flex">
                                             {distributionMode === 'budget' && (() => {
                                                 const u = r.reduce((s, a) => s + a.used, 0);
-                                                const b = r.reduce((s, a) => s + a.budget, 0);
+                                                const b = r.reduce((s, a) => s + a.used + (a.budget - a.used), 0);
                                                 return renderStackedSegments(
                                                     [u, Math.max(b - u, 0)],
                                                     maxBudgetTotal,
@@ -638,86 +644,89 @@ const Dashboard = () => {
                     )}
                 </article>
 
-                {/* Histogram Details */}
-                <article className="card" id="distributionDetails">
-                    <div className="section-head">
-                        <div>
-                            <h2 className="section-title">Distribution Details</h2>
-                            <p className="subtext">Histogram showing active metrics for the current distribution mode.</p>
+                {/* Sub-Graphs Layout Grid (Two Columns Below) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Histogram Details */}
+                    <article className="card animate-slide-in" id="distributionDetails">
+                        <div className="section-head">
+                            <div>
+                                <h2 className="section-title">Distribution Details</h2>
+                                <p className="subtext text-xs text-slate-500 font-bold">Histogram showing active metrics.</p>
+                            </div>
+                            <span className={getBadgeStyle()}>{getBadgeText()}</span>
                         </div>
-                        <span className={getBadgeStyle()}>{getBadgeText()}</span>
-                    </div>
 
-                    <div className="histogram" style={{ '--cols': donutData.length }}>
-                        {donutData.map((d, i) => {
-                            const maxVal = Math.max(...donutData.map(x => x.value), 1);
-                            const hPct = Math.max((d.value / maxVal) * 100, 8);
-                            return (
-                                <div key={i} className="hist-col">
-                                    <div className="hist-area">
-                                        <div className="hist-bar-wrap" style={{ height: `${hPct}%` }}>
-                                            <div className="hist-value">{donutFormat(d.value)}</div>
-                                            <div 
-                                                className="hist-bar" 
-                                                style={{ 
-                                                    height: d.value === 0 ? '8px' : 'calc(100% - 22px)', 
-                                                    minHeight: d.value === 0 ? '8px' : '16px',
-                                                    backgroundColor: d.color 
-                                                }} 
-                                            />
+                        <div className="histogram" style={{ '--cols': donutData.length }}>
+                            {donutData.map((d, i) => {
+                                const maxVal = Math.max(...donutData.map(x => x.value), 1);
+                                const hPct = Math.max((d.value / maxVal) * 100, 8);
+                                return (
+                                    <div key={i} className="hist-col">
+                                        <div className="hist-area">
+                                            <div className="hist-bar-wrap" style={{ height: `${hPct}%` }}>
+                                                <div className="hist-value">{donutFormat(d.value)}</div>
+                                                <div 
+                                                    className="hist-bar" 
+                                                    style={{ 
+                                                        height: d.value === 0 ? '8px' : 'calc(100% - 22px)', 
+                                                        minHeight: d.value === 0 ? '8px' : '16px',
+                                                        backgroundColor: d.color 
+                                                    }} 
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="hist-label" title={d.label}>
+                                            {d.shortLabel || d.label}
                                         </div>
                                     </div>
-                                    <div className="hist-label" title={d.label}>
-                                        {d.shortLabel || d.label}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </article>
-
-                {/* Donut Snapshot Chart */}
-                <article className="card" id="distributionPanel">
-                    <div className="section-head">
-                        <div>
-                            <h2 className="section-title">Distribution Snapshot</h2>
-                            <p className="subtext">Overview breakdown and percentage shares.</p>
+                                );
+                            })}
                         </div>
-                        <span className={getBadgeStyle()}>{getBadgeText()}</span>
-                    </div>
+                    </article>
 
-                    <div className="donut-layout">
-                        <div className="donut" style={donutStyle}>
-                            <div className="donut-center">
-                                <span>{donutFormat(donutTotal)}</span>
-                                <small className="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5" style={{ display: 'block' }}>{metricLabel()}</small>
+                    {/* Donut Snapshot Chart */}
+                    <article className="card animate-slide-in" id="distributionPanel">
+                        <div className="section-head">
+                            <div>
+                                <h2 className="section-title">Distribution Snapshot</h2>
+                                <p className="subtext text-xs text-slate-500 font-bold">Overview breakdown and percentage shares.</p>
+                            </div>
+                            <span className={getBadgeStyle()}>{getBadgeText()}</span>
+                        </div>
+
+                        <div className="donut-layout">
+                            <div className="donut" style={donutStyle}>
+                                <div className="donut-center">
+                                    <span>{donutFormat(donutTotal)}</span>
+                                    <small className="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5" style={{ display: 'block' }}>{metricLabel()}</small>
+                                </div>
+                            </div>
+                            <div id="distributionDonutTable" className="flex-1 w-full">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Segment</th>
+                                            <th>Value</th>
+                                            <th>Share</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {donutData.map((d, i) => (
+                                            <tr key={i}>
+                                                <td>
+                                                    <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
+                                                    {d.label}
+                                                </td>
+                                                <td><b>{donutFormat(d.value)}</b></td>
+                                                <td><b>{pct((d.value / donutTotal) * 100)}</b></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                        <div id="distributionDonutTable" className="flex-1 w-full">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Segment</th>
-                                        <th>Value</th>
-                                        <th>Share</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {donutData.map((d, i) => (
-                                        <tr key={i}>
-                                            <td>
-                                                <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
-                                                {d.label}
-                                            </td>
-                                            <td><b>{donutFormat(d.value)}</b></td>
-                                            <td><b>{pct((d.value / donutTotal) * 100)}</b></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </article>
+                    </article>
+                </div>
 
                 {/* Compliance progress splits */}
                 {distributionMode !== 'fund' && (
@@ -777,7 +786,7 @@ const Dashboard = () => {
                                         
                                         {/* Left Stacked Bar */}
                                         <div className="left" title={leftLabels.join(" + ")}>
-                                            <div style={{ display: 'flex', width: `${lWidth}%`, height: '100%' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'row-reverse', width: `${lWidth}%`, height: '100%', marginLeft: 'auto' }}>
                                                 {renderStackedSegments(leftVals, leftTotal || 1, leftClasses, leftLabels, distributionMode === 'budget' ? peso : fmt)}
                                             </div>
                                         </div>

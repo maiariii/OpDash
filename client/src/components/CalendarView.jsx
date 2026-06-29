@@ -403,7 +403,7 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
             </div>
 
             {/* Days Header */}
-            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+            <div className="grid border-b border-slate-200 bg-slate-50" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
                 {weekDays.map(day => (
                     <div key={day} className="py-2 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         {day}

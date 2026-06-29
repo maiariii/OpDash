@@ -68,7 +68,7 @@ const ProjectDetails = () => {
     const [isCreatingTask, setIsCreatingTask] = useState(false); // For Creating New Task
     const [showCreateSubtask, setShowCreateSubtask] = useState(false); // For New Subtask Modal
     const [editingSubtask, setEditingSubtask] = useState(null); // For Subtask Modal
-    const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1280); // Sidebar State
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Sidebar State
     const [initialTaskDate, setInitialTaskDate] = useState(null); // Initial Date for New Task
 
     // Dropdown Data
@@ -181,6 +181,16 @@ const ProjectDetails = () => {
                 return;
             }
 
+            const basecampTargets = editForm.basecamp_target.split(',').map(s => s.trim());
+            const customTarget = basecampTargets.find(opt => opt.startsWith("Others:") || opt.startsWith("Others"));
+            if (customTarget !== undefined) {
+                const specifiedText = customTarget.replace(/^Others:\s*/i, '').trim();
+                if (!specifiedText) {
+                    showToast("Please specify the custom Basecamp target in the 'Others' section.", "warning");
+                    return;
+                }
+            }
+
             const cleanForm = { ...editForm };
             if (cleanForm.assisting_personnel || cleanForm.lead_personnel) {
                 // Create a Set of valid employee names for O(1) lookup
@@ -205,7 +215,16 @@ const ProjectDetails = () => {
                 }
             }
 
+            const cleanedBasecamp = basecampTargets.map(opt => {
+                if (opt.startsWith("Others:") || opt.startsWith("Others")) {
+                    const cleanedVal = opt.replace(/^Others:\s*/i, '').trim();
+                    return `Others: ${cleanedVal}`;
+                }
+                return opt;
+            });
+
             const updated = { ...cleanForm };
+            updated.basecamp_target = cleanedBasecamp.join(', ');
 
             const amount = Number(allocationAmount) || 0;
             updated.source_of_fund = selectedFundingSource;
@@ -546,8 +565,8 @@ const ProjectDetails = () => {
                         className={clsx(
                             "flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border w-full md:w-auto",
                             isSidebarOpen
-                                ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-                                : "bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
+                                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700 shadow-sm font-semibold"
+                                : "bg-white text-blue-600 border-blue-300 hover:bg-blue-50/50 hover:text-blue-700 hover:border-blue-400 shadow-sm font-semibold"
                         )}
                         title={isSidebarOpen ? "Hide Project Details" : "Show Project Details"}
                     >
@@ -700,33 +719,100 @@ const ProjectDetails = () => {
                     )}
 
                     {activeTab === 'financials' && financials && (
-                        <div className="max-w-4xl">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4">Project Financials</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                <div className="p-6 card-outlined">
-                                    <h3 className="text-sm font-bold text-[#08315F] uppercase tracking-wider">Total Allocation</h3>
-                                    <p className="text-3xl font-bold text-[#08315F] tracking-tight mt-1">
-                                        ₱{dashboardMetrics?.totalBudget?.toLocaleString() || '0'}
-                                    </p>
+                        <div className="max-w-4xl space-y-6 animate-slide-in">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-xl font-bold text-slate-800">Project Financials</h2>
+                                    <p className="text-slate-500 text-sm mt-0.5">Real-time budget overview and utilization metrics.</p>
                                 </div>
-                                <div className="p-6 card-outlined">
-                                    <h3 className="text-sm font-bold text-[#08315F] uppercase tracking-wider">Obligated Funds</h3>
-                                    <p className="text-3xl font-bold text-[#08315F] tracking-tight mt-1">
-                                        ₱{dashboardMetrics?.totalSpent?.toLocaleString() || '0'}
-                                    </p>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* Total Allocation */}
+                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex justify-between items-start">
+                                    <div className="space-y-1">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Allocation</span>
+                                        <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                                            ₱{dashboardMetrics?.totalBudget?.toLocaleString() || '0'}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                                        <PieChart size={20} />
+                                    </div>
                                 </div>
-                                <div className="p-6 card-outlined">
-                                    <h3 className="text-sm font-bold text-[#08315F] uppercase tracking-wider">Remaining Budget</h3>
-                                    <p className={`text-3xl font-bold tracking-tight mt-1 ${(dashboardMetrics?.remainingBudget || 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                        ₱{dashboardMetrics?.remainingBudget?.toLocaleString() || '0'}
-                                    </p>
+
+                                {/* Obligated Funds */}
+                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex justify-between items-start">
+                                    <div className="space-y-1">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Obligated Funds</span>
+                                        <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                                            ₱{dashboardMetrics?.totalSpent?.toLocaleString() || '0'}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                                        <Activity size={20} />
+                                    </div>
                                 </div>
-                                <div className="p-6 card-outlined">
-                                    <h3 className="text-sm font-bold text-[#08315F] uppercase tracking-wider mb-2">Utilization Rate</h3>
-                                    <p className="text-3xl font-bold text-orange-500 tracking-tight">
-                                        {dashboardMetrics?.burnRate?.toFixed(1) || 0}%
-                                    </p>
-                                    <p className="text-xs text-slate-400 mt-2">Percentage of budget used.</p>
+
+                                {/* Remaining Budget */}
+                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex justify-between items-start">
+                                    <div className="space-y-1">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Remaining Budget</span>
+                                        <p className={clsx(
+                                            "text-3xl font-extrabold tracking-tight",
+                                            (dashboardMetrics?.remainingBudget || 0) < 0 ? 'text-rose-600' : 'text-emerald-600'
+                                        )}>
+                                            ₱{dashboardMetrics?.remainingBudget?.toLocaleString() || '0'}
+                                        </p>
+                                    </div>
+                                    <div className={clsx(
+                                        "p-3 rounded-xl",
+                                        (dashboardMetrics?.remainingBudget || 0) < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
+                                    )}>
+                                        <Target size={20} />
+                                    </div>
+                                </div>
+
+                                {/* Utilization Rate */}
+                                <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex justify-between items-start">
+                                    <div className="space-y-1">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Utilization Rate</span>
+                                        <p className="text-3xl font-extrabold text-amber-600 tracking-tight">
+                                            {dashboardMetrics?.burnRate?.toFixed(1) || 0}%
+                                        </p>
+                                    </div>
+                                    <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                                        <Layers size={20} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Budget Progress Bar Card */}
+                            <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="text-sm font-bold text-slate-700">Budget Consumption</span>
+                                    <span className="text-sm font-black text-blue-600">
+                                        {dashboardMetrics?.burnRate?.toFixed(1) || 0}% Utilized
+                                    </span>
+                                </div>
+                                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                                    <div 
+                                        className={clsx(
+                                            "h-full rounded-full transition-all duration-500",
+                                            (dashboardMetrics?.burnRate || 0) >= 90 ? 'bg-rose-500' : (dashboardMetrics?.burnRate || 0) >= 75 ? 'bg-amber-500' : 'bg-blue-600'
+                                        )} 
+                                        style={{ width: `${Math.min(100, dashboardMetrics?.burnRate || 0)}%` }} 
+                                    />
+                                </div>
+                                <div className="flex justify-between items-center mt-3 text-xs text-slate-500 font-medium">
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="w-2.5 h-2.5 bg-blue-600 rounded-full inline-block" />
+                                        Obligated: ₱{dashboardMetrics?.totalSpent?.toLocaleString() || '0'}
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="w-2.5 h-2.5 bg-slate-200 rounded-full inline-block border border-slate-300" />
+                                        Remaining: ₱{dashboardMetrics?.remainingBudget?.toLocaleString() || '0'}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -782,14 +868,30 @@ const ProjectDetails = () => {
 
                         <div className="space-y-6">
                             {isEditing && (
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Name<span className="text-red-500"> *</span></label>
-                                    <input
-                                        type="text"
-                                        className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
-                                        value={editForm.name || ''}
-                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                                    />
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Name<span className="text-red-500"> *</span></label>
+                                        <input
+                                            type="text"
+                                            className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+                                            value={editForm.name || ''}
+                                            onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Status<span className="text-red-500"> *</span></label>
+                                        <select
+                                            className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-800 bg-white"
+                                            value={editForm.status || 'Planning'}
+                                            onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                                        >
+                                            <option value="Planning">Planning</option>
+                                            <option value="In Progress">In Progress</option>
+                                            <option value="Accomplished">Accomplished</option>
+                                            <option value="Deferred">Deferred</option>
+                                            <option value="Cancelled">Cancelled</option>
+                                        </select>
+                                    </div>
                                 </div>
                             )}
 

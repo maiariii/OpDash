@@ -95,6 +95,14 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title, onView }) => {
                                 Progress {getSortIcon('progress')}
                             </div>
                         </th>
+                        <th
+                            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors w-1/6"
+                            onClick={() => handleSort('status')}
+                        >
+                            <div className="flex items-center">
+                                Status {getSortIcon('status')}
+                            </div>
+                        </th>
 
                         <th className="p-4 w-24 text-right">Actions</th>
                     </tr>
@@ -131,6 +139,16 @@ const MilestoneTable = ({ milestones, onEdit, onDelete, title, onView }) => {
                                 <div className="text-[10px] text-slate-400 mt-1 pl-1">
                                     {milestone.accomplished_activities || 0} / {milestone.total_activities || 0} Activities
                                 </div>
+                            </td>
+                            <td className="p-4">
+                                <span className={clsx("px-2 py-0.5 rounded-full text-xs font-bold border",
+                                    milestone.status === 'Accomplished' || milestone.status === 'Completed' || milestone.status === 'Done' ? 'bg-green-100 text-green-700 border-green-200' :
+                                    milestone.status === 'In Progress' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                    milestone.status === 'Deferred' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                    milestone.status === 'Cancelled' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                                )}>
+                                    {milestone.status || 'Pending'}
+                                </span>
                             </td>
 
                             <td className="p-4 text-right">

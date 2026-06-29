@@ -7,6 +7,7 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
     const [description, setDescription] = useState('');
     const [targetDate, setTargetDate] = useState('');
     const [notes, setNotes] = useState('');
+    const [status, setStatus] = useState('Pending');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -24,6 +25,13 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
                 setTargetDate('');
             }
             setNotes(milestone.notes || '');
+            setStatus(milestone.status || 'Pending');
+        } else {
+            setTitle('');
+            setDescription('');
+            setTargetDate('');
+            setNotes('');
+            setStatus('Pending');
         }
     }, [milestone]);
 
@@ -49,6 +57,7 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
                 title,
                 description,
                 target_date: targetDate,
+                status,
                 notes
             };
 
@@ -89,7 +98,7 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
                     )}
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">
                             Milestone Title <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -109,7 +118,7 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">
                             Description
                         </label>
                         <textarea
@@ -129,7 +138,7 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className="block text-sm font-bold text-slate-700 mb-1">
                                 Target Date
                             </label>
                             <div className="relative">
@@ -143,12 +152,29 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }) => {
                                 />
                             </div>
                         </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">
+                                Status
+                            </label>
+                            <select
+                                className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-700"
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                            >
+                                <option value="Pending">Pending</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Accomplished">Accomplished</option>
+                                <option value="Deferred">Deferred</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
                     </div>
 
 
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">
                             Notes
                         </label>
                         <textarea

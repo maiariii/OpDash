@@ -314,6 +314,11 @@ async function initDB() {
                 ALTER TABLE projects_list DROP COLUMN program_id;
             END IF;
 
+            -- milestones_list: status
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='milestones_list' AND column_name='status') THEN 
+                ALTER TABLE milestones_list ADD COLUMN status TEXT DEFAULT 'Pending'; 
+            END IF;
+
             DROP TABLE IF EXISTS programs_list;
         END $$;
     `);
@@ -647,18 +652,19 @@ async function upsertMilestone(data) {
     await initDB();
     const q = `
         INSERT INTO milestones_list(
-            id, project_id, title, description, target_date, notes, created_at
-        ) VALUES($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_TIMESTAMP))
+            id, project_id, title, description, target_date, status, notes, created_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, COALESCE($8, CURRENT_TIMESTAMP))
         ON CONFLICT(id) DO UPDATE SET
             title = EXCLUDED.title,
             description = EXCLUDED.description,
             target_date = EXCLUDED.target_date,
+            status = EXCLUDED.status,
             notes = EXCLUDED.notes
         RETURNING *;
     `;
     const values = [
         data.id, data.project_id, data.title, data.description || '', data.target_date,
-        data.notes || '', data.created_at
+        data.status || 'Pending', data.notes || '', data.created_at
     ];
     const res = await query(q, values);
     return res.rows[0];
@@ -673,6 +679,11 @@ async function deleteMilestone(id) {
 
 async function getExpenses(activityId) {
     const res = await query('SELECT * FROM expense_list WHERE activity_id = $1', [activityId]);
+    return res.rows;
+}
+
+async function getAllExpenses() {
+    const res = await query('SELECT * FROM expense_list');
     return res.rows;
 }
 
@@ -792,7 +803,7 @@ module.exports = {
     getEmployees, getEmployeeById, upsertEmployee, deleteEmployee,
     getDivisions, upsertDivision,
     getMilestones, upsertMilestone, deleteMilestone,
-    getExpenses, getExpensesByProject, addExpense, deleteExpense, deleteExpensesByActivityId,
+    getExpenses, getExpensesByProject, getAllExpenses, addExpense, deleteExpense, deleteExpensesByActivityId,
     upsertCatchup, getCatchups, getCatchupsByProject, deleteCatchup,
     truncateAllTables,
     createUser,

@@ -165,16 +165,33 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
             return;
         }
 
+        const customTarget = selectedBasecamp.find(opt => !basecampOptions.includes(opt));
+        if (customTarget !== undefined) {
+            const specifiedText = customTarget.replace("Others: ", "").trim();
+            if (!specifiedText) {
+                showToast("Please specify the custom Basecamp target in the 'Others' section.", "warning");
+                return;
+            }
+        }
+
         setLoading(true);
         try {
             const amount = Number(allocationAmount) || 0;
+
+            const cleanedBasecamp = selectedBasecamp.map(opt => {
+                if (!basecampOptions.includes(opt)) {
+                    const cleanedVal = opt.replace(/^Others:\s*/i, '').trim();
+                    return `Others: ${cleanedVal}`;
+                }
+                return opt;
+            });
 
             const projectData = {
                 ...formData,
                 lead_personnel: formData.lead_personnel.join(', '),
                 supervising_officer: formData.supervising_officer.join(', '),
                 assisting_personnel: formData.assisting_personnel.join(', '),
-                basecamp_target: selectedBasecamp.join(', '),
+                basecamp_target: cleanedBasecamp.join(', '),
                 source_of_fund: selectedFundingSource,
                 sof_allocation: amount,
                 total_budget: amount
@@ -208,7 +225,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
                     <div>
                         <div className="flex justify-between">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Project Name <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Project Name <span className="text-red-500">*</span></label>
                             <span className="text-xs text-slate-400">{formData.name.length}/50</span>
                         </div>
                         <input
@@ -223,7 +240,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
                     <div>
                         <div className="flex justify-between">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Description <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Description <span className="text-red-500">*</span></label>
                             <span className="text-xs text-slate-400">{formData.description.length}/100</span>
                         </div>
                         <textarea
@@ -240,7 +257,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                     {/* Source of Funds Section */}
                     <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3 animate-fade-in">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Source of Fund <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Source of Fund <span className="text-red-500">*</span></label>
                             <select
                                 required
                                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
@@ -282,7 +299,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
                     {/* Expenditure Framework Section */}
                     <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
-                        <label className="block text-sm font-medium text-slate-700">Expenditure Framework <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-bold text-slate-700">Expenditure Framework <span className="text-red-500">*</span></label>
                         <div className="flex gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input
@@ -310,7 +327,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Division <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">Division <span className="text-red-500">*</span></label>
                         <select
                             required
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
@@ -327,7 +344,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
 
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">
                             Lead Personnel (Select Multiple) <span className="text-red-500">*</span>
                         </label>
                         <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 space-y-2">
@@ -362,7 +379,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">
                             Supervising Officer (Select Multiple) <span className="text-red-500">*</span>
                         </label>
                         <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 space-y-2">
@@ -397,7 +414,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">
                             Assisting Personnel (Select Multiple) <span className="text-red-500">*</span>
                         </label>
                         <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 space-y-2">
@@ -432,7 +449,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">
                             Basecamp Target (Select Multiple) <span className="text-red-500">*</span>
                         </label>
                         <div className="border border-slate-300 rounded-lg p-3 max-h-40 overflow-y-auto bg-slate-50">

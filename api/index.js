@@ -93,8 +93,9 @@ apiRouter.get('/projects', async (req, res) => {
                 calculatedBudget = projectTasks.reduce((sum, t) => sum + (Number(t.allocation || t.budget) || 0), 0);
             }
 
-            // NEW LOGIC: Fall back to overall project budget if activity allocations are not defined (sum to 0)
-            const finalBudget = calculatedBudget > 0 ? calculatedBudget : (Number(p.sof_allocation || 0));
+            // Prioritize overall project budget (sof_allocation) and fall back to sum of tasks
+            const projectSofAllocation = Number(p.sof_allocation || p.total_budget || 0);
+            const finalBudget = projectSofAllocation > 0 ? projectSofAllocation : calculatedBudget;
 
             return {
                 ...p,
@@ -362,8 +363,9 @@ apiRouter.get('/projects/:id/financials', async (req, res) => {
         // Dynamic Total Allocation (formerly Budget/GMS Allocation)
         let totalAllocation = activities.reduce((sum, a) => sum + (Number(a.allocation || a.gms_allocation || a.budget) || 0), 0);
 
-        // Fall back to overall project budget if activity allocations are not defined (sum to 0)
-        const finalAllocation = totalAllocation > 0 ? totalAllocation : (Number(project.sof_allocation) || 0);
+        // Prioritize overall project budget (sof_allocation) and fall back to sum of activities
+        const projectSofAllocation = Number(project.sof_allocation || project.total_budget || 0);
+        const finalAllocation = projectSofAllocation > 0 ? projectSofAllocation : totalAllocation;
 
         const burnRate = finalAllocation > 0 ? (obligatedFunds / finalAllocation) * 100 : 0;
 
@@ -392,6 +394,20 @@ apiRouter.get('/projects/:id/financials', async (req, res) => {
 
     } catch (err) {
         console.error(`[Financials] ERROR: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET All Activities and Subtasks in Bulk
+apiRouter.get('/projects/activities/bulk', async (req, res) => {
+    try {
+        const [activities, subtasks, expenses] = await Promise.all([
+            azureDb.getActivities(),
+            azureDb.getSubtasks(),
+            azureDb.getAllExpenses()
+        ]);
+        res.json({ activities, subtasks, expenses });
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
@@ -453,6 +469,25 @@ apiRouter.post('/tasks', async (req, res) => {
 
         if (title && title.length > 50) return res.status(400).json({ error: 'Activity title cannot exceed 50 characters' });
         if (objective && objective.length > 100) return res.status(400).json({ error: 'Activity objective cannot exceed 100 characters' });
+
+        // Budget Validation
+        const project = await azureDb.getProjectById(project_id);
+        if (project) {
+            const projectBudget = Number(project.sof_allocation || project.total_budget || 0);
+            if (projectBudget > 0) {
+                const existingActivities = await azureDb.getActivities(project_id);
+                const existingObligatedSum = existingActivities.reduce((sum, a) => sum + (Number(a.obligated_amount || a.cost) || 0), 0);
+                
+                let requestedObligatedAmount = Number(obligated_amount) || 0;
+                if (expenses && Array.isArray(expenses)) {
+                    requestedObligatedAmount = expenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+                }
+                
+                if (existingObligatedSum + requestedObligatedAmount > projectBudget) {
+                    return res.status(400).json({ error: `Action Blocked: Total obligated amount would exceed the project's allocated budget (₱${projectBudget.toLocaleString()}).` });
+                }
+            }
+        }
 
         const newId = await azureDb.generateControlCode('activity');
         const path = parent_path ? `${parent_path}.${newId}` : newId;
@@ -538,6 +573,27 @@ apiRouter.put('/tasks/:id', async (req, res) => {
             milestone_id, activity_type, nature_of_activity, estimated_hours,
             start_date, due_date, allocation, gms_allocation, obligated_amount, expenses
         } = req.body;
+
+        // Budget Validation
+        const resolvedProjectId = project_id || current.project_id;
+        const project = await azureDb.getProjectById(resolvedProjectId);
+        if (project) {
+            const projectBudget = Number(project.sof_allocation || project.total_budget || 0);
+            if (projectBudget > 0) {
+                const existingActivities = await azureDb.getActivities(resolvedProjectId);
+                const otherActivities = existingActivities.filter(a => a.id !== id);
+                const existingObligatedSum = otherActivities.reduce((sum, a) => sum + (Number(a.obligated_amount || a.cost) || 0), 0);
+
+                let requestedObligatedAmount = obligated_amount !== undefined ? Number(obligated_amount) : current.obligated_amount;
+                if (expenses && Array.isArray(expenses)) {
+                    requestedObligatedAmount = expenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+                }
+
+                if (existingObligatedSum + requestedObligatedAmount > projectBudget) {
+                    return res.status(400).json({ error: `Action Blocked: Total obligated amount would exceed the project's allocated budget (₱${projectBudget.toLocaleString()}).` });
+                }
+            }
+        }
 
         // Sync expenses in database if provided
         let calculatedObligatedAmount = obligated_amount;
@@ -716,7 +772,7 @@ apiRouter.get('/projects/:id/milestones', async (req, res) => {
 // POST Create Milestone
 apiRouter.post('/milestones', async (req, res) => {
     try {
-        const { project_id, title, description, target_date, notes } = req.body;
+        const { project_id, title, description, target_date, status, notes } = req.body;
         if (!title) return res.status(400).json({ error: 'Title is required' });
 
         const id = await azureDb.generateControlCode('milestone');
@@ -726,6 +782,7 @@ apiRouter.post('/milestones', async (req, res) => {
             title,
             description,
             target_date,
+            status: status || 'Pending',
             notes,
             created_at: new Date().toISOString()
         };
@@ -740,7 +797,7 @@ apiRouter.post('/milestones', async (req, res) => {
 apiRouter.put('/milestones/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, target_date, notes } = req.body;
+        const { title, description, target_date, status, notes } = req.body;
 
         const all = await azureDb.getMilestones();
         const existing = all.find(m => m.id === id);
@@ -752,6 +809,7 @@ apiRouter.put('/milestones/:id', async (req, res) => {
             title: title || existing.title,
             description: description !== undefined ? description : existing.description,
             target_date: target_date || existing.target_date,
+            status: status !== undefined ? status : existing.status,
             notes: notes !== undefined ? notes : existing.notes
         };
 

@@ -11,6 +11,30 @@ const COLORS = {
     'Spent': '#8b5cf6'  // Violet
 };
 
+const PesoIcon = ({ size = 20, className }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+    >
+        {/* The vertical stem of P */}
+        <path d="M9 4v16" />
+        {/* The loop of P */}
+        <path d="M9 4h5.5a4.5 4.5 0 0 1 0 9H9" />
+        {/* First horizontal bar crossing stem and loop completely */}
+        <path d="M6 7h10.5" />
+        {/* Second horizontal bar crossing stem and loop completely */}
+        <path d="M6 10h10.5" />
+    </svg>
+);
+
 const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
     const [selectedItem, setSelectedItem] = useState(null);
@@ -298,20 +322,27 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
     );
 };
 
-const MetricCard = ({ title, value, subtext, icon: Icon, color, onClick, clickable = false }) => (
+const MetricCard = ({ title, value, subtext, icon: Icon, color, onClick, clickable = false, isWarning = false, isFeatured = false }) => (
     <div
         onClick={clickable ? onClick : undefined}
         className={clsx(
-            "bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between relative overflow-hidden group",
-            clickable && "cursor-pointer hover:shadow-md hover:border-blue-200 transition-all active:scale-[0.99]"
+            "bg-white p-5 rounded-xl border shadow-sm flex items-start justify-between relative overflow-hidden group transition-all duration-200",
+            isFeatured 
+                ? "moving-blue-border"
+                : (isWarning ? "border-red-500 bg-red-50/10 ring-1 ring-red-500" : "border-slate-200"),
+            clickable && "cursor-pointer hover:shadow-md transition-all active:scale-[0.99]",
+            clickable && "hover:border-blue-200"
         )}
     >
         <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wide mb-1">{title}</p>
-            <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
-            {subtext && <p className="text-xs text-slate-400 mt-1">{subtext}</p>}
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wide mb-1 flex items-center gap-1.5">
+                {title}
+                {isWarning && <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Exceeded</span>}
+            </p>
+            <h3 className={clsx("text-2xl font-bold", isWarning ? "text-red-600" : "text-slate-800")}>{value}</h3>
+            {subtext && <p className={clsx("text-xs mt-1", isWarning ? "text-red-500 font-medium" : "text-slate-400")}>{subtext}</p>}
         </div>
-        <div className={clsx("p-3 rounded-lg transition-transform group-hover:scale-110", color)}>
+        <div className={clsx("p-3 rounded-lg transition-transform group-hover:scale-110", isWarning ? "bg-red-500" : color)}>
             <Icon size={20} className="text-white" />
         </div>
         {clickable && (
@@ -451,7 +482,6 @@ const DashboardCharts = ({ metrics }) => {
     const activityData = [
         { label: 'Pending', value: pendingActivities, color: COLORS.Pending, data: pendingTasks },
         { label: 'Accomplished', value: accomplishedActivities, color: COLORS.Accomplished, data: accomplishedTasks },
-        { label: 'Waitlisted', value: waitlistedActivities, color: COLORS.Waitlisted, data: waitlistedTasks },
         { label: 'Delayed', value: delayedActivities, color: COLORS.Delayed, data: delayedTasks }
     ];
 
@@ -459,7 +489,6 @@ const DashboardCharts = ({ metrics }) => {
         const titleMap = {
             'Pending': 'Pending Activities',
             'Accomplished': 'Accomplished Activities',
-            'Waitlisted': 'Waitlisted Activities',
             'Delayed': 'Delayed Activities'
         };
         // Use slice.data if available (from activityData), or switch based on label
@@ -477,13 +506,14 @@ const DashboardCharts = ({ metrics }) => {
     return (
         <div className="space-y-6">
             {/* Metric Cards Row 1 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard
                     title="Total Activities"
                     value={totalActivities}
                     icon={Activity}
                     color="bg-blue-500"
                     clickable
+                    isFeatured
                     onClick={() => openModal('All Activities', allTasks, 'task')}
                 />
                 <MetricCard
@@ -502,14 +532,7 @@ const DashboardCharts = ({ metrics }) => {
                     clickable
                     onClick={() => openModal('Accomplished Activities', accomplishedTasks, 'task')}
                 />
-                <MetricCard
-                    title="Waitlisted"
-                    value={waitlistedActivities || 0}
-                    icon={Clock}
-                    color="bg-purple-500"
-                    clickable
-                    onClick={() => openModal('Waitlisted Activities', waitlistedTasks || [], 'task')}
-                />
+
                 <MetricCard
                     title="Delayed"
                     value={delayedActivities}
@@ -538,7 +561,7 @@ const DashboardCharts = ({ metrics }) => {
                 <MetricCard
                     title="Total Allocation"
                     value={`₱${totalBudget.toLocaleString()}`}
-                    icon={DollarSign}
+                    icon={PesoIcon}
                     color="bg-blue-600"
                     clickable
                     onClick={() => {
@@ -552,6 +575,8 @@ const DashboardCharts = ({ metrics }) => {
                     icon={BarChart3}
                     color="bg-violet-600"
                     clickable
+                    isWarning={totalSpent > totalBudget}
+                    subtext={totalSpent > totalBudget ? `Exceeds allocation by ₱${(totalSpent - totalBudget).toLocaleString()}` : null}
                     onClick={() => {
                         const withSpend = allProjects.filter(p => (p.actual_cost || 0) > 0);
                         openModal('Obligated Funds Breakdown', withSpend, 'financial');
