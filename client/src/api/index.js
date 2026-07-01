@@ -69,4 +69,9 @@ export const deleteSubtask = (id) => api.delete(`/subtasks/${id}`).then(res => r
 export const deleteCatchUp = (id) => api.delete(`/catchups/${id}`).then(res => res.data);
 export const deleteProject = (id) => api.delete(`/projects/${id}`).then(res => res.data);
 
+export const getActivityLogs = (projectId) => {
+    const params = projectId ? { projectId } : {};
+    return api.get('/activity-logs', { params }).then(res => res.data);
+};
+
 export default api;

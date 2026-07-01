@@ -33,11 +33,22 @@ const fmt = v => Number(v || 0).toLocaleString("en-PH");
 const peso = v => "₱" + Number(v || 0).toLocaleString("en-PH");
 const pct = v => v.toFixed(0) + "%";
 
+const getDivisionStyles = (divisionName) => {
+    const name = (divisionName || '').toLowerCase();
+    if (name.includes('personnel')) return 'division-badge division-personnel';
+    if (name.includes('employee welfare')) return 'division-badge division-welfare';
+    if (name.includes('human resource') || name.includes('hrod')) return 'division-badge division-hrod';
+    if (name.includes('school effectiveness') || name.includes('effectiveness')) return 'division-badge division-effectiveness';
+    return 'division-badge division-default';
+};
+
+
 const Projects = () => {
     const [projects, setProjects] = useState([]);
     const [divisions, setDivisions] = useState([]);
     const [projectStats, setProjectStats] = useState({}); // { projectId: { milestones: 0, activities: 0, tasks: 0 } }
     const [projectsWithTasks, setProjectsWithTasks] = useState([]);
+
     const [searchParams, setSearchParams] = useSearchParams();
     const divisionParam = searchParams.get('division') || '';
     const [selectedDivision, setSelectedDivision] = useState(divisionParam);
@@ -93,7 +104,6 @@ const Projects = () => {
                     getBulkActivities()
                 ]);
 
-                setProjects(loadedProjects);
                 setDivisions(loadedDivisions);
 
                 const allActivities = bulkData?.activities || [];
@@ -120,6 +130,7 @@ const Projects = () => {
                     return { ...p, tasks: pTasks };
                 });
 
+                setProjects(mappedProjectsWithTasks);
                 setProjectStats(newStats);
                 setProjectsWithTasks(mappedProjectsWithTasks);
 
@@ -148,12 +159,23 @@ const Projects = () => {
                         }
                     }
 
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const isAccomplished = t.status === 'Accomplished' || t.status === 'Done' || t.status === 'Completed';
+                    const isOverdue = t.due_date && new Date(t.due_date) < today;
+                    let resolvedStatus = 'Pending';
+                    if (isAccomplished) {
+                        resolvedStatus = 'Accomplished';
+                    } else if (t.status === 'Delayed' || isOverdue) {
+                        resolvedStatus = 'Delayed';
+                    }
+
                     list.push({
                         id: t.id,
                         name: t.title,
                         division: p.division || 'Unassigned',
                         project: p.name,
-                        status: t.status === 'Accomplished' || t.status === 'Done' || t.status === 'Completed' ? 'Accomplished' : (t.status === 'Delayed' ? 'Delayed' : 'Pending'),
+                        status: resolvedStatus,
                         budget: taskBudget,
                         obligated: Number(t.obligated_amount || 0),
                         used: Number(t.obligated_amount || 0),
@@ -728,7 +750,7 @@ const Projects = () => {
                                         <Folder size={24} />
                                     </div>
                                     <div className="flex flex-col items-end gap-1.5">
-                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100 uppercase tracking-wide">
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide ${getDivisionStyles(project.division)}`}>
                                             {project.division || 'No Division'}
                                         </span>
                                         <span className={clsx("text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider",
@@ -837,7 +859,7 @@ const Projects = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className="text-xs font-medium px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
+                                                    <span className={`text-xs font-medium px-2 py-1 rounded-full border ${getDivisionStyles(project.division)}`}>
                                                         {project.division || 'No Division'}
                                                     </span>
                                                 </td>

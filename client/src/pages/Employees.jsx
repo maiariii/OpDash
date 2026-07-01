@@ -28,6 +28,17 @@ const POSITIONS = [
     "Technical Assistant IV (Architect III)", "Technical Assistant IV (Attorney IV)", "Technical Assistant IV (Engineer III)", "Technical Assistant IV (Medical Officer III)"
 ].sort();
 
+const getDivisionStyles = (divisionName) => {
+    const name = (divisionName || '').toLowerCase();
+    if (name.includes('personnel')) return 'division-badge division-personnel';
+    if (name.includes('employee welfare')) return 'division-badge division-welfare';
+    if (name.includes('human resource') || name.includes('hrod')) return 'division-badge division-hrod';
+    if (name.includes('school effectiveness')) return 'division-badge division-school-eff';
+    if (name.includes('organization effectiveness')) return 'division-badge division-org-eff';
+    if (name.includes('education')) return 'division-badge division-education';
+    return 'division-badge division-default';
+};
+
 const Employees = () => {
     const { showToast } = useToast();
     const [divisions, setDivisions] = useState([]);
@@ -328,7 +339,7 @@ const Employees = () => {
                                         </td>
                                         <td className="px-6 py-4 text-slate-600 text-sm">{emp.position}</td>
                                         <td className="px-6 py-4">
-                                            <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                            <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getDivisionStyles(emp.divisionName)}`}>
                                                 {emp.divisionName}
                                             </span>
                                         </td>

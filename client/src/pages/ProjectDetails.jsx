@@ -11,7 +11,7 @@ import {
     getProjects, getProjectTasks, getProjectFinancials,
     getProjectMilestones,
     updateTask, createTask, predictRisk,
-    updateProject, getDivisions, getEmployees
+    updateProject, getDivisions, getEmployees, getActivityLogs
 } from '../api';
 
 import KanbanBoard from '../components/KanbanBoard';
@@ -30,6 +30,28 @@ import CalendarView from '../components/CalendarView';
 import Loader from '../components/Loader';
 import { useToast } from '../components/ToastContext';
 
+
+const getDivisionDotColor = (divisionName) => {
+    const name = (divisionName || '').toLowerCase();
+    if (name.includes('personnel')) return 'bg-blue-500';
+    if (name.includes('employee welfare')) return 'bg-purple-500';
+    if (name.includes('human resource') || name.includes('hrod')) return 'bg-emerald-500';
+    if (name.includes('school effectiveness')) return 'bg-amber-500';
+    if (name.includes('organization effectiveness')) return 'bg-rose-500';
+    if (name.includes('education')) return 'bg-sky-500';
+    return 'bg-slate-500';
+};
+
+const getDivisionStyles = (divisionName) => {
+    const name = (divisionName || '').toLowerCase();
+    if (name.includes('personnel')) return 'division-badge division-personnel';
+    if (name.includes('employee welfare')) return 'division-badge division-welfare';
+    if (name.includes('human resource') || name.includes('hrod')) return 'division-badge division-hrod';
+    if (name.includes('school effectiveness')) return 'division-badge division-school-eff';
+    if (name.includes('organization effectiveness')) return 'division-badge division-org-eff';
+    if (name.includes('education')) return 'division-badge division-education';
+    return 'division-badge division-default';
+};
 
 const TabButton = ({ active, children, onClick, icon: Icon }) => (
     <button
@@ -55,6 +77,7 @@ const ProjectDetails = () => {
     const [milestones, setMilestones] = useState([]); // Added milestones state
     const [financials, setFinancials] = useState(null);
     const [activeTab, setActiveTab] = useState('kanban');
+    const [activityLogs, setActivityLogs] = useState([]);
     const [viewMode, setViewMode] = useState('table'); // 'table', 'list', 'gantt', 'kanban'
     const [aiRisk, setAiRisk] = useState(null);
 
@@ -87,8 +110,9 @@ const ProjectDetails = () => {
             getProjectFinancials(id),
             getProjectMilestones(id), // Fetch Milestones
             getDivisions(),
-            getEmployees()
-        ]).then(([projects, tasks, fin, ms, divs, emps]) => {
+            getEmployees(),
+            getActivityLogs(id) // Fetch project-specific logs
+        ]).then(([projects, tasks, fin, ms, divs, emps, logs]) => {
             const p = projects.find(p => p.id === id);
             setProject(p);
             setTasks(tasks);
@@ -96,6 +120,7 @@ const ProjectDetails = () => {
             setMilestones(ms); // Set Milestones
             setDivisions(divs);
             setEmployees(emps);
+            setActivityLogs(logs);
 
             // Init Edit Form
             if (p) {
@@ -116,6 +141,7 @@ const ProjectDetails = () => {
         socket.on('task_updated', (event) => {
             getProjectTasks(id).then(setTasks);
             getProjectFinancials(id).then(setFinancials);
+            getActivityLogs(id).then(setActivityLogs); // Refresh activity logs
         });
 
         return () => socket.disconnect();
@@ -135,6 +161,15 @@ const ProjectDetails = () => {
     const handleTaskDeleted = () => {
         getProjectTasks(id).then(setTasks);
         getProjectFinancials(id).then(setFinancials);
+        getActivityLogs(id).then(setActivityLogs);
+    };
+
+    const startEditProject = () => {
+        if (project) {
+            setEditForm({ ...project });
+        }
+        setIsEditing(true);
+        setIsSidebarOpen(true);
     };
 
     const handleSaveProject = async () => {
@@ -443,23 +478,24 @@ const ProjectDetails = () => {
         delayedList.length = 0;
 
         enrichedTasks.forEach(t => {
-            if (t.status === 'Accomplished') {
+            const isAccomplished = t.status === 'Accomplished' || t.status === 'Completed' || t.status === 'Done';
+            const isOverdue = t.due_date && new Date(t.due_date) < today;
+
+            if (isAccomplished) {
                 accomplishedCount++;
                 accomplishedList.push(t);
             } else if (t.status === 'Waitlisted') {
                 waitlistedCount++;
                 waitlistedList.push(t);
-                // Waitlisted might NOT be considered "Pending" in the strict sense of "To Do", 
-                // it's "On Hold". But for Total Activities = Pending + Accomplished + Waitlisted?
             } else {
-                // Pending, In Progress, Continuing, Deferred, Cancelled
+                // Pending, In Progress, Continuing, Deferred, Cancelled, Delayed
                 if (t.status !== 'Cancelled') {
-                    pendingCount++;
-                    pendingList.push(t);
-
-                    if (t.due_date && new Date(t.due_date) < today) {
+                    if (t.status === 'Delayed' || isOverdue) {
                         delayedCount++;
                         delayedList.push(t);
+                    } else {
+                        pendingCount++;
+                        pendingList.push(t);
                     }
                 }
             }
@@ -586,10 +622,120 @@ const ProjectDetails = () => {
                 {/* Center Workspace */}
                 <div className="flex-1 overflow-y-auto p-6 transition-all duration-300">
                     {activeTab === 'kanban' && dashboardMetrics && (
-                        <div className="max-w-6xl mx-auto space-y-8">
-                            <DashboardCharts metrics={dashboardMetrics} />
+                        <div className="w-full space-y-8">
+                            {/* Grid row: Dashboard Charts on the left (2/4 width), Activity Log (1/4 width) beside Activity Overview (1/4 width) */}
+                            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
+                                <div className="xl:col-span-2">
+                                    <DashboardCharts metrics={dashboardMetrics} />
+                                </div>
+                                
+                                {/* Project Activity Log Card */}
+                                <div className="xl:col-span-1 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col h-[610px]">
+                                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
+                                        <Activity size={16} className="text-blue-500 animate-pulse" />
+                                        Project Activity Log
+                                    </h3>
+                                    <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+                                        {activityLogs.length === 0 ? (
+                                            <div className="h-full flex flex-col justify-center items-center text-slate-400">
+                                                <Activity size={36} className="text-slate-200 mb-2 animate-bounce" />
+                                                <p className="text-xs">No activity logs recorded yet.</p>
+                                            </div>
+                                        ) : (
+                                            activityLogs.slice(0, 15).map((log) => (
+                                                <div key={log.id} className="p-3 bg-slate-50 hover:bg-slate-100/70 rounded-xl border border-slate-100 flex flex-col gap-1 transition-all duration-200">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="font-bold text-slate-700 text-xs">{log.username}</span>
+                                                        <span className="text-[10px] text-slate-400 font-medium">
+                                                            {new Date(log.timestamp).toLocaleString('en-US', {
+                                                                month: 'short',
+                                                                day: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            })}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 my-0.5">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                                                            log.action.includes('create') 
+                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                                                : log.action.includes('update') 
+                                                                    ? 'bg-blue-50 text-blue-700 border-blue-100' 
+                                                                    : 'bg-red-50 text-red-700 border-red-100'
+                                                        }`}>
+                                                            {log.action}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-slate-400">{log.resource}</span>
+                                                    </div>
+                                                    <p className="text-slate-600 text-xs font-medium leading-relaxed">{log.details}</p>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
 
-                            {/* Project Activity Calendar */}
+                                {/* Activity Overview Card */}
+                                <div className="xl:col-span-1 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col h-[610px]">
+                                    <div className="flex justify-between items-center mb-3 border-b border-slate-100 pb-2">
+                                        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                            <CheckSquare size={16} className="text-blue-500" />
+                                            Activity Overview
+                                        </h3>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto pr-1">
+                                        <table className="w-full text-left border-collapse text-xs">
+                                            <thead>
+                                                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
+                                                    <th className="px-3 py-2">Activity Name</th>
+                                                    <th className="px-3 py-2">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 text-slate-700">
+                                            {(() => {
+                                                const delayedTasks = tasks.filter(task => {
+                                                    const isCompleted = task.status && ['accomplished', 'completed', 'done'].includes(task.status.toLowerCase());
+                                                    const isOverdue = !isCompleted && task.due_date && new Date(task.due_date).setHours(0,0,0,0) < new Date().setHours(0,0,0,0);
+                                                    const displayStatus = isOverdue ? 'Delayed' : (task.status || 'Pending');
+                                                    return displayStatus.toLowerCase() === 'delayed';
+                                                });
+
+                                                if (delayedTasks.length === 0) {
+                                                    return (
+                                                        <tr>
+                                                            <td colSpan="2" className="px-3 py-8 text-center text-slate-400 font-medium">
+                                                                No delayed activities in this project.
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+
+                                                return delayedTasks.map((task) => {
+                                                    return (
+                                                        <tr 
+                                                            key={task.id} 
+                                                            onClick={() => setEditingTask(task)}
+                                                            className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
+                                                        >
+                                                            <td className="px-3 py-2 font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                                                                    {task.title}
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-red-50 text-red-700 border-red-100">
+                                                                    Delayed
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                });
+                                            })()}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Project Activity Calendar (Full width below) */}
                             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                                 <CalendarView
                                     activities={tasks}
@@ -654,6 +800,7 @@ const ProjectDetails = () => {
                             {viewMode === 'table' && (
                                 <TaskTable
                                     tasks={tasks}
+                                    milestones={milestones}
                                     employees={employees}
                                     onTaskClick={setEditingTask}
                                     onTaskDeleted={handleTaskDeleted}
@@ -720,52 +867,30 @@ const ProjectDetails = () => {
 
 
 
+
+
                 </div>
 
-                {/* Right Sidebar - Project Details */}
-                {!isSidebarOpen ? (
-                    <div className="hidden xl:flex border-l border-slate-200 bg-white w-12 flex-col items-center justify-end py-6 transition-all duration-300 flex-shrink-0">
-                        <button
-                            onClick={() => setIsSidebarOpen(true)}
-                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 mb-4"
-                            title="Expand Sidebar"
-                        >
-                            <ArrowLeft size={20} />
-                        </button>
-                        <div className="writing-vertical-lr transform rotate-180 text-slate-400 font-bold tracking-wider text-xs whitespace-nowrap">
-                            PROJECT DETAILS
-                        </div>
-                    </div>
-                ) : (
+                {/* Floating Project Details Modal */}
+                {isSidebarOpen && (
                     <>
                         <div 
-                            className="fixed inset-0 bg-black/40 z-40 xl:hidden animate-fade-in"
+                            className="fixed inset-0 bg-black/40 z-40 animate-fade-in backdrop-blur-sm"
                             onClick={() => setIsSidebarOpen(false)}
                         />
-                        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-lg max-h-[85vh] bg-white p-6 overflow-y-auto shadow-2xl rounded-xl xl:static xl:top-auto xl:left-auto xl:translate-x-0 xl:translate-y-0 xl:w-96 xl:max-w-none xl:shadow-none xl:border-t-0 xl:border-l xl:col-span-1 transition-all duration-300 flex-shrink-0">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                <Layers size={18} /> Project Details
-                            </h3>
-                            <div className="flex items-center gap-2">
-                                {/* Only visible on mobile/tablet to close modal */}
+                        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-lg max-h-[85vh] bg-white border border-slate-200 p-6 overflow-y-auto shadow-2xl rounded-xl transition-all duration-300 flex-shrink-0">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                    <Layers size={18} /> Project Details
+                                </h3>
                                 <button
                                     onClick={() => setIsSidebarOpen(false)}
-                                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 xl:hidden"
+                                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500"
                                     title="Close"
                                 >
                                     <X size={18} />
                                 </button>
-                                
-                                <button
-                                    onClick={() => setIsSidebarOpen(false)}
-                                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hidden xl:inline-flex"
-                                    title="Minimize Sidebar"
-                                >
-                                    <ArrowLeft className="rotate-180" size={16} />
-                                </button>
                             </div>
-                        </div>
 
                         <div className="space-y-6">
                             {isEditing && (
@@ -824,9 +949,9 @@ const ProjectDetails = () => {
                                         {divisions.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
                                 ) : (
-                                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                        <span className="text-sm font-medium text-slate-700">{project.division}</span>
+                                    <div className={`flex items-center gap-2 p-3 rounded-lg border ${getDivisionStyles(project.division)}`}>
+                                        <div className={`w-2 h-2 rounded-full ${getDivisionDotColor(project.division)}`}></div>
+                                        <span className="text-sm font-medium">{project.division || 'No Division'}</span>
                                     </div>
                                 )}
                             </div>

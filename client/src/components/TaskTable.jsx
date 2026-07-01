@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { deleteTask } from '../api';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 
-const TaskTable = ({ tasks = [], employees = [], onTaskClick, onTaskDeleted }) => {
+const TaskTable = ({ tasks = [], milestones = [], employees = [], onTaskClick, onTaskDeleted }) => {
     const [sortConfig, setSortConfig] = useState({ key: 'due_date', direction: 'asc' });
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState(null);
@@ -18,6 +18,7 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick, onTaskDeleted }) =
             case 'Waitlisted': return 'bg-purple-100 text-purple-700 border-purple-200';
             case 'Deferred': return 'bg-amber-100 text-amber-700 border-amber-200';
             case 'Cancelled': return 'bg-red-100 text-red-700 border-red-200';
+            case 'Delayed': return 'bg-red-100 text-red-700 border-red-200';
             default: return 'bg-slate-100 text-slate-600 border-slate-200';
         }
     };
@@ -75,6 +76,15 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick, onTaskDeleted }) =
             if (['start_date', 'due_date'].includes(sortConfig.key)) {
                 aValue = aValue ? new Date(aValue).getTime() : 0;
                 bValue = bValue ? new Date(bValue).getTime() : 0;
+            }
+            // Handle milestone sorting
+            else if (sortConfig.key === 'milestone_id') {
+                const getMilestoneTitle = (t) => {
+                    const m = (milestones || []).find(ms => ms.id === t.milestone_id);
+                    return m ? m.title.toLowerCase() : '';
+                };
+                aValue = getMilestoneTitle(a);
+                bValue = getMilestoneTitle(b);
             }
             // Handle numeric sorting (Budget/Actual)
             else if (['budget', 'cost'].includes(sortConfig.key)) {
@@ -137,13 +147,15 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick, onTaskDeleted }) =
                             <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('status')}>
                                 <div className="flex items-center">Status {getSortIcon('status')}</div>
                             </th>
+                            <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('milestone_id')}>
+                                <div className="flex items-center">Milestone {getSortIcon('milestone_id')}</div>
+                            </th>
                             <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('budget')}>
                                 <div className="flex items-center">Budget {getSortIcon('budget')}</div>
                             </th>
                             <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('cost')}>
                                 <div className="flex items-center">Actual {getSortIcon('cost')}</div>
                             </th>
-                            {/* Removed Division Column */}
                             <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('start_date')}>
                                 <div className="flex items-center">Start Date {getSortIcon('start_date')}</div>
                             </th>
@@ -151,7 +163,6 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick, onTaskDeleted }) =
                                 <div className="flex items-center">Due Date {getSortIcon('due_date')}</div>
                             </th>
                             <th className="px-6 py-4 w-12 text-center"></th>
-                            {/* Removed Priority Column */}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -177,9 +188,20 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick, onTaskDeleted }) =
                                         )}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={clsx("px-2.5 py-1 rounded-full text-xs font-medium border", getStatusColor(task.status))}>
-                                            {task.status === 'Todo' ? 'Pending' : task.status}
-                                        </span>
+                                        {(() => {
+                                            const displayStatus = overdue ? 'Delayed' : (task.status === 'Todo' ? 'Pending' : task.status);
+                                            return (
+                                                <span className={clsx("px-2.5 py-1 rounded-full text-xs font-medium border", getStatusColor(displayStatus))}>
+                                                    {displayStatus}
+                                                </span>
+                                            );
+                                        })()}
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-700 font-medium text-xs">
+                                        {(() => {
+                                            const m = (milestones || []).find(ms => ms.id === task.milestone_id);
+                                            return m ? m.title : '-';
+                                        })()}
                                     </td>
                                     <td className="px-6 py-4 text-slate-800 font-mono text-xs">
                                         {task.budget ? `₱${Number(task.budget).toLocaleString()}` : '-'}
@@ -192,7 +214,6 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick, onTaskDeleted }) =
                                             return displayCost ? `₱${Number(displayCost).toLocaleString()}` : '-';
                                         })()}
                                     </td>
-                                    {/* Removed Division Cell */}
                                     <td className="px-6 py-4 text-slate-600 font-mono text-xs">
                                         {formatDate(task.start_date)}
                                     </td>
@@ -210,7 +231,6 @@ const TaskTable = ({ tasks = [], employees = [], onTaskClick, onTaskDeleted }) =
                                             <Trash2 size={16} />
                                         </button>
                                     </td>
-                                    {/* Removed Priority Cell */}
                                 </tr>
                             );
                         })}

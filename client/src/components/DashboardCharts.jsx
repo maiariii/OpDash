@@ -322,16 +322,16 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
     );
 };
 
-const MetricCard = ({ title, value, subtext, icon: Icon, color, onClick, clickable = false, isWarning = false, isFeatured = false }) => (
+const MetricCard = ({ title, value, subtext, icon: Icon, color, onClick, clickable = false, isWarning = false, isFeatured = false, borderColor }) => (
     <div
         onClick={clickable ? onClick : undefined}
         className={clsx(
             "bg-white p-5 rounded-xl border shadow-sm flex items-start justify-between relative overflow-hidden group transition-all duration-200",
             isFeatured 
                 ? "moving-blue-border"
-                : (isWarning ? "border-red-500 bg-red-50/10 ring-1 ring-red-500" : "border-slate-200"),
+                : (isWarning ? "border-red-500 bg-red-50/10 ring-1 ring-red-500" : (borderColor || "border-slate-200")),
             clickable && "cursor-pointer hover:shadow-md transition-all active:scale-[0.99]",
-            clickable && "hover:border-blue-200"
+            clickable && (borderColor ? "" : "hover:border-blue-200")
         )}
     >
         <div>
@@ -383,7 +383,7 @@ const SimplePieChart = ({ data, onSliceClick }) => {
 
     return (
         <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
-            <div className="relative w-48 h-48">
+            <div className="relative w-48 h-48 flex items-center justify-center">
                 <svg viewBox="-1.1 -1.1 2.2 2.2" className="w-full h-full transform -rotate-90">
                     {slices.map((slice, i) => (
                         <path
@@ -398,7 +398,16 @@ const SimplePieChart = ({ data, onSliceClick }) => {
                             onClick={() => onSliceClick && onSliceClick(slice)}
                         />
                     ))}
+                    <circle cx="0" cy="0" r="0.6" fill="white" />
                 </svg>
+                <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
+                    <span className="text-xl font-bold text-slate-800">
+                        {hoveredIndex !== null ? (slices[hoveredIndex].isCurrency ? `₱${slices[hoveredIndex].value.toLocaleString()}` : slices[hoveredIndex].value) : (slices[0]?.isCurrency ? `₱${total.toLocaleString()}` : total)}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                        {hoveredIndex !== null ? slices[hoveredIndex].label : "Total"}
+                    </span>
+                </div>
             </div>
             <div className="flex-1 w-full min-w-[200px]">
                 <table className="w-full text-sm">
@@ -416,7 +425,7 @@ const SimplePieChart = ({ data, onSliceClick }) => {
                                     <span className="font-medium text-slate-700">{item.label}</span>
                                 </td>
                                 <td className="py-2.5 px-4 text-right font-bold text-slate-700">
-                                    {item.value}
+                                    {item.isCurrency ? `₱${item.value.toLocaleString()}` : item.value}
                                 </td>
                                 <td className="py-2.5 pl-4 text-right font-black text-slate-900">
                                     {item.percent}%
@@ -475,6 +484,8 @@ const DashboardCharts = ({ metrics }) => {
     const totalGaaPsVal = totalGaaPs || 0;
     const totalGaaMooeVal = totalGaaMooe || 0;
 
+    const [activeChart, setActiveChart] = useState('status'); // 'status' | 'financial'
+
     const [modalState, setModalState] = useState({
         isOpen: false,
         title: '',
@@ -494,6 +505,12 @@ const DashboardCharts = ({ metrics }) => {
         { label: 'Pending', value: pendingActivities, color: COLORS.Pending, data: pendingTasks },
         { label: 'Accomplished', value: accomplishedActivities, color: COLORS.Accomplished, data: accomplishedTasks },
         { label: 'Delayed', value: delayedActivities, color: COLORS.Delayed, data: delayedTasks }
+    ];
+
+    const remainingBudget = Math.max(0, totalBudget - totalSpent);
+    const financialPieData = [
+        { label: 'Obligated Funds', value: totalSpent, color: COLORS.Spent, isCurrency: true },
+        { label: 'Remaining Budget', value: remainingBudget, color: COLORS.Accomplished, isCurrency: true }
     ];
 
     const handleSliceClick = (slice) => {
@@ -533,6 +550,7 @@ const DashboardCharts = ({ metrics }) => {
                     icon={CheckCircle2}
                     color="bg-emerald-600"
                     clickable
+                    borderColor="moving-green-border"
                     onClick={() => {
                         const reached = (metrics.allMilestones || []).filter(m =>
                             ['Accomplished', 'Completed', 'Done'].includes(m.status)
@@ -542,46 +560,57 @@ const DashboardCharts = ({ metrics }) => {
                 />
             </div>
 
-            {/* Graphs Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Activity Status Pie Chart */}
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6">Activity Status</h3>
-                    <SimplePieChart data={activityData} onSliceClick={handleSliceClick} />
+            {/* Graphs Row - Combined into a single card */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-slate-100 pb-4">
+                    <h3 className="text-lg font-bold text-slate-800">
+                        {activeChart === 'status' ? 'Activity Status' : 'Financial Overview'}
+                    </h3>
+                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200/60">
+                        <button
+                            onClick={() => setActiveChart('status')}
+                            className={clsx(
+                                "px-3 py-1.5 rounded-md text-xs font-bold transition-all",
+                                activeChart === 'status' 
+                                    ? "bg-white text-slate-800 shadow" 
+                                    : "text-slate-500 hover:text-slate-800"
+                            )}
+                        >
+                            Activity Status
+                        </button>
+                        <button
+                            onClick={() => setActiveChart('financial')}
+                            className={clsx(
+                                "px-3 py-1.5 rounded-md text-xs font-bold transition-all",
+                                activeChart === 'financial' 
+                                    ? "bg-white text-slate-800 shadow" 
+                                    : "text-slate-500 hover:text-slate-800"
+                            )}
+                        >
+                            Financial Overview
+                        </button>
+                    </div>
                 </div>
 
-                {/* Financials Bar Chart */}
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6">Financial Overview</h3>
-                    <div className="space-y-6 py-4">
-                        <FinancialBar
-                            label="Total Allocation"
-                            value={totalBudget}
-                            max={Math.max(totalBudget, totalSpent) * 1.1} // Scale relative to max
-                            color={COLORS.Budget}
-                        />
-                        <FinancialBar
-                            label="Obligated Funds"
-                            value={totalSpent}
-                            max={Math.max(totalBudget, totalSpent) * 1.1}
-                            color={COLORS.Spent}
-                        />
-                        <div className="mt-8 pt-6 border-t border-slate-100 space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium text-slate-500">Remaining Budget</span>
-                                <span className={clsx("text-lg font-bold", (totalBudget - totalSpent) < 0 ? "text-red-500" : "text-emerald-600")}>
-                                    ₱{(totalBudget - totalSpent).toLocaleString()}
-                                </span>
+                {activeChart === 'status' ? (
+                    <SimplePieChart data={activityData} onSliceClick={handleSliceClick} />
+                ) : (
+                    <div className="space-y-6">
+                        <SimplePieChart data={financialPieData} onSliceClick={() => openModal('Project Financial Breakdown', allProjects, 'financial')} />
+                        <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-100 bg-slate-50/50 p-4 rounded-xl">
+                            <div className="flex flex-col">
+                                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Allocation</span>
+                                <span className="text-base font-black text-slate-800">₱{totalBudget.toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium text-slate-500">Utilization Rate</span>
-                                <span className={clsx("text-lg font-bold", totalSpent > totalBudget ? "text-red-500" : "text-emerald-600")}>
+                            <div className="flex flex-col">
+                                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Utilization Rate</span>
+                                <span className={clsx("text-base font-black", totalSpent > totalBudget ? "text-red-500" : "text-emerald-600")}>
                                     {totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0}%
                                 </span>
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Breakdown Modal */}

@@ -28,6 +28,11 @@ const Dashboard = () => {
     const [distributionView, setDistributionView] = useState('bar');
     const [editingTask, setEditingTask] = useState(null);
 
+    // New dashboard filters
+    const [fundFilter, setFundFilter] = useState('all');
+    const [expenditureFilter, setExpenditureFilter] = useState('all');
+    const [utilizationFilter, setUtilizationFilter] = useState('all');
+
     const colors = {
         blue: "#0284C7",
         gold: "#FBBF24",
@@ -130,11 +135,15 @@ const Dashboard = () => {
  
         projectDetails.forEach(p => {
             const projectSourceOfFund = getProjectSourceOfFund(p);
+            const expenditureFramework = p.expenditure_framework || 'Not Specified';
             
             // Prioritize overall project budget (sof_allocation or total_budget)
             const projectSofAllocation = Number(p.sof_allocation || p.total_budget || 0);
             const tasksBudgetSum = p.tasks ? p.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
             const projectTotalBudget = projectSofAllocation > 0 ? projectSofAllocation : tasksBudgetSum;
+
+            const projectObligated = p.tasks ? p.tasks.reduce((sum, t) => sum + Number(t.obligated_amount || 0), 0) : 0;
+            const projectUtilizationPct = projectTotalBudget > 0 ? (projectObligated / projectTotalBudget) * 100 : 0;
 
             if (p.tasks && p.tasks.length > 0) {
                 p.tasks.forEach((t, idx) => {
@@ -151,12 +160,23 @@ const Dashboard = () => {
                         }
                     }
 
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const isAccomplished = t.status === 'Accomplished' || t.status === 'Done' || t.status === 'Completed';
+                    const isOverdue = t.due_date && new Date(t.due_date) < today;
+                    let resolvedStatus = 'Pending';
+                    if (isAccomplished) {
+                        resolvedStatus = 'Accomplished';
+                    } else if (t.status === 'Delayed' || isOverdue) {
+                        resolvedStatus = 'Delayed';
+                    }
+
                     list.push({
                         id: t.id,
                         name: t.title,
                         division: normalizeDivision(p.division),
                         project: p.name,
-                        status: t.status === 'Accomplished' || t.status === 'Done' || t.status === 'Completed' ? 'Accomplished' : (t.status === 'Delayed' ? 'Delayed' : 'Pending'),
+                        status: resolvedStatus,
                         budget: taskBudget,
                         obligated: Number(t.obligated_amount || 0),
                         used: Number(t.obligated_amount || 0),
@@ -164,6 +184,8 @@ const Dashboard = () => {
                         lastUpdate: lastUpdateDate.toISOString().slice(0, 10),
                         due: t.due_date ? t.due_date.slice(0, 10) : new Date().toISOString().slice(0, 10),
                         risk: t.priority === 'High' ? 'High' : (t.priority === 'Medium' ? 'Medium' : 'Low'),
+                        expenditureFramework,
+                        projectUtilizationPct,
                     });
                 });
             } else {
@@ -181,31 +203,65 @@ const Dashboard = () => {
                     lastUpdate: p.created_at || new Date().toISOString(),
                     due: new Date().toISOString().slice(0, 10),
                     risk: 'Low',
+                    expenditureFramework,
+                    projectUtilizationPct,
                 });
             }
         });
         return list;
     }, [rawData, loading]);
 
-    // 2. Filter list by divisionFilter dropdown
+    // 2. Filter list by dropdown filters
     const scopedActivities = useMemo(() => {
-        if (divisionFilter === 'all') return processedActivities;
-        return processedActivities.filter(a => a.division === divisionFilter);
-    }, [processedActivities, divisionFilter]);
+        let list = processedActivities;
+
+        // division
+        if (divisionFilter !== 'all') {
+            list = list.filter(a => a.division === divisionFilter);
+        }
+
+        // source of fund
+        if (fundFilter !== 'all') {
+            list = list.filter(a => a.sourceOfFund === fundFilter);
+        }
+
+        // expenditure framework
+        if (expenditureFilter !== 'all') {
+            list = list.filter(a => a.expenditureFramework === expenditureFilter);
+        }
+
+        // budget utilization
+        if (utilizationFilter !== 'all') {
+            list = list.filter(a => {
+                const pctVal = a.projectUtilizationPct;
+                if (utilizationFilter === 'unutilized') {
+                    return pctVal === 0;
+                }
+                if (utilizationFilter === 'utilized') {
+                    return pctVal > 0;
+                }
+                return true;
+            });
+        }
+
+        return list;
+    }, [processedActivities, divisionFilter, fundFilter, expenditureFilter, utilizationFilter]);
 
     // 3. Drill down filter
+    const effectiveDivision = selectedDivision || (divisionFilter !== 'all' ? divisionFilter : null);
+
     const activeActivities = useMemo(() => {
-        if (selectedDivision) {
-            return scopedActivities.filter(a => a.division === selectedDivision || a.project === selectedDivision);
+        if (effectiveDivision) {
+            return scopedActivities.filter(a => a.division === effectiveDivision || a.project === effectiveDivision);
         }
         return scopedActivities;
-    }, [scopedActivities, selectedDivision]);
+    }, [scopedActivities, effectiveDivision]);
 
     // Grouping
-    const groupKey = selectedDivision ? 'project' : 'division';
+    const groupKey = effectiveDivision ? 'project' : 'division';
     const groupedActivities = useMemo(() => {
         const groups = {};
-        if (!selectedDivision) {
+        if (!effectiveDivision) {
             rawData.divisions.forEach(d => {
                 groups[d.name] = [];
             });
@@ -216,7 +272,7 @@ const Dashboard = () => {
             groups[key].push(a);
         });
         return groups;
-    }, [activeActivities, groupKey, selectedDivision, rawData.divisions]);
+    }, [activeActivities, groupKey, effectiveDivision, rawData.divisions]);
 
     const metricValue = (rows) => {
         return unitMode === 'budget' ? rows.reduce((s, r) => s + r.budget, 0) : rows.length;
@@ -398,7 +454,7 @@ const Dashboard = () => {
 
             {/* Filter Panel */}
             <section className="card filters">
-                <div className="filter-grid">
+                <div className="filter-grid" style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
                     <label>
                         <span>Division</span>
                         <select 
@@ -410,6 +466,47 @@ const Dashboard = () => {
                             {rawData.divisions.map(d => d.name).sort().map(div => (
                                 <option key={div} value={div}>{div}</option>
                             ))}
+                        </select>
+                    </label>
+                    <label>
+                        <span>Source of Fund</span>
+                        <select 
+                            value={fundFilter} 
+                            onChange={(e) => setFundFilter(e.target.value)} 
+                            className="select"
+                        >
+                            <option value="all">All Funds</option>
+                            <option value="GAA-PS">GAA-PS</option>
+                            <option value="GAA-MOOE">GAA-MOOE</option>
+                            <option value="GMS">GMS</option>
+                            <option value="APB">APB</option>
+                            <option value="HRD">HRD</option>
+                            <option value="HRDP">HRDP</option>
+                            <option value="Basic Education Inputs Program">Basic Education Inputs Program</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Expenditure Framework</span>
+                        <select 
+                            value={expenditureFilter} 
+                            onChange={(e) => setExpenditureFilter(e.target.value)} 
+                            className="select"
+                        >
+                            <option value="all">All Frameworks</option>
+                            <option value="PREXC">PREXC</option>
+                            <option value="WFP">WFP</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Budget Utilization</span>
+                        <select 
+                            value={utilizationFilter} 
+                            onChange={(e) => setUtilizationFilter(e.target.value)} 
+                            className="select" 
+                        >
+                            <option value="all">All</option>
+                            <option value="utilized">Utilized</option>
+                            <option value="unutilized">Unutilized</option>
                         </select>
                     </label>
                     <label>
@@ -445,10 +542,10 @@ const Dashboard = () => {
                     <div className="section-head">
                         <div>
                             <h2 className="section-title">
-                                {selectedDivision ? `${selectedDivision} — Distribution by Project` : 'Distribution by Division'}
+                                {effectiveDivision ? `${effectiveDivision} — Distribution by Project` : 'Distribution by Division'}
                             </h2>
                             <p className="subtext">
-                                {selectedDivision ? 'Project-level distribution for the selected division.' : 'Primary comparison view. Click a division to view projects.'}
+                                {effectiveDivision ? 'Project-level distribution for the selected division.' : 'Primary comparison view. Click a division to view projects.'}
                             </p>
                         </div>
                         <div className="flex gap-2 items-center flex-wrap">
@@ -459,9 +556,12 @@ const Dashboard = () => {
                                 {distributionView === 'bar' ? 'Heatmap' : 'Stacked bar'}
                             </button>
                             <span className={getBadgeStyle()}>{getBadgeText()}</span>
-                            {selectedDivision && (
+                            {effectiveDivision && (
                                 <button 
-                                    onClick={() => setSelectedDivision(null)} 
+                                    onClick={() => {
+                                        setSelectedDivision(null);
+                                        setDivisionFilter('all');
+                                    }} 
                                     className="mini-button hover:opacity-90 bg-slate-500"
                                 >
                                     Back to divisions
@@ -734,7 +834,7 @@ const Dashboard = () => {
                         <div className="section-head">
                             <div>
                                 <h2 className="section-title">
-                                    {selectedDivision ? 'Update Compliance by Project' : 'Update Compliance by Division'}
+                                    {effectiveDivision ? 'Update Compliance by Project' : 'Update Compliance by Division'}
                                 </h2>
                                 <p className="subtext">
                                     Accomplished metrics (Obligated/Accomplished) are aligned right, while Pending/Delayed obligations are aligned left.

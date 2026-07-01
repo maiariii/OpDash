@@ -138,6 +138,16 @@ CREATE TABLE IF NOT EXISTS users_list (
     password TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS activity_log (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    username TEXT NOT NULL,
+    action TEXT NOT NULL,
+    resource TEXT NOT NULL,
+    project_id TEXT,
+    details TEXT
+);
 `;
 
 // Helper: Run generic query
@@ -791,11 +801,37 @@ async function updateUserPassword(email, newPassword) {
 
 async function truncateAllTables() {
     await initDB();
-    await query('TRUNCATE TABLE projects_list, activities_list, task_list, milestones_list, catchup_list, users_list RESTART IDENTITY CASCADE');
+    await query('TRUNCATE TABLE projects_list, activities_list, task_list, milestones_list, catchup_list, users_list, activity_log RESTART IDENTITY CASCADE');
+}
+
+// --- ACTIVITY LOGS ---
+async function logActivity(username, action, resource, details = null, projectId = null) {
+    await initDB();
+    const q = `
+        INSERT INTO activity_log(username, action, resource, details, project_id)
+        VALUES($1, $2, $3, $4, $5)
+        RETURNING *;
+    `;
+    const res = await query(q, [username, action, resource, details, projectId]);
+    return res.rows[0];
+}
+
+async function getActivityLogs(projectId = null) {
+    await initDB();
+    let q = 'SELECT * FROM activity_log';
+    const params = [];
+    if (projectId) {
+        q += ' WHERE project_id = $1';
+        params.push(projectId);
+    }
+    q += ' ORDER BY timestamp DESC;';
+    const res = await query(q, params);
+    return res.rows;
 }
 
 module.exports = {
     initDB,
+    query,
     generateControlCode,
     getProjects, getProjectById, upsertProject, deleteProject,
     getActivities, getActivityById, upsertActivity, deleteActivity,
@@ -809,6 +845,8 @@ module.exports = {
     createUser,
     getUserByEmail,
     updateUserPassword,
+    logActivity,
+    getActivityLogs,
     // Alias for backward compat / ease of refactor
     ensureTableAndInsertProject: upsertProject,
     ensureTableAndInsertActivity: upsertActivity,

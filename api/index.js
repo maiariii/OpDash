@@ -62,6 +62,32 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // ENDPOINTS
 const apiRouter = express.Router();
 
+const getUserFromReq = (req) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return 'System';
+        }
+        const token = authHeader.split(' ')[1];
+        const secret = process.env.JWT_SECRET || 'opdash-secret-key-2026';
+        const decoded = jwt.verify(token, secret);
+        return decoded.email || 'Unknown User';
+    } catch (err) {
+        return 'System';
+    }
+};
+
+// GET Activity Logs
+apiRouter.get('/activity-logs', async (req, res) => {
+    try {
+        const { projectId } = req.query;
+        const logs = await azureDb.getActivityLogs(projectId || null);
+        res.json(logs);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // File Upload Endpoint
 apiRouter.post('/upload', upload.single('file'), (req, res) => {
     try {
@@ -138,6 +164,8 @@ apiRouter.post('/projects', async (req, res) => {
         };
 
         const saved = await azureDb.upsertProject(newProject);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'created', 'Project', `Project: ${name}`, id);
         res.status(201).json(saved);
     } catch (err) {
         console.error(err);
@@ -174,6 +202,27 @@ apiRouter.put('/projects/:id', async (req, res) => {
         };
 
         const saved = await azureDb.upsertProject(updatedProject);
+        const username = getUserFromReq(req);
+        
+        const changes = [];
+        if (current.name !== updatedProject.name) changes.push(`changed name to "${updatedProject.name}"`);
+        if ((current.description || '') !== (updatedProject.description || '')) {
+            if (!current.description && updatedProject.description) changes.push(`added description`);
+            else if (current.description && !updatedProject.description) changes.push(`removed description`);
+            else changes.push(`updated description`);
+        }
+        if (current.division !== updatedProject.division) changes.push(`changed division to "${updatedProject.division}"`);
+        if (current.lead_personnel !== updatedProject.lead_personnel) changes.push(`changed lead personnel to "${updatedProject.lead_personnel}"`);
+        if (current.supervising_officer !== updatedProject.supervising_officer) changes.push(`changed supervising officer to "${updatedProject.supervising_officer}"`);
+        if (current.assisting_personnel !== updatedProject.assisting_personnel) changes.push(`changed assisting personnel to "${updatedProject.assisting_personnel}"`);
+        if (current.status !== updatedProject.status) changes.push(`changed status to "${updatedProject.status}"`);
+        if (current.source_of_fund !== updatedProject.source_of_fund) changes.push(`changed fund source to "${updatedProject.source_of_fund}"`);
+        if (Number(current.sof_allocation || 0) !== Number(updatedProject.sof_allocation || 0)) {
+            changes.push(`updated budget allocation to ₱${Number(updatedProject.sof_allocation).toLocaleString()}`);
+        }
+        
+        const details = `Project: ${saved.name}` + (changes.length > 0 ? ` - ${changes[changes.length - 1]}` : '');
+        await azureDb.logActivity(username, 'updated', 'Project', details, id);
         res.json(saved);
     } catch (err) {
         console.error(err);
@@ -198,6 +247,8 @@ apiRouter.post('/divisions', async (req, res) => {
         if (!name) return res.status(400).json({ error: 'Name required' });
         const newDiv = { id: uuidv4(), name, created_at: new Date().toISOString() };
         const saved = await azureDb.upsertDivision(newDiv);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'created', 'Division', `Division: ${name}`);
         res.status(201).json(saved);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -211,6 +262,8 @@ apiRouter.put('/divisions/:id', async (req, res) => {
         const { name } = req.body;
         // Verify existence? upsertDivision handles insert if id provided, but we want update semantics
         const saved = await azureDb.upsertDivision({ id, name });
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'updated', 'Division', `Division: ${name}`);
         res.json(saved);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -255,9 +308,12 @@ apiRouter.post('/employees', async (req, res) => {
         };
 
         const saved = await azureDb.upsertEmployee(newUser);
+        const username = getUserFromReq(req);
+        const fullName = `${saved.first_name} ${saved.middle_name || ''} ${saved.last_name}`.trim().replace(/\s+/g, ' ');
+        await azureDb.logActivity(username, 'created', 'Employee', `Employee: ${fullName}`);
         res.status(201).json({
             ...saved,
-            name: `${saved.first_name} ${saved.middle_name || ''} ${saved.last_name}`.trim().replace(/\s+/g, ' ')
+            name: fullName
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -293,9 +349,12 @@ apiRouter.put('/employees/:id', async (req, res) => {
         };
 
         const saved = await azureDb.upsertEmployee(updatedUser);
+        const username = getUserFromReq(req);
+        const fullName = `${saved.first_name} ${saved.middle_name || ''} ${saved.last_name}`.trim().replace(/\s+/g, ' ');
+        await azureDb.logActivity(username, 'updated', 'Employee', `Employee: ${fullName}`);
         res.json({
             ...saved,
-            name: `${saved.first_name} ${saved.middle_name || ''} ${saved.last_name}`.trim().replace(/\s+/g, ' ')
+            name: fullName
         });
 
     } catch (err) {
@@ -306,7 +365,13 @@ apiRouter.put('/employees/:id', async (req, res) => {
 // DELETE Employee
 apiRouter.delete('/employees/:id', async (req, res) => {
     try {
+        const empRes = await azureDb.query('SELECT * FROM employee_list WHERE id = $1', [req.params.id]);
+        const emp = empRes.rows[0];
+        const fullName = emp ? `${emp.first_name} ${emp.middle_name || ''} ${emp.last_name}`.trim().replace(/\s+/g, ' ') : req.params.id;
+        
         await azureDb.deleteEmployee(req.params.id);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'deleted', 'Employee', `Employee: ${fullName}`);
         res.json({ message: 'Employee deleted successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -316,7 +381,12 @@ apiRouter.delete('/employees/:id', async (req, res) => {
 // DELETE Project
 apiRouter.delete('/projects/:id', async (req, res) => {
     try {
+        const proj = await azureDb.getProjectById(req.params.id);
+        const projName = proj ? proj.name : req.params.id;
+        
         await azureDb.deleteProject(req.params.id);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'deleted', 'Project', `Project: ${projName}`, req.params.id);
         res.json({ message: 'Project deleted successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -465,7 +535,7 @@ apiRouter.get('/projects/:id/tasks', async (req, res) => {
 // POST Create Task (Activity)
 apiRouter.post('/tasks', async (req, res) => {
     try {
-        const { project_id, title, objective, parent_path, status, assignee_id, milestone_id, activity_type, nature_of_activity, estimated_hours, start_date, due_date, obligated_amount, allocation, gms_allocation, expenses } = req.body;
+        const { project_id, title, objective, parent_path, status, assignee_id, milestone_id, activity_type, nature_of_activity, estimated_hours, start_date, due_date, obligated_amount, allocation, gms_allocation, expenses, key_result_area, output } = req.body;
 
         if (title && title.length > 50) return res.status(400).json({ error: 'Activity title cannot exceed 50 characters' });
         if (objective && objective.length > 100) return res.status(400).json({ error: 'Activity objective cannot exceed 100 characters' });
@@ -515,6 +585,8 @@ apiRouter.post('/tasks', async (req, res) => {
             due_date,
             obligated_amount: Number(calculatedObligatedAmount) || 0,
             allocation: Number(allocation !== undefined ? allocation : gms_allocation) || 0,
+            key_result_area: key_result_area || '',
+            output: output || '',
             created_at: new Date().toISOString()
         };
 
@@ -552,6 +624,9 @@ apiRouter.post('/tasks', async (req, res) => {
         saved.subtasks = await azureDb.getSubtasks(saved.id);
         saved.expenses = await azureDb.getExpenses(saved.id);
 
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'created', 'Activity', `Activity: ${title} under project ${project_id}`, project_id);
+
         io.to(project_id).emit('task_updated', { type: 'CREATED', task: saved });
         res.status(201).json(saved);
 
@@ -571,7 +646,8 @@ apiRouter.put('/tasks/:id', async (req, res) => {
         const {
             project_id, title, objective, status, priority, assignee_id,
             milestone_id, activity_type, nature_of_activity, estimated_hours,
-            start_date, due_date, allocation, gms_allocation, obligated_amount, expenses
+            start_date, due_date, allocation, gms_allocation, obligated_amount, expenses,
+            key_result_area, output
         } = req.body;
 
         // Budget Validation
@@ -625,18 +701,113 @@ apiRouter.put('/tasks/:id', async (req, res) => {
             start_date: start_date !== undefined ? start_date : current.start_date,
             due_date: due_date || current.due_date,
             obligated_amount: calculatedObligatedAmount !== undefined ? Number(calculatedObligatedAmount) : current.obligated_amount,
-            allocation: allocation !== undefined ? Number(allocation) : (gms_allocation !== undefined ? Number(gms_allocation) : (current.allocation !== undefined ? current.allocation : current.gms_allocation))
+            allocation: allocation !== undefined ? Number(allocation) : (gms_allocation !== undefined ? Number(gms_allocation) : (current.allocation !== undefined ? current.allocation : current.gms_allocation)),
+            key_result_area: key_result_area !== undefined ? key_result_area : current.key_result_area,
+            output: output !== undefined ? output : current.output
         };
+
+        // Sync subtasks in database if provided
+        if (req.body.subtasks && Array.isArray(req.body.subtasks)) {
+            for (const sub of req.body.subtasks) {
+                const subTaskObj = {
+                    id: sub.id || await azureDb.generateControlCode('task'),
+                    project_id: resolvedProjectId,
+                    activity_id: id,
+                    title: sub.title,
+                    description: sub.description || '',
+                    status: sub.status || 'Pending',
+                    assignee_id: sub.assignee_id || null,
+                    due_date: sub.due_date || null
+                };
+                await azureDb.upsertSubtask(subTaskObj);
+                
+                const username = getUserFromReq(req);
+                await azureDb.logActivity(username, sub.id ? 'updated' : 'created', 'Subtask', `Subtask: ${sub.title} under activity ${updatedTask.title}`, resolvedProjectId);
+            }
+        }
 
         const saved = await azureDb.upsertActivity(updatedTask);
 
         saved.subtasks = await azureDb.getSubtasks(saved.id);
         saved.expenses = await azureDb.getExpenses(saved.id);
 
+        const username = getUserFromReq(req);
+        
+        const changes = [];
+
+        // Helper to format dates for comparison and display
+        const getLocalDateString = (d) => {
+            if (!d) return null;
+            const dateObj = new Date(d);
+            if (isNaN(dateObj.getTime())) return null;
+            return dateObj.toISOString().split('T')[0];
+        };
+
+        const getFriendlyDate = (d) => {
+            if (!d) return '';
+            const dateObj = new Date(d);
+            if (isNaN(dateObj.getTime())) return '';
+            return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        };
+
+        if (current.title !== updatedTask.title) {
+            changes.push(`changed title to "${updatedTask.title}"`);
+        }
+        if ((current.objective || '') !== (updatedTask.objective || '')) {
+            if (!current.objective && updatedTask.objective) changes.push(`added objective`);
+            else if (current.objective && !updatedTask.objective) changes.push(`removed objective`);
+            else changes.push(`updated objective`);
+        }
+        if (current.status !== updatedTask.status) {
+            changes.push(`changed status to "${updatedTask.status}"`);
+        }
+        const currStart = getLocalDateString(current.start_date);
+        const updStart = getLocalDateString(updatedTask.start_date);
+        if (currStart !== updStart) {
+            if (updStart) changes.push(`changed start date to ${getFriendlyDate(updStart)}`);
+            else changes.push(`removed start date`);
+        }
+        const currDue = getLocalDateString(current.due_date);
+        const updDue = getLocalDateString(updatedTask.due_date);
+        if (currDue !== updDue) {
+            if (updDue) changes.push(`changed due date to ${getFriendlyDate(updDue)}`);
+            else changes.push(`removed due date`);
+        }
+        if (Number(current.obligated_amount || 0) !== Number(updatedTask.obligated_amount || 0)) {
+            changes.push(`updated obligated amount to ₱${Number(updatedTask.obligated_amount).toLocaleString()}`);
+        }
+        if (Number(current.allocation || 0) !== Number(updatedTask.allocation || 0)) {
+            changes.push(`updated allocation to ₱${Number(updatedTask.allocation).toLocaleString()}`);
+        }
+        if ((current.key_result_area || '') !== (updatedTask.key_result_area || '')) {
+            if (!current.key_result_area && updatedTask.key_result_area) {
+                changes.push(`set Key Result Area to "${updatedTask.key_result_area}"`);
+            } else if (current.key_result_area && !updatedTask.key_result_area) {
+                changes.push(`removed Key Result Area`);
+            } else {
+                changes.push(`changed Key Result Area to "${updatedTask.key_result_area}"`);
+            }
+        }
+        if ((current.output || '') !== (updatedTask.output || '')) {
+            if (!current.output && updatedTask.output) changes.push(`added activity output`);
+            else if (current.output && !updatedTask.output) changes.push(`removed activity output`);
+            else changes.push(`updated activity output`);
+        }
+        if (current.activity_type !== updatedTask.activity_type) {
+            changes.push(`changed type to "${updatedTask.activity_type}"`);
+        }
+        if ((current.nature_of_activity || '') !== (updatedTask.nature_of_activity || '')) {
+            changes.push(`changed nature of activity to "${updatedTask.nature_of_activity}"`);
+        }
+
+        const details = `Activity: ${saved.title}` + (changes.length > 0 ? ` - ${changes[changes.length - 1]}` : '');
+        await azureDb.logActivity(username, 'updated', 'Activity', details, saved.project_id);
+
         io.to(saved.project_id).emit('task_updated', { type: 'UPDATED', task: saved });
         res.json(saved);
 
     } catch (err) {
+        require('fs').appendFileSync(path.join(__dirname, 'error_log.txt'), `[${new Date().toISOString()}] PUT /tasks/${req.params.id} error: ${err.message}\n${err.stack}\n\n`);
         res.status(500).json({ error: err.message });
     }
 });
@@ -732,6 +903,9 @@ apiRouter.post('/activities/:activityId/tasks', async (req, res) => {
 
         const saved = await azureDb.upsertSubtask(newTask);
 
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'created', 'Subtask', `Subtask: ${title} under activity ${parent.title}`, parent.project_id);
+
         io.to(parent.project_id).emit('task_updated', { type: 'SUBTASK_ADDED', activityId, task: saved });
         res.status(201).json(saved);
 
@@ -787,6 +961,8 @@ apiRouter.post('/milestones', async (req, res) => {
             created_at: new Date().toISOString()
         };
         const saved = await azureDb.upsertMilestone(newMilestone);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'created', 'Milestone', `Milestone: ${title}`, project_id);
         res.status(201).json(saved);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -814,6 +990,8 @@ apiRouter.put('/milestones/:id', async (req, res) => {
         };
 
         const saved = await azureDb.upsertMilestone(updated);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'updated', 'Milestone', `Milestone: ${saved.title}`, saved.project_id);
         res.json(saved);
 
     } catch (err) {
@@ -834,7 +1012,14 @@ apiRouter.get('/milestones', async (req, res) => {
 // DELETE Milestone
 apiRouter.delete('/milestones/:id', async (req, res) => {
     try {
+        const msQuery = await azureDb.query('SELECT * FROM milestones_list WHERE id = $1', [req.params.id]);
+        const milestone = msQuery.rows[0];
+        const projectId = milestone ? milestone.project_id : null;
+        const title = milestone ? milestone.title : req.params.id;
+
         await azureDb.deleteMilestone(req.params.id);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'deleted', 'Milestone', `Milestone: ${title}`, projectId);
         res.json({ message: 'Milestone deleted successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -858,6 +1043,13 @@ apiRouter.post('/catchups', async (req, res) => {
             created_at: new Date().toISOString()
         };
         const saved = await azureDb.upsertCatchup(newCatchUp);
+        
+        // Find activity to get project_id
+        const activity = await azureDb.getActivityById(activity_id);
+        const projectId = activity ? activity.project_id : null;
+        
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'created', 'Catch-up Plan', `Catch-up: ${title}`, projectId);
         res.status(201).json(saved);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -928,6 +1120,9 @@ apiRouter.post('/auth/login', async (req, res) => {
         }
         const secret = process.env.JWT_SECRET || 'opdash-secret-key-2026';
         const token = jwt.sign({ userId: user.id, email: user.email }, secret, { expiresIn: '24h' });
+        
+        await azureDb.logActivity(user.email, 'logged in', 'Authentication', `User logged in`);
+        
         res.json({ token, user: { id: user.id, email: user.email } });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -991,7 +1186,13 @@ app.get('/opdash/*', (req, res) => {
 // DELETE Activity
 apiRouter.delete('/tasks/:id', async (req, res) => {
     try {
+        const activity = await azureDb.getActivityById(req.params.id);
+        const projectId = activity ? activity.project_id : null;
+        const title = activity ? activity.title : req.params.id;
+
         await azureDb.deleteActivity(req.params.id);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'deleted', 'Activity', `Activity: ${title}`, projectId);
         res.json({ message: 'Activity deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1001,7 +1202,14 @@ apiRouter.delete('/tasks/:id', async (req, res) => {
 // DELETE Subtask
 apiRouter.delete('/subtasks/:id', async (req, res) => {
     try {
+        const subtaskRes = await azureDb.query('SELECT * FROM task_list WHERE id = $1', [req.params.id]);
+        const subtask = subtaskRes.rows[0];
+        const projectId = subtask ? subtask.project_id : null;
+        const title = subtask ? subtask.title : req.params.id;
+
         await azureDb.deleteSubtask(req.params.id);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'deleted', 'Subtask', `Subtask: ${title}`, projectId);
         res.json({ message: 'Subtask deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1011,7 +1219,14 @@ apiRouter.delete('/subtasks/:id', async (req, res) => {
 // DELETE Catch-up
 apiRouter.delete('/catchups/:id', async (req, res) => {
     try {
+        const cuRes = await azureDb.query('SELECT c.*, a.project_id FROM catchup_list c LEFT JOIN activities_list a ON c.activity_id = a.id WHERE c.id = $1', [req.params.id]);
+        const catchup = cuRes.rows[0];
+        const projectId = catchup ? catchup.project_id : null;
+        const title = catchup ? catchup.title : req.params.id;
+
         await azureDb.deleteCatchup(req.params.id);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'deleted', 'Catch-up Plan', `Catch-up: ${title}`, projectId);
         res.json({ message: 'Catch-up plan deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1021,7 +1236,14 @@ apiRouter.delete('/catchups/:id', async (req, res) => {
 // DELETE Milestone
 apiRouter.delete('/milestones/:id', async (req, res) => {
     try {
+        const msQuery = await azureDb.query('SELECT * FROM milestones_list WHERE id = $1', [req.params.id]);
+        const milestone = msQuery.rows[0];
+        const projectId = milestone ? milestone.project_id : null;
+        const title = milestone ? milestone.title : req.params.id;
+
         await azureDb.deleteMilestone(req.params.id);
+        const username = getUserFromReq(req);
+        await azureDb.logActivity(username, 'deleted', 'Milestone', `Milestone: ${title}`, projectId);
         res.json({ message: 'Milestone deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });

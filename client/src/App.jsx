@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 
 import ProjectDetails from './pages/ProjectDetails';
 import BasecampTargets from './pages/BasecampTargets';
+import ActivityLog from './pages/ActivityLog';
 
 import Projects from './pages/Projects';
 import Employees from './pages/Employees';
@@ -21,6 +22,7 @@ function App() {
           <Route path="/" element={<AuthRoute><Layout /></AuthRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="basecamp-targets" element={<BasecampTargets />} />
+            <Route path="activity-log" element={<ActivityLog />} />
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:id" element={<ProjectDetails />} />
             <Route path="employees" element={<Employees />} />

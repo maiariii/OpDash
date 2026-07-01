@@ -1,13 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, ChevronDown, LayoutDashboard, Users, FolderKanban, Target } from 'lucide-react';
+import { LogOut, ChevronDown, LayoutDashboard, Users, FolderKanban, Target, Sun, Moon, Activity } from 'lucide-react';
 import { getDivisions } from '../api';
 
 const Layout = () => {
     const [divisions, setDivisions] = useState([]);
     const [isProjectsExpanded, setIsProjectsExpanded] = useState(false);
     const [user, setUser] = useState(null);
+    const [theme, setTheme] = useState(localStorage.getItem('opdash_theme') || 'light');
     const location = useLocation();
+
+    useEffect(() => {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        localStorage.setItem('opdash_theme', theme);
+    }, [theme]);
+
+    const toggleTheme = () => {
+        setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    };
 
     const [activeHash, setActiveHash] = useState('#overview');
     const navigate = useNavigate();
@@ -145,9 +159,22 @@ const Layout = () => {
                     </Link>
                 </nav>
 
+                {/* Theme Toggle — visible in both collapsed and expanded states */}
+                <div className="sidebar-theme-toggle-container mt-auto">
+                    <button
+                        onClick={toggleTheme}
+                        className="sidebar-theme-btn"
+                        title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                        style={{ background: 'none', cursor: 'pointer' }}
+                    >
+                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                        <span className="sidebar-theme-text">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                    </button>
+                </div>
+
                 {/* User Profile and Log Out — desktop sidebar only */}
                 {user && (
-                    <div className="sidebar-user-section mt-auto pt-4 border-t border-white/10 flex flex-col gap-3">
+                    <div className="sidebar-user-section pt-4 border-t border-white/10 flex flex-col gap-3">
                         <div className="flex items-center gap-3 px-3 py-2 bg-white/5 rounded-xl border border-white/10">
                             <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm">
                                 {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
@@ -171,6 +198,16 @@ const Layout = () => {
                     </div>
                 )}
             </aside>
+
+            {/* Mobile floating theme toggle */}
+            <button
+                onClick={toggleTheme}
+                className="mobile-theme-toggle"
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                aria-label="Toggle Theme"
+            >
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
 
             {/* Main Content Area */}
             <main className="main-content">
