@@ -5,6 +5,8 @@ import CalendarView from '../components/CalendarView';
 import SpilloverTracker from '../components/SpilloverTracker';
 import Loader from '../components/Loader';
 import CreateTaskModal from '../components/CreateTaskModal';
+import { Settings, X, Activity } from 'lucide-react';
+import clsx from 'clsx';
 
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
@@ -32,6 +34,25 @@ const Dashboard = () => {
     const [fundFilter, setFundFilter] = useState('all');
     const [expenditureFilter, setExpenditureFilter] = useState('all');
     const [utilizationFilter, setUtilizationFilter] = useState('all');
+
+    // Advanced Data Controls & Category Picker
+    const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+    const [selectedCategories, setSelectedCategories] = useState(null);
+    const [categorySearchQuery, setCategorySearchQuery] = useState('');
+    const [categorySortMode, setCategorySortMode] = useState('value');
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+
+    // Per-card split states
+    const [mainSplitBy, setMainSplitBy] = useState('status');
+    const [detailsSplitBy, setDetailsSplitBy] = useState('status');
+    const [snapshotSplitBy, setSnapshotSplitBy] = useState('status');
+
+    // Sync per-card split states with global distributionMode
+    useEffect(() => {
+        setMainSplitBy(distributionMode);
+        setDetailsSplitBy(distributionMode);
+        setSnapshotSplitBy(distributionMode);
+    }, [distributionMode]);
 
     const colors = {
         blue: "#0284C7",
@@ -257,6 +278,61 @@ const Dashboard = () => {
         return scopedActivities;
     }, [scopedActivities, effectiveDivision]);
 
+    // Available categories dynamically based on distributionMode
+    const availableCategories = useMemo(() => {
+        if (distributionMode === 'status') {
+            return [
+                { id: 'Pending', label: 'Pending', count: activeActivities.filter(a => a.status === 'Pending').length, value: activeActivities.filter(a => a.status === 'Pending').reduce((s, a) => s + a.budget, 0) },
+                { id: 'Accomplished', label: 'Accomplished', count: activeActivities.filter(a => a.status === 'Accomplished').length, value: activeActivities.filter(a => a.status === 'Accomplished').reduce((s, a) => s + a.budget, 0) },
+                { id: 'Delayed', label: 'Delayed', count: activeActivities.filter(a => a.status === 'Delayed').length, value: activeActivities.filter(a => a.status === 'Delayed').reduce((s, a) => s + a.budget, 0) },
+            ];
+        } else if (distributionMode === 'budget') {
+            const uCount = activeActivities.filter(a => a.used > 0).length;
+            const uVal = activeActivities.reduce((s, a) => s + a.used, 0);
+            const unCount = activeActivities.filter(a => (a.budget - a.used) > 0).length;
+            const unVal = activeActivities.reduce((s, a) => s + Math.max(a.budget - a.used, 0), 0);
+            return [
+                { id: 'Utilized', label: 'Utilized', count: uCount, value: uVal },
+                { id: 'Unutilized', label: 'Unutilized', count: unCount, value: unVal }
+            ];
+        } else { // 'fund'
+            return fundSources.map(f => {
+                const rows = activeActivities.filter(a => a.sourceOfFund === f.label);
+                return {
+                    id: f.label,
+                    label: f.label,
+                    count: rows.length,
+                    value: rows.reduce((s, a) => s + a.budget, 0)
+                };
+            });
+        }
+    }, [distributionMode, activeActivities, fundSources]);
+
+    // Active Category IDs with Default logic (Top 5 when > 5 items)
+    const activeCategoryIds = useMemo(() => {
+        if (selectedCategories !== null) {
+            return selectedCategories;
+        }
+        if (availableCategories.length > 5) {
+            const sorted = [...availableCategories].sort((a, b) => b.value - a.value);
+            return sorted.slice(0, 5).map(c => c.id);
+        }
+        return availableCategories.map(c => c.id);
+    }, [availableCategories, selectedCategories]);
+
+    // Filtered categories shown inside the picker modal
+    const modalFilteredCategories = useMemo(() => {
+        let list = availableCategories.filter(cat => 
+            cat.label.toLowerCase().includes(categorySearchQuery.toLowerCase())
+        );
+        if (categorySortMode === 'value') {
+            list.sort((a, b) => b.value - a.value);
+        } else {
+            list.sort((a, b) => a.label.localeCompare(b.label));
+        }
+        return list;
+    }, [availableCategories, categorySearchQuery, categorySortMode]);
+
     // Grouping
     const groupKey = effectiveDivision ? 'project' : 'division';
     const groupedActivities = useMemo(() => {
@@ -362,6 +438,79 @@ const Dashboard = () => {
         return events;
     }, [rawData, loading]);
 
+    // Table States for Calendar Events
+    // Table States for Activities
+    const [tableSearch, setTableSearch] = useState('');
+    const [tableSortKey, setTableSortKey] = useState('division');
+    const [tableSortDir, setTableSortDir] = useState('asc');
+    const [tablePage, setTablePage] = useState(1);
+    const [tablePageSize, setTablePageSize] = useState(10);
+    const [tableFilters, setTableFilters] = useState({
+        division: '',
+        project: '',
+        name: '',
+        status: '',
+        sourceOfFund: '',
+        budget: '',
+        obligated: ''
+    });
+
+    const processedTableData = useMemo(() => {
+        if (!processedActivities || processedActivities.length === 0) {
+            return { paginatedRows: [], totalRows: 0, totalPages: 1, start: 0 };
+        }
+
+        const getRowVal = (r, key) => {
+            return r[key] || '';
+        };
+
+        let rows = processedActivities.filter(r => {
+            if (tableSearch) {
+                const searchLower = tableSearch.toLowerCase();
+                const matchGlobal = [
+                    r.division,
+                    r.project,
+                    r.name,
+                    r.status,
+                    r.sourceOfFund,
+                    r.budget,
+                    r.obligated
+                ].some(val => String(val || '').toLowerCase().includes(searchLower));
+                if (!matchGlobal) return false;
+            }
+
+            return Object.entries(tableFilters).every(([key, filterVal]) => {
+                if (!filterVal) return true;
+                const cellVal = getRowVal(r, key);
+                return String(cellVal).toLowerCase().includes(filterVal.toLowerCase());
+            });
+        });
+
+        const totalRows = rows.length;
+
+        const TABLE_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+        rows.sort((a, b) => {
+            const av = getRowVal(a, tableSortKey);
+            const bv = getRowVal(b, tableSortKey);
+            const dir = tableSortDir === 'desc' ? -1 : 1;
+            
+            if (['budget', 'obligated'].includes(tableSortKey)) {
+                return (Number(av) - Number(bv)) * dir;
+            }
+            
+            const comp = TABLE_COLLATOR.compare(String(av), String(bv)) * dir;
+            if (comp !== 0) return comp;
+            return TABLE_COLLATOR.compare(String(a.id), String(b.id));
+        });
+
+        const totalPages = Math.max(1, Math.ceil(totalRows / tablePageSize));
+        const adjustedPage = Math.min(Math.max(1, tablePage), totalPages);
+        const start = (adjustedPage - 1) * tablePageSize;
+        const paginatedRows = rows.slice(start, start + tablePageSize);
+
+        return { paginatedRows, totalRows, totalPages, start };
+    }, [processedActivities, tableSearch, tableSortKey, tableSortDir, tablePage, tablePageSize, tableFilters]);
+
     if (loading) {
         return <div className="p-8 flex justify-center"><Loader text="Loading dashboard data..." /></div>;
     }
@@ -389,24 +538,31 @@ const Dashboard = () => {
 
     // Donut logic
     const donutData = (() => {
-        const total = metricValue(activeActivities) || 1;
-        if (distributionMode === 'budget') {
-            return [
+        let segments = [];
+        // Note: For snapshot donut, we want to segment by snapshotSplitBy
+        if (snapshotSplitBy === 'budget') {
+            segments = [
                 { label: "Utilized", value: totals.used, color: colors.blue, format: "peso" },
                 { label: "Unutilized", value: Math.max(totals.budget - totals.used, 0), color: colors.gold, format: "peso" }
             ];
-        } else if (distributionMode === 'fund') {
-            return fundSources.map(f => {
+        } else if (snapshotSplitBy === 'fund') {
+            segments = fundSources.map(f => {
                 const rows = activeActivities.filter(a => a.sourceOfFund === f.label);
                 return { label: f.label, shortLabel: f.shortLabel || f.label, value: metricValue(rows), color: f.color };
             });
         } else {
-            return [
+            segments = [
                 { label: "Pending", value: metricValue(totals.pending), color: colors.gold },
                 { label: "Accomplished", value: metricValue(totals.accomplished), color: colors.green },
                 { label: "Delayed", value: metricValue(totals.delayed), color: colors.red }
             ];
         }
+
+        // Only filter by category picker if this card's split mode matches the global active distributionMode
+        if (snapshotSplitBy === distributionMode) {
+            segments = segments.filter(d => activeCategoryIds.includes(d.label));
+        }
+        return segments;
     })();
 
     const donutTotal = donutData.reduce((s, r) => s + r.value, 0) || 1;
@@ -429,110 +585,189 @@ const Dashboard = () => {
     const maxBudgetTotal = Math.max(...Object.values(groupedActivities).map(r => r.reduce((s, a) => s + a.budget, 0)), 1);
 
     // Dynamic classes
-    const getBadgeStyle = () => {
-        if (distributionMode === 'budget') return 'badge gold';
-        if (distributionMode === 'fund') return 'badge purple';
+    const getBadgeStyle = (mode = distributionMode) => {
+        if (mode === 'budget') return 'badge gold';
+        if (mode === 'fund') return 'badge purple';
         return 'badge';
     };
 
-    const getBadgeText = () => {
-        if (distributionMode === 'budget') return 'Budget Utilization';
-        if (distributionMode === 'fund') return 'Sources of Fund';
+    const getBadgeText = (mode = distributionMode) => {
+        if (mode === 'budget') return 'Budget Utilization';
+        if (mode === 'fund') return 'Sources of Fund';
         return 'Activity Status';
+    };
+
+    const resetFilters = () => {
+        setDivisionFilter('all');
+        setFundFilter('all');
+        setExpenditureFilter('all');
+        setUtilizationFilter('all');
+        setDistributionMode('status');
+        setUnitMode('count');
+        setSelectedDivision(null);
+        setSelectedCategories(null);
     };
 
     return (
         <div className="space-y-6">
-            {/* Top Command Center Bar */}
-            <section className="topbar" id="overview">
-                <div>
-                    <div className="eyebrow">Executive Activity Command Center</div>
-                    <h1><span className="title-blue">Insight</span><span className="title-red">ED</span> Executive Activity Status & Budget Utilization Dashboard</h1>
-                </div>
-                <p className="top-note">One-page executive view: activity status, division performance, budget utilization, stale updates, risks, and action priorities without switching tabs.</p>
-            </section>
+            {/* Data Controls Card */}
+            <section className="card filters mb-6">
+                <div className="card-inner">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                        <div>
+                            <h2 className="section-title mb-0 flex items-center gap-2" style={{ marginBottom: 0 }}>
+                                <Activity className="text-blue-600 w-5 h-5" /> Data Controls
+                            </h2>
+                            <p className="subtext text-xs text-slate-500 font-bold">
+                                Filter records, change distribution breakdown, switch unit aggregation, and reset the view.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+                            <button
+                                id="resetBtn"
+                                type="button"
+                                onClick={resetFilters}
+                                className="px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                                style={{ background: 'none' }}
+                            >
+                                Reset
+                            </button>
+                            <button
+                                id="advancedToggle"
+                                type="button"
+                                onClick={() => setIsAdvancedMode(!isAdvancedMode)}
+                                className={clsx(
+                                    "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer",
+                                    isAdvancedMode 
+                                        ? "bg-sky-600 hover:bg-sky-700 text-white" 
+                                        : "bg-amber-400 hover:bg-amber-500 text-slate-900"
+                                )}
+                            >
+                                {isAdvancedMode ? 'Toggle Basic Mode' : 'Toggle Advanced Mode'}
+                            </button>
+                        </div>
+                    </div>
 
-            {/* Filter Panel */}
-            <section className="card filters">
-                <div className="filter-grid" style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
-                    <label>
-                        <span>Division</span>
-                        <select 
-                            value={divisionFilter} 
-                            onChange={(e) => { setDivisionFilter(e.target.value); setSelectedDivision(null); }} 
-                            className="select"
-                        >
-                            <option value="all">All divisions</option>
-                            {rawData.divisions.map(d => d.name).sort().map(div => (
-                                <option key={div} value={div}>{div}</option>
-                            ))}
-                        </select>
-                    </label>
-                    <label>
-                        <span>Source of Fund</span>
-                        <select 
-                            value={fundFilter} 
-                            onChange={(e) => setFundFilter(e.target.value)} 
-                            className="select"
-                        >
-                            <option value="all">All Funds</option>
-                            <option value="GAA-PS">GAA-PS</option>
-                            <option value="GAA-MOOE">GAA-MOOE</option>
-                            <option value="GMS">GMS</option>
-                            <option value="APB">APB</option>
-                            <option value="HRD">HRD</option>
-                            <option value="HRDP">HRDP</option>
-                            <option value="Basic Education Inputs Program">Basic Education Inputs Program</option>
-                        </select>
-                    </label>
-                    <label>
-                        <span>Expenditure Framework</span>
-                        <select 
-                            value={expenditureFilter} 
-                            onChange={(e) => setExpenditureFilter(e.target.value)} 
-                            className="select"
-                        >
-                            <option value="all">All Frameworks</option>
-                            <option value="PREXC">PREXC</option>
-                            <option value="WFP">WFP</option>
-                        </select>
-                    </label>
-                    <label>
-                        <span>Budget Utilization</span>
-                        <select 
-                            value={utilizationFilter} 
-                            onChange={(e) => setUtilizationFilter(e.target.value)} 
-                            className="select" 
-                        >
-                            <option value="all">All</option>
-                            <option value="utilized">Utilized</option>
-                            <option value="unutilized">Unutilized</option>
-                        </select>
-                    </label>
-                    <label>
-                        <span>Distribution by</span>
-                        <select 
-                            value={distributionMode} 
-                            onChange={(e) => setDistributionMode(e.target.value)} 
-                            className="select"
-                        >
-                            <option value="status">Activity status</option>
-                            <option value="budget">Budget utilization</option>
-                            <option value="fund">Sources of fund</option>
-                        </select>
-                    </label>
-                    <label>
-                        <span>Units</span>
-                        <select 
-                            value={unitMode} 
-                            onChange={(e) => setUnitMode(e.target.value)} 
-                            className="select"
-                        >
-                            <option value="count">Number of activities</option>
-                            <option value="budget">Budget</option>
-                        </select>
-                    </label>
-                    <p className="schema-note"><b>Executive intent:</b> the page now exposes all core status, budget, and source-of-fund answers in one continuous dashboard. The side links only jump to sections; they do not hide information behind tabs.</p>
+                    {/* Basic Filters Subcard */}
+                    <div className="bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 rounded-xl p-4 mb-4">
+                        {/* First Row: Hierarchy filter (occupies full width) */}
+                        <div className="grid grid-cols-1 gap-4 mb-4">
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Division</span>
+                                <select
+                                    value={divisionFilter}
+                                    onChange={(e) => { setDivisionFilter(e.target.value); setSelectedDivision(null); }}
+                                    className="select w-full"
+                                    style={{ margin: 0 }}
+                                >
+                                    <option value="all">All divisions</option>
+                                    {rawData.divisions.map(d => d.name).sort().map(div => (
+                                        <option key={div} value={div}>{div}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+
+                        {/* Second Row: Non-location filters */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Source of Fund</span>
+                                <select
+                                    value={fundFilter}
+                                    onChange={(e) => setFundFilter(e.target.value)}
+                                    className="select w-full"
+                                    style={{ margin: 0 }}
+                                >
+                                    <option value="all">All Funds</option>
+                                    <option value="GAA-PS">GAA-PS</option>
+                                    <option value="GAA-MOOE">GAA-MOOE</option>
+                                    <option value="GMS">GMS</option>
+                                    <option value="APB">APB</option>
+                                    <option value="HRD">HRD</option>
+                                    <option value="HRDP">HRDP</option>
+                                    <option value="Basic Education Inputs Program">Basic Education Inputs Program</option>
+                                </select>
+                            </label>
+
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Expenditure Framework</span>
+                                <select
+                                    value={expenditureFilter}
+                                    onChange={(e) => setExpenditureFilter(e.target.value)}
+                                    className="select w-full"
+                                    style={{ margin: 0 }}
+                                >
+                                    <option value="all">All Frameworks</option>
+                                    <option value="PREXC">PREXC</option>
+                                    <option value="WFP">WFP</option>
+                                </select>
+                            </label>
+
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Budget Utilization</span>
+                                <select
+                                    value={utilizationFilter}
+                                    onChange={(e) => setUtilizationFilter(e.target.value)}
+                                    className="select w-full"
+                                    style={{ margin: 0 }}
+                                >
+                                    <option value="all">All</option>
+                                    <option value="utilized">Utilized</option>
+                                    <option value="unutilized">Unutilized</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Advanced Controls Card (Highlight Treatment) */}
+                    {isAdvancedMode && (
+                        <div className="bg-amber-500/5 border-2 border-amber-400/40 rounded-xl p-4 animate-fadeIn">
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3" style={{ color: 'var(--navy)' }}>
+                                Advanced Controls
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Distribution by</span>
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={distributionMode}
+                                            onChange={(e) => {
+                                                setDistributionMode(e.target.value);
+                                                setSelectedCategories(null);
+                                            }}
+                                            className="select flex-1"
+                                            style={{ margin: 0 }}
+                                        >
+                                            <option value="status">Activity status</option>
+                                            <option value="budget">Budget utilization</option>
+                                            <option value="fund">Sources of fund</option>
+                                        </select>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCategoryModalOpen(true)}
+                                            className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-600 dark:text-slate-350 rounded-lg cursor-pointer flex items-center justify-center"
+                                            title="Configure values picker"
+                                        >
+                                            <Settings size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <label className="flex flex-col gap-1.5">
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Units</span>
+                                    <select
+                                        value={unitMode}
+                                        onChange={(e) => setUnitMode(e.target.value)}
+                                        className="select w-full"
+                                        style={{ margin: 0 }}
+                                    >
+                                        <option value="count">Number of activities</option>
+                                        <option value="budget">Budget</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </section>
             {/* Main Graphs Layout Grid */}
@@ -549,13 +784,23 @@ const Dashboard = () => {
                             </p>
                         </div>
                         <div className="flex gap-2 items-center flex-wrap">
+                            <select
+                                value={mainSplitBy}
+                                onChange={(e) => setMainSplitBy(e.target.value)}
+                                className="select py-1 px-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900"
+                                style={{ width: 'auto', minWidth: '120px', margin: 0 }}
+                            >
+                                <option value="status">Split by Status</option>
+                                <option value="budget">Split by Budget</option>
+                                <option value="fund">Split by Fund</option>
+                            </select>
                             <button 
                                 onClick={() => setDistributionView(prev => prev === 'bar' ? 'heatmap' : 'bar')}
                                 className="mini-button hover:opacity-90"
                             >
                                 {distributionView === 'bar' ? 'Heatmap' : 'Stacked bar'}
                             </button>
-                            <span className={getBadgeStyle()}>{getBadgeText()}</span>
+                            <span className={getBadgeStyle(mainSplitBy)}>{getBadgeText(mainSplitBy)}</span>
                             {effectiveDivision && (
                                 <button 
                                     onClick={() => {
@@ -572,20 +817,33 @@ const Dashboard = () => {
 
                     {/* Legend */}
                     <div className="legend mb-4">
-                        {distributionMode === 'budget' && (
+                        {mainSplitBy === 'budget' && (
                             <>
-                                <span className="legend-item"><i className="dot bg-[#0284C7]" />Utilized</span>
-                                <span className="legend-item"><i className="dot bg-[#FBBF24]" />Unutilized</span>
+                                {(!isAdvancedMode || distributionMode !== 'budget' || activeCategoryIds.includes('Utilized')) && (
+                                    <span className="legend-item"><i className="dot bg-[#0284C7]" />Utilized</span>
+                                )}
+                                {(!isAdvancedMode || distributionMode !== 'budget' || activeCategoryIds.includes('Unutilized')) && (
+                                    <span className="legend-item"><i className="dot bg-[#FBBF24]" />Unutilized</span>
+                                )}
                             </>
                         )}
-                        {distributionMode === 'fund' && fundSources.map(f => (
-                            <span key={f.label} className="legend-item"><i className="dot" style={{ background: f.color }} />{f.label}</span>
-                        ))}
-                        {distributionMode === 'status' && (
+                        {mainSplitBy === 'fund' && fundSources.map(f => {
+                            if (isAdvancedMode && distributionMode === 'fund' && !activeCategoryIds.includes(f.label)) return null;
+                            return (
+                                <span key={f.label} className="legend-item"><i className="dot" style={{ background: f.color }} />{f.label}</span>
+                            );
+                        })}
+                        {mainSplitBy === 'status' && (
                             <>
-                                <span className="legend-item"><i className="dot bg-[#FBBF24]" />Pending</span>
-                                <span className="legend-item"><i className="dot bg-[#16A34A]" />Accomplished</span>
-                                <span className="legend-item"><i className="dot bg-[#B91C1C]" />Delayed</span>
+                                {(!isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Pending')) && (
+                                    <span className="legend-item"><i className="dot bg-[#FBBF24]" />Pending</span>
+                                )}
+                                {(!isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Accomplished')) && (
+                                    <span className="legend-item"><i className="dot bg-[#16A34A]" />Accomplished</span>
+                                )}
+                                {(!isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Delayed')) && (
+                                    <span className="legend-item"><i className="dot bg-[#B91C1C]" />Delayed</span>
+                                )}
                             </>
                         )}
                     </div>
@@ -605,19 +863,29 @@ const Dashboard = () => {
                                     >
                                         <span>{d}</span>
                                         <div className="track flex">
-                                            {distributionMode === 'budget' && (() => {
+                                            {mainSplitBy === 'budget' && (() => {
                                                 const u = r.reduce((s, a) => s + a.used, 0);
                                                 const b = r.reduce((s, a) => s + a.used + (a.budget - a.used), 0);
+                                                const un = Math.max(b - u, 0);
+                                                
+                                                const isFilterActive = isAdvancedMode && distributionMode === 'budget';
+                                                const uVal = (!isFilterActive || activeCategoryIds.includes('Utilized')) ? u : 0;
+                                                const unVal = (!isFilterActive || activeCategoryIds.includes('Unutilized')) ? un : 0;
+
                                                 return renderStackedSegments(
-                                                    [u, Math.max(b - u, 0)],
+                                                    [uVal, unVal],
                                                     maxBudgetTotal,
                                                     ["seg-blue", "seg-gold"],
                                                     ["Utilized", "Unutilized"],
                                                     peso
                                                 );
                                             })()}
-                                            {distributionMode === 'fund' && (() => {
-                                                const vals = fundSources.map(f => metricValue(r.filter(a => a.sourceOfFund === f.label)));
+                                            {mainSplitBy === 'fund' && (() => {
+                                                const isFilterActive = isAdvancedMode && distributionMode === 'fund';
+                                                const vals = fundSources.map(f => {
+                                                    const val = metricValue(r.filter(a => a.sourceOfFund === f.label));
+                                                    return (!isFilterActive || activeCategoryIds.includes(f.label)) ? val : 0;
+                                                });
                                                 return renderStackedSegments(
                                                     vals,
                                                     maxTotal,
@@ -626,12 +894,18 @@ const Dashboard = () => {
                                                     metricFormat
                                                 );
                                             })()}
-                                            {distributionMode === 'status' && (() => {
+                                            {mainSplitBy === 'status' && (() => {
                                                 const p = metricValue(r.filter(a => a.status === 'Pending'));
                                                 const acc = metricValue(r.filter(a => a.status === 'Accomplished'));
                                                 const del = metricValue(r.filter(a => a.status === 'Delayed'));
+
+                                                const isFilterActive = isAdvancedMode && distributionMode === 'status';
+                                                const pVal = (!isFilterActive || activeCategoryIds.includes('Pending')) ? p : 0;
+                                                const accVal = (!isFilterActive || activeCategoryIds.includes('Accomplished')) ? acc : 0;
+                                                const delVal = (!isFilterActive || activeCategoryIds.includes('Delayed')) ? del : 0;
+
                                                 return renderStackedSegments(
-                                                    [p, acc, del],
+                                                    [pVal, accVal, delVal],
                                                     maxTotal,
                                                     ["seg-gold", "seg-green", "seg-red"],
                                                     ["Pending", "Accomplished", "Delayed"],
@@ -644,104 +918,149 @@ const Dashboard = () => {
                                 );
                             })}
                         </div>
-                    ) : (
-                        <div 
-                            className="fund-heatmap overflow-x-auto grid gap-2 mt-4"
-                            style={{ '--heat-cols': distributionMode === 'fund' ? fundSources.length : (distributionMode === 'budget' ? 2 : 3) }}
-                        >
-                            <div className="heat-cell heat-empty"></div>
-                            {distributionMode === 'budget' && (
-                                <>
-                                    <div className="heat-cell heat-head">Utilized</div>
-                                    <div className="heat-cell heat-head">Unutilized</div>
-                                </>
-                            )}
-                            {distributionMode === 'fund' && fundSources.map(f => (
-                                <div key={f.label} className="heat-cell heat-head" title={f.full}>{f.label}</div>
-                            ))}
-                            {distributionMode === 'status' && (
-                                <>
-                                    <div className="heat-cell heat-head">Pending</div>
-                                    <div className="heat-cell heat-head">Accomplished</div>
-                                    <div className="heat-cell heat-head">Delayed</div>
-                                </>
-                            )}
-                            <div className="heat-cell heat-head">Total</div>
+                    ) : (() => {
+                        const isBudget = mainSplitBy === 'budget';
+                        const isFund = mainSplitBy === 'fund';
+                        const isStatus = mainSplitBy === 'status';
 
-                            {/* Group rows */}
-                            {Object.entries(groupedActivities).map(([d, r]) => {
-                                const totalVal = metricValue(r);
-                                const cells = [];
+                        const visibleFundSources = fundSources.filter(f => 
+                            !isAdvancedMode || distributionMode !== 'fund' || activeCategoryIds.includes(f.label)
+                        );
+                        
+                        const isBudgetUtilizedVisible = !isAdvancedMode || distributionMode !== 'budget' || activeCategoryIds.includes('Utilized');
+                        const isBudgetUnutilizedVisible = !isAdvancedMode || distributionMode !== 'budget' || activeCategoryIds.includes('Unutilized');
+                        
+                        const isStatusPendingVisible = !isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Pending');
+                        const isStatusAccomplishedVisible = !isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Accomplished');
+                        const isStatusDelayedVisible = !isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Delayed');
 
-                                if (distributionMode === 'budget') {
-                                    const u = r.reduce((s, a) => s + a.used, 0);
-                                    const b = r.reduce((s, a) => s + a.budget, 0);
-                                    const un = Math.max(b - u, 0);
+                        let colCount = 0;
+                        if (isBudget) {
+                            if (isBudgetUtilizedVisible) colCount++;
+                            if (isBudgetUnutilizedVisible) colCount++;
+                        } else if (isStatus) {
+                            if (isStatusPendingVisible) colCount++;
+                            if (isStatusAccomplishedVisible) colCount++;
+                            if (isStatusDelayedVisible) colCount++;
+                        } else {
+                            colCount = visibleFundSources.length;
+                        }
 
-                                    const maxVal = Math.max(...Object.values(groupedActivities).flatMap(g => {
-                                        const gu = g.reduce((s, a) => s + a.used, 0);
-                                        const gb = g.reduce((s, a) => s + a.budget, 0);
-                                        return [gu, Math.max(gb - gu, 0)];
-                                    }), 1);
+                        return (
+                            <div 
+                                className="fund-heatmap overflow-x-auto grid gap-2 mt-4"
+                                style={{ '--heat-cols': colCount }}
+                            >
+                                <div className="heat-cell heat-empty"></div>
+                                {isBudget && (
+                                    <>
+                                        {isBudgetUtilizedVisible && <div className="heat-cell heat-head">Utilized</div>}
+                                        {isBudgetUnutilizedVisible && <div className="heat-cell heat-head">Unutilized</div>}
+                                    </>
+                                )}
+                                {isFund && visibleFundSources.map(f => (
+                                    <div key={f.label} className="heat-cell heat-head" title={f.full}>{f.label}</div>
+                                ))}
+                                {isStatus && (
+                                    <>
+                                        {isStatusPendingVisible && <div className="heat-cell heat-head">Pending</div>}
+                                        {isStatusAccomplishedVisible && <div className="heat-cell heat-head">Accomplished</div>}
+                                        {isStatusDelayedVisible && <div className="heat-cell heat-head">Delayed</div>}
+                                    </>
+                                )}
+                                <div className="heat-cell heat-head">Total</div>
 
-                                    const uIntensity = u / maxVal;
-                                    const unIntensity = un / maxVal;
+                                {/* Group rows */}
+                                {Object.entries(groupedActivities).map(([d, r]) => {
+                                    const totalVal = metricValue(r);
+                                    const cells = [];
 
-                                    cells.push(
-                                        <div key="u" className={`heat-cell ${u === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.blue} ${Math.round(16 + uIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.blue} 48%, #DBEAFE)`, color: uIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(u)}</div>,
-                                        <div key="un" className={`heat-cell ${un === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + unIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: unIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(un)}</div>
+                                    if (isBudget) {
+                                        const u = r.reduce((s, a) => s + a.used, 0);
+                                        const b = r.reduce((s, a) => s + a.budget, 0);
+                                        const un = Math.max(b - u, 0);
+
+                                        const maxVal = Math.max(...Object.values(groupedActivities).flatMap(g => {
+                                            const gu = g.reduce((s, a) => s + a.used, 0);
+                                            const gb = g.reduce((s, a) => s + a.budget, 0);
+                                            return [gu, Math.max(gb - gu, 0)];
+                                        }), 1);
+
+                                        const uIntensity = u / maxVal;
+                                        const unIntensity = un / maxVal;
+
+                                        if (isBudgetUtilizedVisible) {
+                                            cells.push(
+                                                <div key="u" className={`heat-cell ${u === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.blue} ${Math.round(16 + uIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.blue} 48%, #DBEAFE)`, color: uIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(u)}</div>
+                                            );
+                                        }
+                                        if (isBudgetUnutilizedVisible) {
+                                            cells.push(
+                                                <div key="un" className={`heat-cell ${un === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + unIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: unIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(un)}</div>
+                                            );
+                                        }
+                                    } else if (isFund) {
+                                        const maxVal = Math.max(...Object.values(groupedActivities).flatMap(g => 
+                                            visibleFundSources.map(f => metricValue(g.filter(a => a.sourceOfFund === f.label)))
+                                        ), 1);
+
+                                        visibleFundSources.forEach(f => {
+                                            const v = metricValue(r.filter(a => a.sourceOfFund === f.label));
+                                            const intensity = v / maxVal;
+                                            cells.push(
+                                                <div key={f.label} className={`heat-cell ${v === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${f.color} ${Math.round(16 + intensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${f.color} 48%, #DBEAFE)`, color: intensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(v)}</div>
+                                            );
+                                        });
+                                    } else {
+                                        const p = metricValue(r.filter(a => a.status === 'Pending'));
+                                        const acc = metricValue(r.filter(a => a.status === 'Accomplished'));
+                                        const del = metricValue(r.filter(a => a.status === 'Delayed'));
+
+                                        const maxVal = Math.max(...Object.values(groupedActivities).flatMap(g => {
+                                            const gp = metricValue(g.filter(a => a.status === 'Pending'));
+                                            const gacc = metricValue(g.filter(a => a.status === 'Accomplished'));
+                                            const gdel = metricValue(g.filter(a => a.status === 'Delayed'));
+                                            return [gp, gacc, gdel];
+                                        }), 1);
+
+                                        const pIntensity = p / maxVal;
+                                        const accIntensity = acc / maxVal;
+                                        const delIntensity = del / maxVal;
+
+                                        if (isStatusPendingVisible) {
+                                            cells.push(
+                                                <div key="p" className={`heat-cell ${p === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + pIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: pIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(p)}</div>
+                                            );
+                                        }
+                                        if (isStatusAccomplishedVisible) {
+                                            cells.push(
+                                                <div key="acc" className={`heat-cell ${acc === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.green} ${Math.round(16 + accIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.green} 48%, #DBEAFE)`, color: accIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(acc)}</div>
+                                            );
+                                        }
+                                        if (isStatusDelayedVisible) {
+                                            cells.push(
+                                                <div key="del" className={`heat-cell ${del === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.red} ${Math.round(16 + delIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.red} 48%, #DBEAFE)`, color: delIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(del)}</div>
+                                            );
+                                        }
+                                    }
+
+                                    return (
+                                        <React.Fragment key={d}>
+                                            <div 
+                                                onClick={() => !selectedDivision && setSelectedDivision(d)}
+                                                className="heat-cell heat-division font-bold hover:bg-slate-50 cursor-pointer"
+                                                title={!selectedDivision ? "Click to view projects" : ""}
+                                            >
+                                                {d}
+                                            </div>
+                                            {cells}
+                                            <div className="heat-cell heat-total font-bold">{metricFormat(totalVal)}</div>
+                                        </React.Fragment>
                                     );
-                                } else if (distributionMode === 'fund') {
-                                    const maxVal = Math.max(...Object.values(groupedActivities).flatMap(g => 
-                                        fundSources.map(f => metricValue(g.filter(a => a.sourceOfFund === f.label)))
-                                    ), 1);
-
-                                    fundSources.forEach(f => {
-                                        const v = metricValue(r.filter(a => a.sourceOfFund === f.label));
-                                        const intensity = v / maxVal;
-                                        cells.push(
-                                            <div key={f.label} className={`heat-cell ${v === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${f.color} ${Math.round(16 + intensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${f.color} 48%, #DBEAFE)`, color: intensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(v)}</div>
-                                        );
-                                    });
-                                } else {
-                                    const p = metricValue(r.filter(a => a.status === 'Pending'));
-                                    const acc = metricValue(r.filter(a => a.status === 'Accomplished'));
-                                    const del = metricValue(r.filter(a => a.status === 'Delayed'));
-
-                                    const maxVal = Math.max(...Object.values(groupedActivities).flatMap(g => {
-                                        const gp = metricValue(g.filter(a => a.status === 'Pending'));
-                                        const gacc = metricValue(g.filter(a => a.status === 'Accomplished'));
-                                        const gdel = metricValue(g.filter(a => a.status === 'Delayed'));
-                                        return [gp, gacc, gdel];
-                                    }), 1);
-
-                                    const pIntensity = p / maxVal;
-                                    const accIntensity = acc / maxVal;
-                                    const delIntensity = del / maxVal;
-
-                                    cells.push(
-                                        <div key="p" className={`heat-cell ${p === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + pIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: pIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(p)}</div>,
-                                        <div key="acc" className={`heat-cell ${acc === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.green} ${Math.round(16 + accIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.green} 48%, #DBEAFE)`, color: accIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(acc)}</div>,
-                                        <div key="del" className={`heat-cell ${del === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.red} ${Math.round(16 + delIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.red} 48%, #DBEAFE)`, color: delIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(del)}</div>
-                                    );
-                                }
-
-                                return (
-                                    <React.Fragment key={d}>
-                                        <div 
-                                            onClick={() => !selectedDivision && setSelectedDivision(d)}
-                                            className="heat-cell heat-division font-bold hover:bg-slate-50 cursor-pointer"
-                                            title={!selectedDivision ? "Click to view projects" : ""}
-                                        >
-                                            {d}
-                                        </div>
-                                        {cells}
-                                        <div className="heat-cell heat-total font-bold">{metricFormat(totalVal)}</div>
-                                    </React.Fragment>
-                                );
-                            })}
-                        </div>
-                    )}
+                                })}
+                            </div>
+                        );
+                    })()}
                 </article>
 
                 {/* Sub-Graphs Layout Grid (Two Columns Below) */}
@@ -753,35 +1072,78 @@ const Dashboard = () => {
                                 <h2 className="section-title">Distribution Details</h2>
                                 <p className="subtext text-xs text-slate-500 font-bold">Histogram showing active metrics.</p>
                             </div>
-                            <span className={getBadgeStyle()}>{getBadgeText()}</span>
+                            <div className="flex gap-2 items-center flex-wrap">
+                                <select
+                                    value={detailsSplitBy}
+                                    onChange={(e) => setDetailsSplitBy(e.target.value)}
+                                    className="select py-1 px-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900"
+                                    style={{ width: 'auto', minWidth: '120px', margin: 0 }}
+                                >
+                                    <option value="status">Split by Status</option>
+                                    <option value="budget">Split by Budget</option>
+                                    <option value="fund">Split by Fund</option>
+                                </select>
+                                <span className={getBadgeStyle(detailsSplitBy)}>{getBadgeText(detailsSplitBy)}</span>
+                            </div>
                         </div>
 
-                        <div className="histogram" style={{ '--cols': donutData.length }}>
-                            {donutData.map((d, i) => {
-                                const maxVal = Math.max(...donutData.map(x => x.value), 1);
-                                const hPct = Math.max((d.value / maxVal) * 100, 8);
-                                return (
-                                    <div key={i} className="hist-col">
-                                        <div className="hist-area">
-                                            <div className="hist-bar-wrap" style={{ height: `${hPct}%` }}>
-                                                <div className="hist-value">{donutFormat(d.value)}</div>
-                                                <div 
-                                                    className="hist-bar" 
-                                                    style={{ 
-                                                        height: d.value === 0 ? '8px' : 'calc(100% - 22px)', 
-                                                        minHeight: d.value === 0 ? '8px' : '16px',
-                                                        backgroundColor: d.color 
-                                                    }} 
-                                                />
+                        {(() => {
+                            const detailsData = (() => {
+                                let segments = [];
+                                if (detailsSplitBy === 'budget') {
+                                    segments = [
+                                        { label: "Utilized", value: totals.used, color: colors.blue, format: "peso" },
+                                        { label: "Unutilized", value: Math.max(totals.budget - totals.used, 0), color: colors.gold, format: "peso" }
+                                    ];
+                                } else if (detailsSplitBy === 'fund') {
+                                    segments = fundSources.map(f => {
+                                        const rows = activeActivities.filter(a => a.sourceOfFund === f.label);
+                                        return { label: f.label, shortLabel: f.shortLabel || f.label, value: metricValue(rows), color: f.color };
+                                    });
+                                } else {
+                                    segments = [
+                                        { label: "Pending", value: metricValue(totals.pending), color: colors.gold },
+                                        { label: "Accomplished", value: metricValue(totals.accomplished), color: colors.green },
+                                        { label: "Delayed", value: metricValue(totals.delayed), color: colors.red }
+                                    ];
+                                }
+                                if (detailsSplitBy === distributionMode && isAdvancedMode) {
+                                    segments = segments.filter(d => activeCategoryIds.includes(d.label));
+                                }
+                                return segments;
+                            })();
+
+                            const detailsFormat = (val) => detailsData.some(r => r.format === 'peso') ? peso(val) : metricFormat(val);
+                            const maxVal = Math.max(...detailsData.map(x => x.value), 1);
+
+                            return (
+                                <div className="histogram" style={{ '--cols': detailsData.length }}>
+                                    {detailsData.map((d, i) => {
+                                        const hPct = Math.max((d.value / maxVal) * 100, 8);
+                                        return (
+                                            <div key={i} className="hist-col">
+                                                <div className="hist-area">
+                                                    <div className="hist-bar-wrap" style={{ height: `${hPct}%` }}>
+                                                        <div className="hist-value">{detailsFormat(d.value)}</div>
+                                                        <div 
+                                                            className="hist-bar" 
+                                                            style={{ 
+                                                                height: d.value === 0 ? '8px' : 'calc(100% - 22px)', 
+                                                                minHeight: d.value === 0 ? '8px' : '16px',
+                                                                backgroundColor: d.color 
+                                                            }} 
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="hist-label" title={d.label}>
+                                                    {d.shortLabel || d.label}
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="hist-label" title={d.label}>
-                                            {d.shortLabel || d.label}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
                     </article>
 
                     {/* Donut Snapshot Chart */}
@@ -791,7 +1153,19 @@ const Dashboard = () => {
                                 <h2 className="section-title">Distribution Snapshot</h2>
                                 <p className="subtext text-xs text-slate-500 font-bold">Overview breakdown and percentage shares.</p>
                             </div>
-                            <span className={getBadgeStyle()}>{getBadgeText()}</span>
+                            <div className="flex gap-2 items-center flex-wrap">
+                                <select
+                                    value={snapshotSplitBy}
+                                    onChange={(e) => setSnapshotSplitBy(e.target.value)}
+                                    className="select py-1 px-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900"
+                                    style={{ width: 'auto', minWidth: '120px', margin: 0 }}
+                                >
+                                    <option value="status">Split by Status</option>
+                                    <option value="budget">Split by Budget</option>
+                                    <option value="fund">Split by Fund</option>
+                                </select>
+                                <span className={getBadgeStyle(snapshotSplitBy)}>{getBadgeText(snapshotSplitBy)}</span>
+                            </div>
                         </div>
 
                         <div className="donut-layout">
@@ -914,13 +1288,334 @@ const Dashboard = () => {
                 <SpilloverTracker tasks={allCalendarEvents} />
             </div>
 
-            {/* Activity Calendar component */}
+            {/* Executive Activity Registry Table */}
             <div className="card-outlined p-6 border border-slate-200">
-                <CalendarView
-                    activities={allCalendarEvents.filter(t => !t.is_milestone)}
-                    title="Executive Activity Calendar"
-                    onActivityClick={setEditingTask}
-                />
+                <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100" style={{ color: 'var(--navy)' }}>
+                        Executive Activity Registry
+                    </h2>
+                    <div className="flex items-center gap-3">
+                        <input 
+                            type="search" 
+                            placeholder="Search records..." 
+                            className="column-filter" 
+                            style={{ width: '220px', height: '36px' }}
+                            value={tableSearch}
+                            onChange={(e) => {
+                                setTableSearch(e.target.value);
+                                setTablePage(1);
+                            }}
+                        />
+                        <button 
+                            className="button secondary"
+                            style={{ height: '36px', padding: '0 16px', background: 'var(--blue)', color: 'white', borderRadius: '10px', fontSize: '11px', fontWeight: 'bold' }}
+                            onClick={() => {
+                                setTableSearch('');
+                                setTableFilters({
+                                    division: '',
+                                    project: '',
+                                    name: '',
+                                    status: '',
+                                    sourceOfFund: '',
+                                    budget: '',
+                                    obligated: ''
+                                });
+                                setTablePage(1);
+                            }}
+                        >
+                            Reset Table
+                        </button>
+                    </div>
+                </div>
+
+                {/* Top Controls */}
+                <div className="table-controls">
+                    <span className="table-page-label">
+                        {processedTableData.totalRows > 0 ? (
+                            `Rows ${processedTableData.start + 1}–${processedTableData.start + processedTableData.paginatedRows.length} of ${processedTableData.totalRows} · Page ${tablePage} of ${processedTableData.totalPages}`
+                        ) : (
+                            'No records found'
+                        )}
+                    </span>
+                    <div className="flex gap-2 items-center flex-wrap">
+                        <select 
+                            className="select" 
+                            value={tablePageSize}
+                            onChange={(e) => {
+                                setTablePageSize(Number(e.target.value));
+                                setTablePage(1);
+                            }}
+                        >
+                            <option value={10}>10 rows</option>
+                            <option value={25}>25 rows</option>
+                            <option value={50}>50 rows</option>
+                            <option value={100}>100 rows</option>
+                        </select>
+                        <button 
+                            className="button secondary" 
+                            disabled={tablePage <= 1}
+                            onClick={() => setTablePage(prev => Math.max(1, prev - 1))}
+                        >
+                            Prev
+                        </button>
+                        <button 
+                            className="button secondary" 
+                            disabled={tablePage >= processedTableData.totalPages}
+                            onClick={() => setTablePage(prev => Math.min(processedTableData.totalPages, prev + 1))}
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+
+                {/* Table Wrapper */}
+                <div className="table-wrap">
+                    <table id="recordsTable">
+                        <thead>
+                            <tr>
+                                <th className="col-freeze col-freeze-1" style={{ width: '150px' }}>
+                                    <button 
+                                        className="sort-button"
+                                        onClick={() => {
+                                            const nextDir = (tableSortKey === 'division' && tableSortDir === 'asc') ? 'desc' : 'asc';
+                                            setTableSortKey('division');
+                                            setTableSortDir(nextDir);
+                                        }}
+                                    >
+                                        Division <span className="sort-icon">{tableSortKey === 'division' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                    </button>
+                                </th>
+                                <th className="col-freeze col-freeze-2" style={{ width: '220px' }}>
+                                    <button 
+                                        className="sort-button"
+                                        onClick={() => {
+                                            const nextDir = (tableSortKey === 'project' && tableSortDir === 'asc') ? 'desc' : 'asc';
+                                            setTableSortKey('project');
+                                            setTableSortDir(nextDir);
+                                        }}
+                                    >
+                                        Project <span className="sort-icon">{tableSortKey === 'project' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                    </button>
+                                </th>
+                                <th className="col-freeze col-freeze-3" style={{ width: '250px' }}>
+                                    <button 
+                                        className="sort-button"
+                                        onClick={() => {
+                                            const nextDir = (tableSortKey === 'name' && tableSortDir === 'asc') ? 'desc' : 'asc';
+                                            setTableSortKey('name');
+                                            setTableSortDir(nextDir);
+                                        }}
+                                    >
+                                        Activity <span className="sort-icon">{tableSortKey === 'name' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                    </button>
+                                </th>
+                                <th style={{ width: '150px' }}>
+                                    <button 
+                                        className="sort-button"
+                                        onClick={() => {
+                                            const nextDir = (tableSortKey === 'status' && tableSortDir === 'asc') ? 'desc' : 'asc';
+                                            setTableSortKey('status');
+                                            setTableSortDir(nextDir);
+                                        }}
+                                    >
+                                        Status of Activity <span className="sort-icon">{tableSortKey === 'status' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                    </button>
+                                </th>
+                                <th style={{ width: '150px' }}>
+                                    <button 
+                                        className="sort-button"
+                                        onClick={() => {
+                                            const nextDir = (tableSortKey === 'sourceOfFund' && tableSortDir === 'asc') ? 'desc' : 'asc';
+                                            setTableSortKey('sourceOfFund');
+                                            setTableSortDir(nextDir);
+                                        }}
+                                    >
+                                        Source of fund <span className="sort-icon">{tableSortKey === 'sourceOfFund' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                    </button>
+                                </th>
+                                <th style={{ width: '150px' }}>
+                                    <button 
+                                        className="sort-button"
+                                        onClick={() => {
+                                            const nextDir = (tableSortKey === 'budget' && tableSortDir === 'asc') ? 'desc' : 'asc';
+                                            setTableSortKey('budget');
+                                            setTableSortDir(nextDir);
+                                        }}
+                                    >
+                                        Allocation <span className="sort-icon">{tableSortKey === 'budget' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                    </button>
+                                </th>
+                                <th style={{ width: '150px' }}>
+                                    <button 
+                                        className="sort-button"
+                                        onClick={() => {
+                                            const nextDir = (tableSortKey === 'obligated' && tableSortDir === 'asc') ? 'desc' : 'asc';
+                                            setTableSortKey('obligated');
+                                            setTableSortDir(nextDir);
+                                        }}
+                                    >
+                                        Obligated <span className="sort-icon">{tableSortKey === 'obligated' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                    </button>
+                                </th>
+                            </tr>
+                            <tr>
+                                <th className="col-freeze col-freeze-1">
+                                    <input 
+                                        className="column-filter" 
+                                        type="search" 
+                                        placeholder="Filter..." 
+                                        value={tableFilters.division}
+                                        onChange={(e) => {
+                                            setTableFilters(prev => ({ ...prev, division: e.target.value }));
+                                            setTablePage(1);
+                                        }}
+                                    />
+                                </th>
+                                <th className="col-freeze col-freeze-2">
+                                    <input 
+                                        className="column-filter" 
+                                        type="search" 
+                                        placeholder="Filter..." 
+                                        value={tableFilters.project}
+                                        onChange={(e) => {
+                                            setTableFilters(prev => ({ ...prev, project: e.target.value }));
+                                            setTablePage(1);
+                                        }}
+                                    />
+                                </th>
+                                <th className="col-freeze col-freeze-3">
+                                    <input 
+                                        className="column-filter" 
+                                        type="search" 
+                                        placeholder="Filter..." 
+                                        value={tableFilters.name}
+                                        onChange={(e) => {
+                                            setTableFilters(prev => ({ ...prev, name: e.target.value }));
+                                            setTablePage(1);
+                                        }}
+                                    />
+                                </th>
+                                <th>
+                                    <input 
+                                        className="column-filter" 
+                                        type="search" 
+                                        placeholder="Filter..." 
+                                        value={tableFilters.status}
+                                        onChange={(e) => {
+                                            setTableFilters(prev => ({ ...prev, status: e.target.value }));
+                                            setTablePage(1);
+                                        }}
+                                    />
+                                </th>
+                                <th>
+                                    <input 
+                                        className="column-filter" 
+                                        type="search" 
+                                        placeholder="Filter..." 
+                                        value={tableFilters.sourceOfFund}
+                                        onChange={(e) => {
+                                            setTableFilters(prev => ({ ...prev, sourceOfFund: e.target.value }));
+                                            setTablePage(1);
+                                        }}
+                                    />
+                                </th>
+                                <th>
+                                    <input 
+                                        className="column-filter" 
+                                        type="search" 
+                                        placeholder="Filter..." 
+                                        value={tableFilters.budget}
+                                        onChange={(e) => {
+                                            setTableFilters(prev => ({ ...prev, budget: e.target.value }));
+                                            setTablePage(1);
+                                        }}
+                                    />
+                                </th>
+                                <th>
+                                    <input 
+                                        className="column-filter" 
+                                        type="search" 
+                                        placeholder="Filter..." 
+                                        value={tableFilters.obligated}
+                                        onChange={(e) => {
+                                            setTableFilters(prev => ({ ...prev, obligated: e.target.value }));
+                                            setTablePage(1);
+                                        }}
+                                    />
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {processedTableData.paginatedRows.length > 0 ? (
+                                processedTableData.paginatedRows.map((r, i) => {
+                                    let statusClass = 'neutral';
+                                    if (r.status === 'Completed' || r.status === 'Accomplished') statusClass = 'ok';
+                                    else if (r.status === 'In Progress') statusClass = 'warn';
+                                    else if (r.status === 'Delayed') statusClass = 'risk';
+
+                                    return (
+                                        <tr 
+                                            key={r.id || i}
+                                            className="record-row hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
+                                            onClick={() => {
+                                                setEditingTask({
+                                                    ...r,
+                                                    title: r.name,
+                                                    project_id: r.id
+                                                });
+                                            }}
+                                        >
+                                            <td className="col-freeze col-freeze-1 font-semibold text-slate-900 dark:text-slate-100">{r.division || 'Unassigned'}</td>
+                                            <td className="col-freeze col-freeze-2 font-semibold text-slate-900 dark:text-slate-100">{r.project}</td>
+                                            <td className="col-freeze col-freeze-3 font-semibold text-slate-900 dark:text-slate-100">{r.name}</td>
+                                            <td>
+                                                <span className={`update-age ${statusClass}`}>
+                                                    {r.status || 'Not Started'}
+                                                </span>
+                                            </td>
+                                            <td>{r.sourceOfFund || 'Not Specified'}</td>
+                                            <td className="font-semibold">{peso(r.budget)}</td>
+                                            <td className="font-semibold">{peso(r.obligated)}</td>
+                                        </tr>
+                                    );
+                                })
+                            ) : (
+                                <tr>
+                                    <td colSpan={7} className="text-center py-8 text-slate-400 font-semibold">
+                                        No matching activities found
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Bottom Controls */}
+                <div className="table-controls mt-4">
+                    <span className="table-page-label">
+                        {processedTableData.totalRows > 0 ? (
+                            `Rows ${processedTableData.start + 1}–${processedTableData.start + processedTableData.paginatedRows.length} of ${processedTableData.totalRows}`
+                        ) : (
+                            ''
+                        )}
+                    </span>
+                    <div className="flex gap-2 items-center">
+                        <button 
+                            className="button secondary" 
+                            disabled={tablePage <= 1}
+                            onClick={() => setTablePage(prev => Math.max(1, prev - 1))}
+                        >
+                            Prev
+                        </button>
+                        <button 
+                            className="button secondary" 
+                            disabled={tablePage >= processedTableData.totalPages}
+                            onClick={() => setTablePage(prev => Math.min(processedTableData.totalPages, prev + 1))}
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {editingTask && (
@@ -934,6 +1629,135 @@ const Dashboard = () => {
                         setRefreshTrigger(prev => prev + 1);
                     }}
                 />
+            )}
+            {isCategoryModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 animate-fadeIn p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[85vh]">
+                        {/* Header */}
+                        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-100" style={{ color: 'var(--navy)' }}>
+                                    Filter: {distributionMode === 'status' ? 'Activity Status' : distributionMode === 'budget' ? 'Budget' : 'Sources of Fund'}
+                                </h3>
+                                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                                    Select which values to display across all charts
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setIsCategoryModalOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 cursor-pointer"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Toolbar */}
+                        <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center gap-2 flex-wrap">
+                            <div className="flex gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const top5 = [...availableCategories].sort((a, b) => b.value - a.value).slice(0, 5).map(c => c.id);
+                                        setSelectedCategories(top5);
+                                    }}
+                                    className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold rounded cursor-pointer"
+                                >
+                                    Top 5
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedCategories(availableCategories.map(c => c.id));
+                                    }}
+                                    className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold rounded cursor-pointer"
+                                >
+                                    Select All
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedCategories([]);
+                                    }}
+                                    className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold rounded cursor-pointer"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={() => setCategorySortMode(prev => prev === 'value' ? 'alpha' : 'value')}
+                                    className="px-2.5 py-1 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded cursor-pointer"
+                                >
+                                    Sort: {categorySortMode === 'value' ? 'By Value' : 'A-Z'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Search */}
+                        <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+                            <input
+                                type="text"
+                                value={categorySearchQuery}
+                                onChange={(e) => setCategorySearchQuery(e.target.value)}
+                                placeholder="Search values..."
+                                className="w-full text-xs p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-850 dark:text-white focus:outline-hidden"
+                            />
+                        </div>
+
+                        {/* Values List */}
+                        <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[300px]">
+                            {modalFilteredCategories.map(cat => {
+                                const isChecked = activeCategoryIds.includes(cat.id);
+                                return (
+                                    <label 
+                                        key={cat.id}
+                                        className="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg cursor-pointer"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={() => {
+                                                    let next = activeCategoryIds;
+                                                    if (isChecked) {
+                                                        next = next.filter(id => id !== cat.id);
+                                                    } else {
+                                                        next = [...next, cat.id];
+                                                    }
+                                                    setSelectedCategories(next);
+                                                }}
+                                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            />
+                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                                                {cat.label}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs font-black text-slate-400">
+                                            {unitMode === 'budget' ? peso(cat.value) : fmt(cat.count)}
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                            {modalFilteredCategories.length === 0 && (
+                                <div className="text-center py-6 text-xs text-slate-400 font-medium">
+                                    No matches found
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setIsCategoryModalOpen(false)}
+                                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg cursor-pointer"
+                            >
+                                Apply Filter
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

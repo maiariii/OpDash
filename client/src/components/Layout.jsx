@@ -94,6 +94,118 @@ const Layout = () => {
         };
     }, [location.pathname]);
 
+    const getTopbarDetails = () => {
+        const path = location.pathname;
+        const search = location.search;
+        const hrEyebrow = "DEPARTMENT OF EDUCATION | HUMAN RESOURCE AND ORGANIZATIONAL DEVELOPMENT AND INFRASTRUCTURE";
+
+        if (path === '/') {
+            return {
+                eyebrow: hrEyebrow,
+                title: (
+                    <>
+                        <span className="text-white">Executive Activity </span>
+                        <span style={{ color: 'var(--gold)' }}>& Budget Status</span>
+                    </>
+                ),
+                note: "One-page executive view: activity status, division performance, budget utilization, stale updates, risks, and action priorities."
+            };
+        }
+
+        if (path === '/employees') {
+            return {
+                eyebrow: hrEyebrow,
+                title: (
+                    <>
+                        <span className="text-white">Authorized Personnel </span>
+                        <span style={{ color: 'var(--gold)' }}>Registry</span>
+                    </>
+                ),
+                note: "Monitors agency headcount, employee designations, division distribution, and staffing details for compliance and resource planning."
+            };
+        }
+
+        if (path.startsWith('/projects/')) {
+            return {
+                eyebrow: hrEyebrow,
+                title: (
+                    <>
+                        <span className="text-white">Project Activity </span>
+                        <span style={{ color: 'var(--gold)' }}>& Financial Ledger</span>
+                    </>
+                ),
+                note: "In-depth tracking of activities, task assignments, financial status, and milestone completion progress for the selected project."
+            };
+        }
+
+        if (path === '/projects') {
+            const params = new URLSearchParams(search);
+            const division = params.get('division');
+            if (division) {
+                const cleanDivision = division.toLowerCase().endsWith('division') ? division : `${division} Division`;
+                return {
+                    eyebrow: hrEyebrow,
+                    title: (
+                        <>
+                            <span className="text-white">{cleanDivision} </span>
+                            <span style={{ color: 'var(--gold)' }}>Projects Dashboard</span>
+                        </>
+                    ),
+                    note: `Tracks project implementation, milestones, key activities, and division-specific deliverables for the ${cleanDivision}.`
+                };
+            }
+            return {
+                eyebrow: hrEyebrow,
+                title: (
+                    <>
+                        <span className="text-white">Projects Portfolio </span>
+                        <span style={{ color: 'var(--gold)' }}>Dashboard</span>
+                    </>
+                ),
+                note: "Tracks project implementation, milestones, key activities, and division-specific deliverables to support operational alignment."
+            };
+        }
+
+        if (path === '/basecamp-targets') {
+            return {
+                eyebrow: hrEyebrow,
+                title: (
+                    <>
+                        <span className="text-white">Basecamp Targets </span>
+                        <span style={{ color: 'var(--gold)' }}>Scorecard</span>
+                    </>
+                ),
+                note: "Tracks targets, output performance indicators, target timelines, and accomplishments to ensure compliance with organization goals."
+            };
+        }
+
+        if (path === '/activity-log') {
+            return {
+                eyebrow: hrEyebrow,
+                title: (
+                    <>
+                        <span className="text-white">Operations </span>
+                        <span style={{ color: 'var(--gold)' }}>Activity Registry</span>
+                    </>
+                ),
+                note: "Real-time log of data modifications, project updates, and user activities for audit trail and compliance verification."
+            };
+        }
+
+        return {
+            eyebrow: hrEyebrow,
+            title: (
+                <>
+                    <span className="text-white">System </span>
+                    <span style={{ color: 'var(--gold)' }}>Resources</span>
+                </>
+            ),
+            note: "InsightED Resource tracking and dashboard system."
+        };
+    };
+
+    const { eyebrow: topbarEyebrow, title: topbarTitle, note: topbarNote } = getTopbarDetails();
+
     return (
         <div className="app-container">
             {/* Sidebar (Desktop left sidebar / Mobile bottom nav) */}
@@ -176,7 +288,7 @@ const Layout = () => {
                 {user && (
                     <div className="sidebar-user-section pt-4 border-t border-white/10 flex flex-col gap-3">
                         <div className="flex items-center gap-3 px-3 py-2 bg-white/5 rounded-xl border border-white/10">
-                            <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm">
+                            <div className="w-8 h-8 rounded-full bg-red-100 text-red-650 flex items-center justify-center font-bold text-sm">
                                 {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -211,38 +323,33 @@ const Layout = () => {
 
             {/* Main Content Area */}
             <main className="main-content">
-                {location.pathname !== '/' && (
-                    <header className="topbar">
-                        <div>
-                            <div className="eyebrow">Department of Education</div>
-                            <h1>
-                                <span className="title-insight">Insight</span>
-                                <span className="title-ed">ED</span>
-                                <span className="title-rest"> Resource Dashboard</span>
-                            </h1>
-                        </div>
+                <header className="topbar">
+                    <div className="page-title">
+                        <div className="eyebrow">{topbarEyebrow}</div>
+                        <h1>{topbarTitle}</h1>
+                        <p>{topbarNote}</p>
+                    </div>
 
-                        {/* Mobile user avatar + logout */}
-                        {user && (
-                            <div className="mobile-user-menu-wrapper">
-                                <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm shadow-md border-2 border-white/80">
-                                    {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        localStorage.removeItem('opdash_token');
-                                        localStorage.removeItem('opdash_user');
-                                        window.location.href = '/opdash/login';
-                                    }}
-                                    className="mobile-logout-btn"
-                                    aria-label="Log out"
-                                >
-                                    <LogOut size={18} />
-                                </button>
+                    {/* Mobile user avatar + logout */}
+                    {user && (
+                        <div className="mobile-user-menu-wrapper">
+                            <div className="w-9 h-9 rounded-full bg-red-100 text-red-650 flex items-center justify-center font-bold text-sm shadow-md border-2 border-white/80">
+                                {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
                             </div>
-                        )}
-                    </header>
-                )}
+                            <button
+                                onClick={() => {
+                                    localStorage.removeItem('opdash_token');
+                                    localStorage.removeItem('opdash_user');
+                                    window.location.href = '/opdash/login';
+                                }}
+                                className="mobile-logout-btn"
+                                aria-label="Log out"
+                            >
+                                <LogOut size={18} />
+                            </button>
+                        </div>
+                    )}
+                </header>
 
                 {/* Sub-page content */}
                 <div className="w-full flex-1">

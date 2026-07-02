@@ -578,9 +578,6 @@ const ProjectDetails = () => {
                     <div>
                         <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
                             {project.name}
-                            <span className="text-sm font-normal px-2 py-1 bg-green-100 text-green-700 rounded-full border border-green-200">
-                                {project.status}
-                            </span>
                         </h1>
                         <p className="text-slate-500 text-sm">Workspace ID: {project.id}</p>
                     </div>
@@ -903,20 +900,6 @@ const ProjectDetails = () => {
                                             value={editForm.name || ''}
                                             onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Status<span className="text-red-500"> *</span></label>
-                                        <select
-                                            className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-800 bg-white"
-                                            value={editForm.status || 'Planning'}
-                                            onChange={e => setEditForm({ ...editForm, status: e.target.value })}
-                                        >
-                                            <option value="Planning">Planning</option>
-                                            <option value="In Progress">In Progress</option>
-                                            <option value="Accomplished">Accomplished</option>
-                                            <option value="Deferred">Deferred</option>
-                                            <option value="Cancelled">Cancelled</option>
-                                        </select>
                                     </div>
                                 </div>
                             )}
