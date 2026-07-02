@@ -1,0 +1,2721 @@
+<aside>
+🤖
+
+Use this page as an AI instruction sheet for recreating the inventory and monitoring dashboard pattern from <page url="https://app.notion.com/p/389f6dd1f0c88074a55ee023c63a103d">CCTV Inventory</page>. The goal is to make any future AI-generated dashboard follow the same product logic, layout hierarchy, interaction model, and implementation structure while allowing the dataset, fields, labels, and metrics to change.
+
+</aside>
+
+## 0. Applicability and flexibility contract (read first)
+
+This sheet is optimized for **categorical inventory and monitoring dashboards** (hierarchical grouping, condition/status counts, issue tracking). It is safe to reuse for other dashboard types **only if** you treat everything below as tiered, not uniformly mandatory.
+
+**Precedence rule:** This section governs the rest of the page. Wherever a later section says "must," "required," or "every dashboard," read it as **"must — when the feature applies to the current dashboard type."** Never force a module that does not fit the data, and never drop a dataset-appropriate feature just to satisfy a template requirement.
+
+### Tier 1 — Core (apply to every dashboard)
+
+- Single-file HTML with embedded CSS + JS (unless the user requests components only).
+- Visual identity: CSS `:root` variable palette, rounded cards, radial-gradient background, strong typographic hierarchy.
+- Layout shell: `.app` single-column main canvas, `.topbar` hero, `.content` cards. Do not include a sidebar unless the user explicitly requests one or the dashboard truly needs separate file/page navigation.
+- Sidebar links navigate to distinct pages/screens; multiple files/datasets become sidebar page links, never in-content tabs.
+- KPI grid with plain typed titles, oversized numbers, no pill/sticker titles, and no blank cells (last row stretches to fill).
+- At least one primary visualization plus a searchable, sortable, filterable, paginated data table and a row-detail modal.
+- Safe data loading with schema/shape validation, a loading state, no hardcoded sample rows, and robust text decoding.
+- Responsive/mobile layout (sidebar collapses to bottom navigation).
+
+### Tier 2 — Conditional (apply only when the data/dashboard type calls for it)
+
+- Hierarchical drilldown levels + breadcrumbs — only when the data has nested categorical/geographic hierarchy.
+- Stacked-bar ↔ heat map toggle — only for categorical composition across groups.
+- Condition-share donut/histogram (working/broken/spare, complete/pending, available/unavailable, etc.) — only for status/condition datasets.
+- Issue/risk summary — only when issue/risk logic exists in the data.
+- "Distribution by" / per-card "Split by" / category-picker modal — only when there are non-location categorical segmentation variables.
+- Dependent parent→child filters and auto-detected categorical filters — only when such columns exist.
+- CSV-specific loading, `REQUIRED_FIELDS`, header validation, and encoding/mojibake repair — only when the source is CSV. For JSON/API/DB sources, validate the equivalent shape instead.
+- Philippine place-name normalization (Las Piñas, Parañaque) — only for datasets containing those accented names; generalize or omit otherwise.
+
+### Tier 3 — Optional enhancements (use when they add value)
+
+- Touch/long-press tooltip behavior, advanced/basic mode toggle, unit/aggregation switch, and alternate drilldown modes.
+
+### Swapping Tier 2 modules for other dashboard types
+
+- **Time-series / trend:** line/area charts, date-range controls, period comparison — replace hierarchical drilldown.
+- **Financial / executive scorecard:** variance vs. target, sparklines, waterfall — condition-share may not apply.
+- **Geospatial / map:** map + clustering as the primary visualization instead of stacked bars.
+- **Funnel / cohort / conversion:** funnel or cohort grid instead of the composition donut.
+- **Real-time ops:** live status tiles and refresh instead of a static CSV load.
+
+When a Tier 2 or Tier 3 module does not fit the data, **omit it silently** — do not stub an empty or misleading version, and do not degrade a better-suited choice to match this template.
+
+---
+
+## 1. AI role and task
+
+You are designing a **single-file HTML inventory and monitoring dashboard** from a structured CSV or tabular dataset.
+
+Your output must be a complete, copy-pasteable HTML file with embedded CSS and JavaScript. It must replicate the dashboard architecture used in <page url="https://app.notion.com/p/389f6dd1f0c88074a55ee023c63a103d">CCTV Inventory</page>:
+
+- No sidebar by default; keep the dashboard full-width unless the user explicitly requests page/file navigation.
+- If the user provides multiple files or datasets, represent each file as its own sidebar page link and dedicated main-panel page/screen. Do not place multiple-file tabs or dataset-switching buttons inside the content area or data controls card.
+- Branded hero/topbar.
+- Data controls card.
+- KPI card grid with plain typed KPI headings, oversized numbers, and no sticker-style title pills.
+- Drilldown analytics section with chart-type toggle cycling through normal stacked bars and heat map only.
+- Composition chart with donut/histogram toggle.
+- Issue/risk summary chart with chart-type toggle.
+- Searchable, sortable, filterable, paginated data table.
+- Clickable row detail modal.
+- CSV loader with strict schema validation, no hardcoded sample rows, a loading modal while CSV files are fetched and parsed, and robust text decoding for UTF-8 / Windows-1252 CSV files so names with accented or special characters render correctly.
+- Responsive mobile layout.
+
+## 2. Design principles to preserve
+
+### Visual identity
+
+Use the same overall style logic as the CCTV dashboard:
+
+- **Academic Blue / navy foundation** for headers, borders, and primary actions.
+- **Gold / amber accent** for highlights and warning states.
+- **Green, red, purple, slate** for operational categories.
+- Large rounded cards.
+- Strong bordered dashboard panels.
+- Clean grid spacing.
+- No heavy shadows unless used subtly for modals or side navigation.
+- A soft radial-gradient background.
+- Strong typographic hierarchy with bold labels, compact helper text, and clear card titles.
+- Typography: load and use **Plus Jakarta Sans** for headings and high-emphasis UI (titles, KPI numbers, buttons, badges) through a `--font-head` variable, and **DM Sans** for body text, labels, and filters through the base `--font` variable. Do not use IBM Plex Sans.
+- KPI cards must use real typed text headings instead of sticker, badge, or pill labels at the top of the card.
+- KPI numbers should be visually dominant and prominent, matching the bigger KPI-number treatment used in the Resource Mapping dashboard pattern; use about `clamp(36px,2.5vw,43px)` or an equivalent large-but-balanced scale for standard KPI cards instead of small 20px–30px values. Keep them large enough to dominate the card but not so oversized that the numeric value and its unit wrap onto separate lines. Make sure the KPI number selector out-specifies any generic `.card h2` rule (for example use `.kpi-card .kpi-number`, not a bare `.kpi-number`), so the enlarged size actually applies instead of being overridden by the card heading size.
+- Do not repeat the KPI title below the number; the title belongs only at the top of the card.
+- Keep KPI cards compact after removing the repeated label, with no unnecessary blank space below the number/helper text.
+
+### Required CSS variable pattern
+
+Define a `:root` block similar to this:
+
+```css
+:root{
+  --navy:#08315F;
+  --blue:#075985;
+  --blue-600:#0284C7;
+  --blue-400:#7DD3FC;
+  --blue-100:#E0F2FE;
+  --blue-50:#F0F9FF;
+  --gold:#FBBF24;
+  --amber:#D97706;
+  --red:#B91C1C;
+  --red-100:#FEE2E2;
+  --green:#16A34A;
+  --green-100:#DCFCE7;
+  --purple:#7C3AED;
+  --slate:#475569;
+  --card:#FFFFFF;
+  --text:#0F172A;
+  --muted:#64748B;
+  --line:#BAE6FD;
+  --font:"DM Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-head:"Plus Jakarta Sans", "DM Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --radius:22px;
+}
+```
+
+### Layout rules
+
+Preserve this page structure:
+
+1. `.app`
+    - CSS grid with a single full-width main content column.
+2. Sidebar rule
+    - Do not include or display a sidebar in the default dashboard pattern.
+    - If the user explicitly requests page/file navigation, use a compact navigation pattern that does not consume a persistent left rail unless specifically requested.
+    - If there are multiple uploaded files or datasets, represent each file as a distinct page/route or clear navigation item; do not create dataset tabs, file tabs, or file-switch buttons inside the data controls card.
+3. `.main`
+    - Contains `.topbar` and `.content`.
+4. `.topbar`
+    - Navy/blue hero area.
+    - Eyebrow, page title, short description.
+    - Status/schema pill on the right.
+5. `.content`
+    - Max width around `1500px`.
+    - Card-based sections.
+6. `.kpi-grid`
+    - Prefer one row of KPI cards; when there are too many, distribute them as evenly as possible across the fewest rows.
+    - Use a flexible (flexbox) layout where cards grow to fill each row so there are never blank/empty cells, even when the last row has fewer cards; on tablet/mobile they wrap to fewer per row while still filling each row.
+    - Each KPI card should have a plain typed title at the top, not a sticker, tag, badge, or pill.
+    - KPI number typography should be prominent and oversized (about `clamp(36px,2.5vw,43px)`), large enough to dominate the card but not so big that the value and its unit wrap onto separate lines.
+    - Do not repeat the KPI title under the number.
+    - Remove excess vertical space below KPI text so the card feels compact and balanced.
+7. `.grid`
+    - Main analytical panels.
+    - Use `.wide` for full-width panels.
+    - Side-by-side chart cards in the same row (such as the composition donut and the issue histogram) must share the row equally with equal-width columns.
+
+## 3. Dashboard sections to replicate
+
+### A. Sidebar page navigation
+
+Use four page links unless the dataset clearly requires different labels:
+
+- Overview
+- Drilldown
+- Records
+- Issues
+
+Each nav link must represent a distinct dashboard page/screen, not a section inside the current page.
+
+For multi-file dashboards, replace or extend these links with one dedicated page per file/dataset. For example:
+
+- Personnel
+- Enrolment
+- Inventory
+- Monitoring
+
+Each file link must open a dedicated dashboard page/screen in the main panel. Do not place multiple-file tabs in the data controls card or near the top of the main content.
+
+Rules:
+
+- Use `href` values that point to separate page files/routes, such as `overview.html`, `drilldown.html`, `records.html`, and `issues.html`.
+- For multi-file dashboards, use file-specific `href` values such as `personnel.html`, `enrolment.html`, or another clear slug per file.
+- Use `data-page`, not `data-view`.
+- Do not call `preventDefault()` on sidebar links; the sidebar should navigate.
+- Use `body[data-current-page="..."]` or the current pathname to mark the active page.
+- If generating a single prototype file, the current file may include the full overview layout, but the sidebar code must still be written as page navigation that can be reused across separate HTML pages.
+
+Example:
+
+```html
+<nav class="nav" aria-label="Dashboard page navigation">
+  <a class="active" href="overview.html" data-page="overview"><span class="nav-icon">⌂</span>Overview</a>
+  <a href="drilldown.html" data-page="drilldown"><span class="nav-icon">▤</span>Drilldown</a>
+  <a href="records.html" data-page="records"><span class="nav-icon">▧</span>Records</a>
+  <a href="issues.html" data-page="issues"><span class="nav-icon">!</span>Issues</a>
+</nav>
+```
+
+### B. Topbar
+
+The topbar must explain:
+
+- Program/unit/category.
+- Dashboard title.
+- What the dashboard monitors.
+- Dashboard purpose and monitored scope.
+- For multi-file dashboards, the hero title must change per file/dataset page so each tab shows a unique title reflecting the data currently displayed.
+
+### C. Data controls
+
+At minimum include:
+
+- First-level geography/category filter.
+- Second-level geography/category filter. The second-level filter (such as division) must depend on the first-level filter (such as region): when a region is selected, the division dropdown only lists divisions that belong to that region, and an invalid division selection resets when the region changes. More generally, each dependent child filter should only offer values that are valid for the currently selected parent filter.
+- For geographic datasets, basic mode must include the common location filters when those columns exist: **Region**, **Province**, **Division**, and **Municipality / Legislative District**. Do not hide these common location filters inside advanced mode.
+- Put the basic filter controls inside a dedicated nested subcard within the Data Controls card. The location filters must occupy the entire first row of that subcard. Place subsequent non-location filters and toggles inside the same subcard on the next row. Do not show a "Location Filters" heading/text inside the subcard unless the user explicitly requests a section label.
+- Use the required geographic drilldown hierarchy: **Region → Province → Division → Municipality / Legislative District**. If both municipality and legislative district columns exist, the default basic-mode selector should be **Municipality**.
+- When both **Municipality** and **Legislative District** columns exist, add a compact icon-only toggle in the Municipality selector header so the user can switch that basic-mode field between Municipality and Legislative District without opening advanced mode. Use a simple switch icon such as `⇄`; do not use a text button like "Use LD".
+- Drilldown mode selector when there are alternate third-level groupings.
+- Status/condition filter.
+- Unit/aggregation mode selector.
+- Reset button placed beside the Advanced Mode toggle in the data-controls header, not inside the input grid. Do not show a loading/status helper-text line below the controls unless the user explicitly requests it. The Reset button and the Advanced Mode toggle must not display the decorative ⇄ swap-arrow icon that chart-type toggles use; suppress their `::before` icon (for example `#resetBtn::before,#advancedToggle::before{display:none}`) even if they reuse the chart-toggle style.
+- Auto-detected categorical filters: when the CSV loads, detect every categorical (non-numeric) column and automatically render a filter dropdown for each categorical attribute column, so no categorical field is left without a filter (for example classification in personnel or gender in enrolment). Keep region and division as filters (with division dependent on region), and exclude purely numeric columns and deep geographic hierarchy levels below division (such as province, legislative district, and barangay), which are handled through drilldown rather than as dropdowns.
+- Auto-activate drilldown from filters: selecting a value in the first-level (region) or second-level (division) filter must automatically drill the chart into that group, so it immediately shows the next hierarchy level beneath the selection (for example, selecting a region shows that region's divisions; selecting a division shows the next level beneath it). Infer parent hierarchy levels from the data when a child filter is set without its parent.
+- A mode toggle button that expands/collapses the advanced controls inside the data controls card. When advanced controls are hidden (basic mode), label it "Toggle Advanced Mode" and style it yellow/gold. When advanced controls are visible, label it "Toggle Basic Mode" and style it with the normal secondary/blue treatment.
+- Advanced controls must be enclosed inside a visually distinct nested card within the data controls area. Use a highlighted treatment (for example amber/gold border or soft amber background) to make the advanced area clearly differentiated, but keep the heading as plain text reading **"Advanced Controls"** in the same navy/font color family as the main **Data Controls** heading. Do not use a pill, badge, button, or sticker-style label for the heading, and do not include explanatory text about advanced mode inside the card. Input labels within the advanced card — especially **Distribution by** and **Units** — must use the same muted label color as basic input titles like **Region** and **Division**, not the advanced accent color.
+- Within the advanced controls card, place **Distribution by** before **Units**. As much as possible, advanced-control filters should occupy a single row on desktop/wide layouts; use responsive wrapping only for narrower screens. If both **Municipality** and **Legislative District** columns exist, include a **Jurisdiction** field in the advanced controls card where users can choose whether drilldowns and charts use municipal drilldown or legislative-district drilldown. Omit or hide alternate drilldown controls only when the dataset does not contain alternate jurisdiction fields or when the requested control surface should remain limited.
+- "Distribution by": a global control that changes the breakdown/segmentation variable used to divide every chart (stacked-bar segments, donut slices, and histogram bars) into any available non-location categorical variable in the dataset. In the default state (before the user changes "Distribution by"), every chart including the composition donut and the issue/summary histogram must segment by the same single default distribution variable, not different variables per chart. Exclude geography/location/hierarchy fields such as region, province, division, district, municipality, barangay, site, or equivalent location drilldown levels. It does not change the chart axes or drilldown grouping, and it applies to all charts on the shown page. Label the default option with the actual default segmentation variable's real name (for example its field name), not a generic "Default breakdown", and make sure that default variable is not also listed a second time in the dropdown. Instead of showing the active distribution variable as a static tag/sticker, give each chart card (stacked-bar, composition, and issue/summary charts) its own compact "Split by" dropdown placed near that card's chart-type toggle. Each per-card dropdown changes the segmentation variable for only that one card's chart (the other cards are unaffected). When the user changes the global "Distribution by" control in the data controls, every per-card dropdown updates to match the new global selection. Split-by dropdown options must come only from real available dataset/CSV columns that are valid segmentation variables; do not add synthetic options such as "Readiness gaps" unless the source data actually has that column and the user explicitly asks for it. Keep each card's "Split by" dropdown and chart-type toggle together on a single row in the card header (use a non-wrapping flex row); never let the chart-type toggle wrap onto a new line below the dropdown.
+- Category picker for distribution variables: provide a compact gear-icon button beside the "Distribution by" control that opens a modal listing every value of the selected segmentation variable, each with a checkbox and its total. The user can choose exactly which values appear across all charts (for example show only 5 of hundreds of positions). Include quick actions such as Top 5, Select all, and Clear on the left side of the modal toolbar. Put the sort toggle on the opposite/right side, styled distinctly from the other quick-action buttons, and let it switch the category list between sorting by value (descending) and alphabetical (A–Z) order. Include a debounced search field inside the modal that filters the category list while typing or backspacing; checked selections must persist when the search filter is cleared or changed. For any segmentation variable with more than 5 distinct values, automatically default to showing only the top 5 by value until the user customizes the selection.
+- "Units": changes the displayed metric. Provide a record-count option (labeled for the dataset's entity, such as "Number of schools" or "Number of records") and one "Sum of <numeric field>" option per numeric variable in the dataset (such as "Sum of learners"). Default to the primary numeric variable, and keep KPI headline values fixed on their own metric regardless of the selected unit.
+
+Do not use the data controls card for switching between multiple files. File/dataset switching belongs in the sidebar as dedicated page links only.
+
+Adapt the controls to the dataset. If the dataset is not geographic, use a category hierarchy such as:
+
+- Department → Team → Asset Type → Asset Group
+- Region → Division → Municipality → Site
+- Program → Component → Activity Type → Location
+- Category → Subcategory → Owner → Item Group
+
+### D. KPI grid
+
+The KPI grid shows dataset totals plus the active distribution breakdown:
+
+1. One record-count card for the dataset, labeled specifically for the entity being viewed (for example "Personnel Records" or "Enrolment Records"). Do not use a generic label such as "Total rows".
+2. One card per numeric column in the dataset showing the sum/total of that column (for example total headcount or total learners).
+3. One card per value of the currently active "Distribution by" category (defaulting to the chart's default segmentation variable), each showing that category's nationwide/in-view total of the primary numeric metric (for example total male and total female learners, or one card per grade level). Respect the category picker: show only the selected/visible categories (top 5 when auto-limited).
+
+KPI grid layout:
+
+- Prefer a single row of KPI cards.
+- When there are too many cards for one row, split them into the fewest additional rows and distribute the cards as evenly as possible across rows.
+- Rows may be uneven in count, but there must be no blank/empty cells in any row; the last row's cards stretch to fill the full row width (use a flex layout with growing cards rather than a fixed grid that leaves gaps).
+
+KPI headline values stay fixed on their own metric regardless of the selected "Units" option.
+
+Each KPI card must include:
+
+- Plain typed KPI title at the top of the card. Do not use sticker-style tags, badges, or pills for the KPI title.
+- Prominent, oversized numeric value (about `clamp(36px,2.5vw,43px)`), large enough to dominate the card without wrapping the value and its unit onto separate lines.
+- Short helper text.
+- No repeated title/label below the number.
+
+### E. Drilldown analytics
+
+Implement a drilldown sequence.
+
+For geographic datasets, the required sequence is:
+
+1. Region
+2. Province
+3. Division
+4. Municipality or Legislative District
+
+If both municipality and legislative district columns exist, default to Municipality and provide a Jurisdiction control/toggle to switch to Legislative District.
+
+For a generic dataset, define this as:
+
+```jsx
+const DRILLDOWN_LEVELS = [
+  { key:"level1", label:"Level 1" },
+  { key:"level2", label:"Level 2" },
+  { key:"level3", label:"Level 3" },
+  { key:"level4", label:"Level 4" }
+];
+```
+
+The chart must support:
+
+- Normal stacked bar view, where total bar length is proportional to the largest group total.
+- Heat map view rendered as a simple data table (not separated blocky cells/cards): one row per group, one column per category plus a Total column, with each value cell tinted by a continuous gradient based on its value.
+- A chart-type toggle that cycles only this drilldown card through `stacked` → `heatmap`.
+- Keep the stacked bar compact, with tight spacing between rows and slim bar height.
+- The numeric value labels inside the stacked bar segments use an enlarged, clearly readable font size that is larger than the default segment label size.
+- Segment label text must automatically switch for contrast: use white text on dark bar colors, and black/dark navy text on light bar colors such as yellow, pale green, or light orange.
+- When a segment is too small/narrow to legibly fit its value, omit that segment's inline label instead of overflowing or clipping it.
+- Data-label visibility must be based on the segment's **absolute rendered width relative to the full chart track**, not only its percentage share inside its own bar. This prevents inconsistent labeling where a smaller lower bar shows a value but a wider upper bar hides one.
+- On desktop/fine-pointer devices, hovering a bar shows a styled tooltip/popover at the pointer location and above the bars that lists the breakdown count for only the currently selected/filtered categories plus the total (do not append the unselected categories), using card-style CSS that matches the dashboard (rounded border, soft shadow, navy text).
+- On tablet/touch devices, do not rely on sticky hover. Short tap drills down; long-press shows a temporary tooltip preview; releasing the long-press hides the tooltip and must not also drill down. Suppress the browser's native long-press context menu / touch callout on bar rows so the dashboard tooltip appears instead of right-click-style browser options.
+- Stacked bar row labels and numeric end labels use the standard default label size.
+- Clickable rows/cells to drill down.
+- Breadcrumb trail.
+- Grouped aggregations.
+
+Heat map column rule:
+
+- Break the selected group down by the same category/composition variable shown in the stacked bar segments, so the heat map columns reflect the currently selected category breakdown (for example one column per status, grade level, or condition value) plus a total column. Do not fall back to unrelated generic summary columns such as records, top segment, or share when category columns are available.
+
+Heat map layout and sorting:
+
+- Render the heat map as a clean, simple table rather than a grid of separated blocky cells/cards: minimal borders, tight cells, one row per group and one column per category plus a Total column.
+- Color each value cell with a continuous four-stop gradient based on its value (computed within that column's own range): green for low values, yellow for lower-middle values, orange for upper-middle values, and red for the highest values; the group/label column stays uncolored.
+- Make every column header a sort control so the user can sort the rows by that column (group name alphabetically, or any category/total column by value), toggling ascending/descending and showing the active sort direction.
+
+Heat map color rules:
+
+- Every visible matrix column must receive a heat color, including label/group, totals, records, category values, issue values, and share/percentage columns.
+- Use a continuous gradient, not only 2–3 static classes. The shade must communicate low, middle, and extreme values within that column's own range.
+- Compute each column's min/max independently so the user can compare extremes and middle values within that metric.
+- For the heat-map table, use the same four-stop value palette across columns: green → yellow → orange → red, where green represents the lowest values and red represents the highest values in that column.
+- Keep text legible by switching text to white on dark extreme cells.
+
+### Touch / tablet tooltip rule
+
+For stacked bar rows:
+
+- Short tap = drill down.
+- Long press, around `500–550ms`, = show tooltip preview.
+- Release after long press = hide tooltip and do **not** drill down.
+- Movement beyond a small threshold, around `12px`, cancels the long press.
+- Mouse / fine-pointer devices keep ordinary hover behavior.
+- Use pointer events (`pointerdown`, `pointermove`, `pointerup`, `pointercancel`, `pointerleave`) rather than separate mouse and touch handlers.
+- Suppress native context menus on bar rows with both CSS and `contextmenu` event handling.
+
+Required CSS for bar rows:
+
+```css
+.bar-row,
+.bar-row *{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+```
+
+Reference implementation pattern:
+
+```jsx
+const LONG_PRESS_MS = 520;
+const LONG_PRESS_MOVE_LIMIT = 12;
+let longPressTimer = null;
+let longPressActive = false;
+let longPressStartX = 0;
+let longPressStartY = 0;
+
+function isHoverDevice(){ return window.matchMedia("(hover: hover) and (pointer: fine)").matches; }
+function isTouchLikePointer(e){ return e && (e.pointerType === "touch" || e.pointerType === "pen"); }
+function clearLongPressTimer(){ if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; } }
+
+function suppressBarContextMenu(e){
+  if(e && e.preventDefault) e.preventDefault();
+  if(e && e.stopPropagation) e.stopPropagation();
+  return false;
+}
+
+function startBarPress(e,el){
+  if(!isTouchLikePointer(e)) return;
+  if(e.preventDefault) e.preventDefault();
+  clearLongPressTimer();
+  longPressActive = false;
+  longPressStartX = e.clientX;
+  longPressStartY = e.clientY;
+  longPressTimer = setTimeout(() => {
+    longPressActive = true;
+    showBarTooltip({clientX:longPressStartX,clientY:longPressStartY},el.dataset.tooltip);
+  },LONG_PRESS_MS);
+}
+
+function moveBarPress(e,html){
+  if(isTouchLikePointer(e)){
+    const dx = Math.abs(e.clientX - longPressStartX);
+    const dy = Math.abs(e.clientY - longPressStartY);
+    if(!longPressActive && (dx > LONG_PRESS_MOVE_LIMIT || dy > LONG_PRESS_MOVE_LIMIT)){
+      cancelBarPress();
+      return;
+    }
+    if(longPressActive) showBarTooltip(e,html);
+    return;
+  }
+  if(isHoverDevice()) showBarTooltip(e,html);
+}
+
+function endBarPress(e,level,name){
+  if(isTouchLikePointer(e)){
+    clearLongPressTimer();
+    if(longPressActive){
+      hideBarTooltip();
+      longPressActive = false;
+      if(e.preventDefault) e.preventDefault();
+      return;
+    }
+    setDrill(level,name);
+    return;
+  }
+  setDrill(level,name);
+}
+
+function cancelBarPress(){
+  clearLongPressTimer();
+  longPressActive = false;
+  hideBarTooltip();
+}
+
+document.addEventListener("contextmenu",e => {
+  if(e.target && e.target.closest && e.target.closest(".bar-row")){
+    suppressBarContextMenu(e);
+  }
+});
+```
+
+Bar row elements should include:
+
+```html
+oncontextmenu="return suppressBarContextMenu(event)"
+```
+
+### Stacked-bar label consistency rule
+
+For stacked bars, data labels should activate based on the actual visual width available to that segment:
+
+```jsx
+const trackWidth = Math.max(groupTotal / maxGroupTotal * 100,4);
+const segmentShare = segmentValue / groupTotal * 100;
+const segmentWidth = trackWidth * segmentShare / 100;
+const label = segmentWidth >= 7 ? fmt(segmentValue) : "";
+```
+
+Adjust the `7` threshold per design density, but keep the rule based on absolute rendered width. Do not use only `segmentShare >= X`, because that creates inconsistent labels across bars of different total lengths.
+
+### F. Condition share chart
+
+Provide chart-type toggle:
+
+- Donut chart.
+- Histogram.
+
+Layout and density rules:
+
+- When the composition chart and the issue chart sit side by side in the same row, split the row equally (equal-width cards).
+- Keep the donut/pie legend table compact and space-efficient (tight cell padding, smaller text, smaller swatches), but place the table below the donut by default so the donut can be larger within the card. Use a transparent donut center / no white filled center background, render the ring using SVG `<circle>` elements with `stroke-dasharray` instead of a CSS conic-gradient so individual slices can be hovered and highlighted.
+- Ensure donut charts and histograms use the standard floating tooltip pattern (`.bar-hover-tooltip`) on hover/pointer move to display the specific segment's name, value, and share.
+
+The chart must show category composition, such as:
+
+- Working
+- Broken
+- Spare
+- No inventory
+
+For other datasets, map these to:
+
+- Complete
+- Incomplete
+- Pending
+- Missing
+- Available
+- Unavailable
+- At risk
+- Resolved
+
+### G. Issue / summary histogram
+
+Provide an issue histogram/donut toggle only when issue/risk dimensions are actual fields in the source data or are explicitly requested. Otherwise, use this side-by-side card as a second composition view that follows the same CSV-backed segmentation variables as the donut by default.
+
+Rules:
+
+- On initial load, the donut and histogram must talk about the same selected distribution variable.
+- The histogram's Split-by dropdown must list only available dataset/CSV columns that are valid non-location categorical segmentation variables.
+- Do not include a synthetic "Readiness gaps" or missing-field option unless that field exists in the source data and the user explicitly requests it.
+
+### H. Data table
+
+The table must include:
+
+- Search input.
+- Sortable headers.
+- Per-column filters.
+- Pagination.
+- Row click to open modal.
+- Compact badges for statuses.
+- Display all dataset/CSV columns by default (one column per source field), plus any derived status/attention column, unless the user explicitly asks for a subset.
+- Freeze/pin the record identity columns (ID and name) so they stay visible during horizontal scroll: place them as the first two columns, give them fixed widths, and make them `position:sticky` with `left` offsets (`left:0` and `left:<id width>`), an opaque background, and a higher stacking order than the scrolling cells. Give the table a `min-width` (or per-column widths) wider than its container so the remaining columns scroll horizontally beneath the frozen identity columns.
+- Performance for large datasets (tens of thousands of rows): re-render only what changed. A control that only affects the charts (such as "Distribution by") should re-render just the KPIs and charts, not the full records table. Reuse a single cached `Intl.Collator` for sorting instead of calling `localeCompare` with options on every comparison, and memoize expensive per-column computations (such as distinct category values) that do not change after load.
+
+Required table functions:
+
+- `tableColumnValue(row,key)`
+- `applyTableColumnFilters(rows)`
+- `sortTableRows(rows)`
+- `renderTable(rows)`
+- `renderTableControls(totalRows,totalPages,start,count)`
+
+### I. Detail modal
+
+Modal must show:
+
+- Record title/name.
+- Parent hierarchy.
+- Key metrics.
+- Status/checklist fields.
+- Last updated date if available.
+- Remarks/notes.
+
+## 4. Data mapping contract
+
+Before generating the dashboard, AI must identify the dataset fields and map them into this normalized shape:
+
+```jsx
+{
+  id:"",
+  name:"",
+  level1:"",
+  level2:"",
+  level3:"",
+  level4:"",
+  primaryCount:0,
+  working:0,
+  broken:0,
+  spare:0,
+  statusA:"",
+  statusB:"",
+  statusC:"",
+  remarks:"",
+  updated_at:"",
+  noInventory:false,
+  issue:false
+}
+```
+
+### Required field mapping questions
+
+If the user has not provided enough fields, ask for:
+
+1. Unique record ID.
+2. Display name.
+3. Main category/geographic hierarchy.
+4. Quantity/count fields.
+5. Status/checklist fields.
+6. Issue/risk logic.
+7. Date field.
+8. Remarks/notes field.
+
+### Schema validation rule
+
+Every generated dashboard must validate the input CSV headers before rendering.
+
+Use:
+
+```jsx
+function validateCsvHeaders(headers){
+  const normalized = headers.map(h => h.trim().toLowerCase());
+  const missing = REQUIRED_FIELDS.filter(field => !normalized.includes(field));
+  if(missing.length){
+    throw new Error("Missing required field(s): " + missing.join(", "));
+  }
+}
+```
+
+### CSV encoding and special-character handling
+
+Every generated dashboard must load CSV files through `arrayBuffer()` and decode them explicitly instead of relying only on `response.text()`.
+
+Required behavior:
+
+- Decode the same bytes as UTF-8 and Windows-1252.
+- Score both decoded strings for replacement characters and common mojibake patterns.
+- Use the cleaner decoded string.
+- Strip a leading BOM.
+- Repair common mojibake sequences such as `Ã±`, `Ã‘`, `Â`, `â€“`, and curly quote artifacts.
+- Normalize known high-risk place/entity names when the dataset contains accented names. For Philippine education datasets, explicitly normalize `Las Piñas` and `Parañaque` so duplicate mojibake variants do not appear as separate chart groups.
+- Apply this cleaning before validation, grouping, filtering, KPI computation, chart rendering, and table rendering.
+
+Reference implementation pattern:
+
+```jsx
+function repairMojibake(text){
+  return String(text||"")
+    .replace(/Ã‘/g,"Ñ").replace(/Ã±/g,"ñ")
+    .replace(/ã‘/g,"Ñ").replace(/ã±/g,"ñ")
+    .replace(/Ã/g,"Á").replace(/Ã¡/g,"á")
+    .replace(/Ã‰/g,"É").replace(/Ã©/g,"é")
+    .replace(/Ã/g,"Í").replace(/Ã­/g,"í")
+    .replace(/Ã“/g,"Ó").replace(/Ã³/g,"ó")
+    .replace(/Ãš/g,"Ú").replace(/Ãº/g,"ú")
+    .replace(/Ãœ/g,"Ü").replace(/Ã¼/g,"ü")
+    .replace(/â€“/g,"–").replace(/â€”/g,"—")
+    .replace(/â€˜/g,"‘").replace(/â€™/g,"’")
+    .replace(/â€œ/g,"“").replace(/â€/g,"”")
+    .replace(/Â /g," ").replace(/Â/g,"");
+}
+
+function decodeCsvText(buffer){
+  const bytes = new Uint8Array(buffer);
+  const utf8 = new TextDecoder("utf-8",{fatal:false}).decode(bytes);
+  const win1252 = new TextDecoder("windows-1252").decode(bytes);
+  const badness = t => (t.match(/\uFFFD/g)||[]).length*20 + (t.match(/Ã.|Â.|â[€\u0080-\u009F]/g)||[]).length*8;
+  const decoded = badness(utf8) > badness(win1252) ? win1252 : utf8;
+  return repairMojibake(decoded).replace(/^\uFEFF/,"");
+}
+
+function canonicalCell(text){
+  let v = repairMojibake(text).replace(/\s+/g," ").trim();
+  v = v
+    .replace(/\bLas\s+Pi(?:ñ|Ã±|ã±|ï¿½| |n)as\b/gi,"Las Piñas")
+    .replace(/\bPara(?:ñ|Ã±|ã±|ï¿½| |n)aque\b/gi,"Parañaque");
+  return v;
+}
+```
+
+## 5. Replication workflow for AI
+
+When asked to create another dashboard using this pattern, follow this workflow:
+
+1. **Inspect source data**
+    - Identify all fields.
+    - Confirm required columns.
+    - Identify hierarchy fields.
+    - Identify numeric fields.
+    - Identify status fields.
+    - Identify text/remarks fields.
+2. **Define normalized row model**
+    - Convert raw CSV rows into consistent keys.
+    - Treat blank/empty cells as null. Do not substitute a placeholder such as `"Unassigned"`, and exclude null values entirely from all summaries, breakdowns, segment composition, chart categories, KPI breakdown cards, and filter option lists. Only label blanks with a value like `"Unassigned"` if the user explicitly requests it.
+    - Convert numeric fields safely.
+    - Normalize yes/no/N/A/blank fields.
+    - Compute `issue`.
+    - Compute `noInventory`.
+3. **Define KPI logic**
+    - Total records.
+    - Total inventory/quantity.
+    - Positive/available/working metric.
+    - Negative/broken/risk metric.
+    - Spare/pending/secondary metric.
+    - Attention/issue metric.
+    - Missing/no-inventory metric.
+4. **Define filters**
+    - Top-level filter.
+    - Second-level filter.
+    - Drilldown mode if applicable.
+    - Status/risk filter.
+    - Unit mode filter.
+    - If multiple files are provided, define one sidebar page per file instead of a dataset tab control.
+5. **Build complete single-file HTML**
+    - Embedded CSS.
+    - Embedded JavaScript.
+    - CSV parser.
+    - Header validation.
+    - Normalization.
+    - Aggregation.
+    - Rendering functions.
+    - Modal functions.
+    - Event listeners.
+    - Responsive CSS.
+6. **Never output partial snippets only**
+    - The final answer must include a complete HTML file unless the user asks for a component only.
+
+## 6. Generic HTML template
+
+Use this as a starting point for any future inventory and monitoring dashboard. Replace the placeholder constants and field mappings.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Inventory and Monitoring Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --navy:#08315F;
+  --blue:#075985;
+  --blue-600:#0284C7;
+  --blue-400:#7DD3FC;
+  --blue-100:#E0F2FE;
+  --blue-50:#F0F9FF;
+  --gold:#FBBF24;
+  --amber:#D97706;
+  --red:#B91C1C;
+  --red-100:#FEE2E2;
+  --green:#16A34A;
+  --green-100:#DCFCE7;
+  --purple:#7C3AED;
+  --slate:#475569;
+  --card:#FFFFFF;
+  --text:#0F172A;
+  --muted:#64748B;
+  --line:#BAE6FD;
+  --font:"DM Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-head:"Plus Jakarta Sans", "DM Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --radius:22px;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  min-height:100vh;
+  color:var(--text);
+  font-family:var(--font);
+  background-color:var(--blue-50);
+  background-image:
+    radial-gradient(43.5% 49.5% at 10% 12%,rgba(7,89,133,.30) 0 34%,transparent 78%),
+    radial-gradient(46.5% 54% at 92% 10%,rgba(251,191,36,.42) 0 36%,transparent 80%),
+    radial-gradient(40.5% 48% at 84% 92%,rgba(125,211,252,.30) 0 34%,transparent 78%),
+    radial-gradient(45% 52.5% at 8% 92%,rgba(217,119,6,.26) 0 28%,rgba(251,191,36,.18) 42%,transparent 80%);
+}
+
+.app{display:grid;grid-template-columns:72px 1fr;min-height:100vh}
+
+.sidebar{
+  position:relative;
+  z-index:50;
+  width:72px;
+  color:white;
+  padding:24px 3px;
+  display:flex;
+  flex-direction:column;
+  gap:28px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--navy) 92%,transparent),color-mix(in srgb,var(--blue) 72%,var(--navy) 28%));
+  border-right:1px solid rgba(255,255,255,.24);
+  box-shadow:18px 0 42px rgba(11,31,77,.16);
+  overflow:visible;
+  transition:width .18s ease,padding .18s ease;
+}
+
+.sidebar:hover{width:260px;padding-left:24px;padding-right:24px}
+
+.brand{
+  width:66px;
+  height:96px;
+  flex:0 0 auto;
+  margin:0 auto;
+  display:grid;
+  place-items:center;
+  overflow:visible;
+  border-radius:16px;
+  background:transparent;
+  padding:2px;
+  white-space:nowrap;
+}
+
+.brand-logo{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+.brand-logo.horizontal{display:none}
+
+.sidebar:hover .brand{
+  width:100%;
+  height:135px;
+  padding:0;
+  justify-content:center;
+  overflow:visible;
+}
+.sidebar:hover .brand-logo.vertical{display:none}
+.sidebar:hover .brand-logo.horizontal{display:block;width:100%;height:auto;max-height:135px;object-fit:contain;margin:0 auto}
+
+.nav{display:flex;flex-direction:column;gap:8px}
+.nav a{
+  min-height:46px;
+  padding:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:11px;
+  border:1px solid transparent;
+  border-radius:16px;
+  color:#DFF6FF;
+  font-size:0;
+  font-weight:700;
+  line-height:1;
+  text-decoration:none;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.sidebar:hover .nav a{justify-content:flex-start;font-size:13px}
+.nav a.active{
+  background:rgba(255,255,255,.16);
+  color:white;
+  border-color:rgba(255,255,255,.28);
+  box-shadow:inset 0 -3px 0 var(--gold),0 0 18px color-mix(in srgb,var(--blue-400) 26%,transparent);
+}
+.nav-icon{width:22px;min-width:22px;text-align:center;font-size:15px;font-weight:800}
+
+.main{min-width:0;padding-bottom:28px}
+
+.topbar{
+  position:relative;
+  isolation:isolate;
+  min-height:122px;
+  margin:24px 28px 0;
+  padding:28px 44px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  overflow:hidden;
+  border:2.5px solid color-mix(in srgb,var(--blue) 64%,var(--navy) 36%);
+  border-radius:calc(var(--radius) + 6px);
+  background:
+    radial-gradient(circle at 92% 50%,rgba(251,191,36,.18) 0 7%,rgba(251,191,36,.08) 7.2% 13%,transparent 13.2%),
+    radial-gradient(circle at 98% 46%,rgba(251,191,36,.28) 0 10%,transparent 10.5%),
+    linear-gradient(112deg,var(--navy) 0 70%,rgba(255,255,255,.96) 70.2% 100%);
+}
+.topbar::before{
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:70%;
+  background:linear-gradient(135deg,var(--navy),var(--blue));
+  clip-path:polygon(0 0,88% 0,100% 100%,0 100%);
+  z-index:-2;
+}
+.topbar::after{
+  content:"";
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:61%;
+  width:13%;
+  background:color-mix(in srgb,var(--navy) 88%,#000 12%);
+  clip-path:polygon(0 0,58% 0,100% 100%,42% 100%);
+  z-index:-1;
+}
+
+.eyebrow{
+  margin:0 0 6px;
+  color:var(--gold)!important;
+  font-size:10px!important;
+  font-weight:800;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  max-width:100%;
+}
+.page-title{max-width:min(70%,900px)}
+.page-title h1{
+  margin:0;
+  color:var(--blue-100);
+  font-size:clamp(25px,2.4vw,38px);
+  font-weight:800;
+  letter-spacing:-.03em;
+  line-height:1.05;
+  text-shadow:0 2px 0 rgba(15,23,42,.28);
+}
+.page-title h1 span{color:#F87171}
+.page-title p{
+  max-width:780px;
+  margin:7px 0 0;
+  color:#DFF6FF;
+  font-size:13px;
+  font-weight:600;
+  line-height:1.35;
+}
+.status-pill{
+  min-width:230px;
+  padding:12px 14px;
+  border:2px solid var(--blue-100);
+  border-radius:18px;
+  background:rgba(255,255,255,.92);
+  color:var(--navy);
+  text-align:right;
+}
+.status-pill small{
+  display:block;
+  color:var(--muted);
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+.status-pill strong{display:block;margin-top:4px;font-size:15px;font-weight:800}
+.status-pill span{display:block;margin-top:2px;color:var(--muted);font-size:11px;font-weight:600}
+
+.content{
+  width:min(1500px,calc(100% - 56px));
+  margin:12px auto 0;
+  display:grid;
+  gap:10px;
+}
+
+.card{
+  min-width:0;
+  background:var(--card);
+  border:2.5px solid color-mix(in srgb,var(--blue) 64%,var(--navy) 36%);
+  border-radius:var(--radius);
+}
+.card-inner{padding:16px}
+.card-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:14px;
+  margin-bottom:12px;
+}
+.card h2{
+  margin:0;
+  color:var(--navy);
+  font-size:20px;
+  font-weight:800;
+  letter-spacing:-.02em;
+}
+.card-subtitle{
+  margin:4px 0 0;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
+  line-height:1.35;
+}
+
+.controls{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:8px;
+  align-items:end;
+}
+label{display:grid;gap:6px;min-width:0}
+label span{
+  color:var(--muted);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.select,.search,.button{
+  width:100%;
+  height:42px;
+  border:2px solid var(--line);
+  border-radius:14px;
+  background:white;
+  color:var(--navy);
+  padding:10px 12px;
+  font-family:var(--font);
+  font-size:12px;
+  font-weight:700;
+  outline:none;
+}
+.button{
+  border:0;
+  background:var(--blue);
+  color:white;
+  font-weight:800;
+  cursor:pointer;
+}
+.button:hover{background:var(--navy)}
+.button.secondary{background:var(--blue-100);color:var(--navy)}
+.button.secondary.active{background:var(--gold);color:var(--navy);box-shadow:inset 0 -3px 0 rgba(8,49,95,.16)}
+.button:disabled{opacity:.45;cursor:not-allowed}
+.chart-toggle{
+  position:relative;
+  width:auto!important;
+  height:32px!important;
+  padding:7px 11px 7px 28px!important;
+  border:1.5px solid #DBEAFE!important;
+  border-radius:999px!important;
+  background:#F8FAFC!important;
+  color:var(--blue)!important;
+  font-size:11px!important;
+  font-weight:800;
+}
+.chart-toggle::before{
+  content:"⇄";
+  position:absolute;
+  left:10px;
+  top:50%;
+  transform:translateY(-50%);
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+}
+
+.file-note{
+  margin-top:9px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:600;
+  line-height:1.35;
+}
+
+.kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:8px;
+}
+.kpi-card{position:relative;overflow:hidden;border-left-width:6px;background:white}
+.kpi-card::after{
+  content:"";
+  position:absolute;
+  right:-28px;
+  bottom:-34px;
+  width:94px;
+  height:94px;
+  border-radius:999px;
+  background:color-mix(in srgb,var(--blue-100) 72%,transparent);
+  pointer-events:none;
+}
+.kpi-card .card-inner{padding:12px 13px}
+.kpi-top{display:flex;justify-content:space-between;gap:8px;margin-bottom:5px;position:relative;z-index:1}
+.kpi-title{
+  margin:0 0 8px;
+  color:var(--blue);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.12em;
+  line-height:1.1;
+  text-transform:uppercase;
+  position:relative;
+  z-index:1;
+}
+.tag{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  padding:5px 8px;
+  font-size:8px;
+  font-weight:800;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.tag.info{background:#DBEAFE;color:#1E40AF}
+.tag.ok{background:#DCFCE7;color:#166534}
+.tag.warn{background:#FEF3C7;color:#92400E}
+.tag.risk{background:#FEE2E2;color:#991B1B}
+.tag.purple{background:#EDE9FE;color:#5B21B6}
+.tag.slate{background:#F1F5F9;color:#334155}
+.kpi-card .kpi-number{
+  margin:0 0 2px;
+  color:var(--navy);
+  font-size:clamp(36px,2.5vw,43px);
+  font-weight:800;
+  letter-spacing:-.03em;
+  line-height:1;
+  position:relative;
+  z-index:1;
+}
+.kpi-sub{margin:0;color:var(--muted);font-size:10px;line-height:1.2;font-weight:600;position:relative;z-index:1}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:10px}
+.wide{grid-column:1/-1}
+
+.drill-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.crumb{
+  border:1.5px solid var(--line);
+  border-radius:999px;
+  background:var(--blue-50);
+  color:var(--blue);
+  padding:7px 12px;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+.crumb.active{background:var(--navy);color:white;border-color:var(--navy)}
+
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.legend-item{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid #DBEAFE;
+  border-radius:999px;
+  background:#F8FAFC;
+  padding:7px 10px;
+  color:var(--navy);
+  font-size:11px;
+  font-weight:700;
+}
+.dot{width:9px;height:9px;border-radius:999px;display:inline-block}
+
+.bars{display:grid;gap:5px}
+.bar-row{
+  display:grid;
+  grid-template-columns:165px minmax(0,1fr) 92px;
+  gap:10px;
+  align-items:center;
+  font-size:12px;
+  font-weight:700;
+  animation:fadeSlide .35s ease both;
+}
+.bar-row.drillable{cursor:pointer;border-radius:12px;padding:2px}
+.bar-row.drillable:hover{background:#EFF6FF}
+.track{display:flex;height:21px;background:var(--blue-100);border-radius:999px;overflow:hidden}
+.segment{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+  height:100%;
+  overflow:hidden;
+  color:white;
+  font-size:12px;
+  font-weight:800;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+  white-space:nowrap;
+  animation:growX .72s cubic-bezier(.2,.8,.2,1) both;
+  transform-origin:left;
+}
+.seg-working{background:linear-gradient(90deg,#15803D,var(--green))}
+.seg-broken{background:linear-gradient(90deg,var(--red),#EF4444)}
+.seg-spare{background:linear-gradient(90deg,var(--gold),var(--amber))}
+.seg-issue{background:linear-gradient(90deg,#5B21B6,var(--purple))}
+.seg-none{background:linear-gradient(90deg,#334155,var(--slate))}
+
+.heatmap-matrix{display:grid;gap:4px;min-width:640px;overflow-x:auto}
+.matrix-row{
+  display:grid;
+  grid-template-columns:minmax(150px,1.2fr) repeat(5,minmax(76px,.75fr));
+  gap:4px;
+  animation:fadeSlide .24s ease both;
+}
+.matrix-row.drillable{cursor:pointer}
+.matrix-row.drillable:hover .matrix-cell{box-shadow:0 5px 12px rgba(8,49,95,.10);transform:translateY(-1px)}
+.matrix-header .matrix-cell{
+  min-height:auto;
+  padding:6px 8px;
+  background:var(--navy);
+  color:white;
+  font-size:9px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+.matrix-cell{
+  min-height:42px;
+  padding:6px 8px;
+  border:1px solid #DBEAFE;
+  border-radius:10px;
+  background:#F8FAFC;
+  color:var(--navy);
+  transition:transform .16s ease,box-shadow .16s ease;
+}
+.matrix-cell strong{display:block;font-size:11px;font-weight:800;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.matrix-cell b{display:block;font-size:16px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.matrix-cell small{display:block;margin-top:2px;color:rgba(8,49,95,.72);font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;line-height:1.05}
+.matrix-cell.heat-value{
+  background:#F8FAFC;
+  border-color:#DBEAFE;
+}
+.matrix-cell.heat-value small,
+.matrix-cell.heat-value b{
+  color:inherit;
+}
+
+.donut-layout{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:12px;
+  align-items:center;
+  justify-items:center;
+}
+.donut-layout .table-wrap{
+  width:100%;
+  min-width:0;
+  max-height:180px;
+  border-radius:12px;
+  overflow:auto;
+}
+.donut-layout table{font-size:11px;table-layout:auto}
+.donut-layout th{padding:5px 7px;font-size:9px;white-space:nowrap}
+.donut-layout td{padding:4px 7px;white-space:nowrap}
+.donut-layout td:first-child{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.donut-layout .dot{width:8px;height:8px;flex:0 0 auto}
+.donut-stack{
+  position:relative;
+  width:236px;
+  height:236px;
+  margin:auto;
+  display:grid;
+  place-items:center;
+  animation:popIn .45s ease both;
+}
+.donut{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  margin:auto;
+  border-radius:50%;
+}
+.donut svg{
+  width:100%;
+  height:100%;
+  transform:rotate(-90deg);
+  border-radius:50%;
+  overflow:visible;
+}
+.donut-center{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  color:var(--navy);
+  font-weight:800;
+  font-size:13px;
+  pointer-events:none;
+}
+
+.histogram{
+  height:292px;
+  display:grid;
+  grid-template-columns:repeat(var(--cols,6),minmax(54px,1fr));
+  gap:10px;
+  align-items:end;
+  padding:22px 8px 52px;
+  border-left:2px solid #DBEAFE;
+  border-bottom:2px solid #DBEAFE;
+  background:linear-gradient(to top,#F8FAFC 1px,transparent 1px) 0 0/100% 20%;
+  overflow-x:auto;
+}
+.hist-col{height:100%;min-width:54px;display:grid;grid-template-rows:1fr auto;gap:8px}
+.hist-area{height:100%;display:flex;align-items:flex-end;justify-content:center}
+.hist-wrap{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  gap:6px;
+  animation:growY .72s cubic-bezier(.2,.8,.2,1) both;
+  transform-origin:bottom;
+}
+.hist-value{text-align:center;color:var(--navy);font-size:10px;font-weight:800}
+.hist-bar{min-height:16px;border-radius:14px 14px 4px 4px}
+.hist-label{color:var(--muted);font-size:10px;font-weight:700;line-height:1.1;text-align:center}
+
+.table-controls{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.table-controls .select{width:auto;min-width:120px;height:36px}
+.table-controls .button{width:auto;height:36px;padding:8px 12px}
+.table-page-label{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.table-wrap{width:100%;max-height:430px;overflow:auto;border:1px solid #DBEAFE;border-radius:18px}
+table{width:100%;max-width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+th,td{
+  padding:10px 8px;
+  border-bottom:1px solid #E2E8F0;
+  text-align:left;
+  vertical-align:middle;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  color:var(--muted);
+  background:#F8FAFC;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+thead tr:nth-child(2) th{top:38px;z-index:3;background:#EFF6FF}
+#recordsTable{min-width:1200px}
+#recordsTable td.col-freeze{position:sticky;z-index:1;background:white}
+#recordsTable th.col-freeze{position:sticky;z-index:6}
+#recordsTable .col-freeze-1{left:0}
+#recordsTable .col-freeze-2{left:90px;box-shadow:2px 0 4px rgba(8,49,95,.08)}
+#recordsTable thead .col-freeze{background:#F8FAFC}
+#recordsTable thead tr:nth-child(2) .col-freeze{background:#EFF6FF}
+#recordsTable .record-row:hover td.col-freeze{background:var(--blue-50)}
+.sort-button{
+  width:100%;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  text-align:left;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  cursor:pointer;
+}
+.sort-button:hover,.sort-button.active{color:var(--blue)}
+.sort-icon{float:right;color:var(--blue);font-size:9px}
+.column-filter{
+  width:100%;
+  min-width:78px;
+  height:30px;
+  border:1.5px solid var(--line);
+  border-radius:10px;
+  background:white;
+  color:var(--navy);
+  padding:6px 7px;
+  font-family:var(--font);
+  font-size:10px;
+  font-weight:700;
+  outline:none;
+  text-transform:none;
+  letter-spacing:0;
+}
+td{color:#1E293B;font-weight:600}
+.record-row{cursor:pointer}
+.record-row:hover td{background:var(--blue-50)}
+.update-age{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:56px;
+  padding:5px 7px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.1;
+}
+.update-age.ok{background:#DCFCE7;color:#166534}
+.update-age.warn{background:#FEF3C7;color:#92400E}
+.update-age.risk{background:#FEE2E2;color:#991B1B}
+.update-age.neutral{background:#F1F5F9;color:#334155}
+
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:120;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(8,49,95,.52);
+  backdrop-filter:blur(4px);
+}
+.modal-backdrop.open{display:flex}
+.modal{
+  width:min(720px,100%);
+  border:2.5px solid var(--blue);
+  border-radius:24px;
+  background:white;
+  box-shadow:0 28px 70px rgba(8,49,95,.28);
+  overflow:hidden;
+}
+.modal-head{
+  padding:18px 20px;
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  background:linear-gradient(135deg,var(--navy),var(--blue));
+  color:white;
+}
+.modal-head h2{margin:0;color:white;font-size:20px;font-weight:800}
+.modal-head p{margin:5px 0 0;color:var(--blue-100);font-size:12px;font-weight:600}
+.modal-close{
+  width:34px;
+  height:34px;
+  border:1px solid rgba(255,255,255,.38);
+  border-radius:12px;
+  background:rgba(255,255,255,.14);
+  color:white;
+  font-weight:800;
+  cursor:pointer;
+}
+.modal-body{padding:18px 20px 20px;display:grid;gap:12px}
+.detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.detail{padding:11px 12px;border:1.5px solid var(--line);border-radius:16px;background:var(--blue-50)}
+.detail small{display:block;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.detail b{display:block;margin-top:3px;color:var(--navy);font-size:15px;font-weight:800}
+.note{
+  margin:0;
+  padding:12px;
+  border:1.5px solid var(--line);
+  border-radius:16px;
+  background:var(--blue-50);
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
+  line-height:1.4;
+}
+
+@keyframes fadeSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes growX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes popIn{from{opacity:.2;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+
+@media(max-width:1180px){
+  .kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .grid{grid-template-columns:1fr}
+  .controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:1000px){
+  body{padding-bottom:82px}
+  .app{grid-template-columns:1fr}
+  .sidebar{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    top:auto;
+    z-index:80;
+    display:block;
+    width:auto;
+    padding:8px 10px max(8px,env(safe-area-inset-bottom));
+    border:0;
+    border-top:1px solid rgba(255,255,255,.46);
+    background:linear-gradient(90deg,color-mix(in srgb,var(--blue) 80%,var(--navy) 20%),var(--blue-600));
+  }
+  .sidebar:hover{width:auto;padding:8px 10px max(8px,env(safe-area-inset-bottom))}
+  .brand{display:none}
+  .nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:min(760px,100%);margin:0 auto}
+  .nav a,.sidebar:hover .nav a{display:grid;place-items:center;gap:2px;min-height:48px;padding:6px 2px;border-radius:16px;font-size:8px;line-height:1;text-align:center}
+  .nav-icon{width:auto;min-width:0;font-size:14px}
+  .topbar{min-height:104px;margin:15px 16px 0;padding:15px 23px}
+  .content{width:calc(100% - 32px)}
+  .card{border-width:2px;border-radius:14px}
+  .bar-row{grid-template-columns:110px minmax(0,1fr) 58px;gap:7px}
+}
+@media(max-width:680px){
+  .topbar{display:grid}
+  .topbar::before{width:100%;clip-path:none}
+  .topbar::after{display:none}
+  .page-title{max-width:100%}
+  .status-pill{width:100%;text-align:left}
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .controls{grid-template-columns:1fr}
+  .donut-layout{grid-template-columns:1fr}
+  .detail-grid{grid-template-columns:1fr}
+  .card-header{display:block}
+  .bar-row{grid-template-columns:1fr}
+}
+h1,h2,h3,h4,.eyebrow,.kpi-card .kpi-number,.kpi-title,.button,.chart-toggle,.crumb,.status-pill strong,.modal-head h2{font-family:var(--font-head)}
+</style>
+</head>
+
+<body data-current-page="overview">
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="overview.html" aria-label="InsightED dashboard home">
+      <img class="brand-logo vertical" src="insighted_logo_vertical.png" alt="InsightED" />
+      <img class="brand-logo horizontal" src="insighted_logo_horizontal.png" alt="InsightED" />
+    </a>
+    <nav class="nav" aria-label="Dashboard page navigation">
+      <!-- For multi-file dashboards, replace these with one dedicated page link per file, such as personnel.html and enrolment.html. Do not use dataset tabs in the main content. -->
+      <a class="active" href="overview.html" data-page="overview"><span class="nav-icon">⌂</span>Overview</a>
+      <a href="drilldown.html" data-page="drilldown"><span class="nav-icon">▤</span>Drilldown</a>
+      <a href="records.html" data-page="records"><span class="nav-icon">▧</span>Records</a>
+      <a href="issues.html" data-page="issues"><span class="nav-icon">!</span>Issues</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="page-title">
+        <p class="eyebrow">DEPARTMENT OF EDUCATION | HUMAN RESOURCE AND ORGANIZATIONAL DEVELOPMENT AND INFRASTRUCTURE</p>
+        <h1>Inventory and <span>Monitoring Dashboard</span></h1>
+        <p>Tracks quantity, condition, readiness, and issue status across a configurable hierarchy.</p>
+      </div>
+
+    </header>
+
+    <section class="content">
+      <section class="card">
+        <div class="card-inner">
+          <div class="card-header">
+            <div>
+              <h2>Data Controls</h2>
+              <p class="card-subtitle">Filter records, change drilldown mode, switch unit aggregation, and reset the view.</p>
+            </div>
+          </div>
+
+          <div class="controls">
+            <label>
+              <span>Level 1</span>
+              <select id="level1Select" class="select"></select>
+            </label>
+            <label>
+              <span>Level 2</span>
+              <select id="level2Select" class="select"></select>
+            </label>
+            <label>
+              <span>3rd drilldown</span>
+              <select id="level3ModeSelect" class="select">
+                <option value="level3">Level 3</option>
+                <option value="alternateLevel3">Alternate Level 3</option>
+              </select>
+            </label>
+            <label>
+              <span>Status</span>
+              <select id="statusSelect" class="select">
+                <option value="all">All records</option>
+                <option value="hasWorking">Has working/available</option>
+                <option value="hasBroken">Has broken/unavailable</option>
+                <option value="needsAttention">Needs attention</option>
+                <option value="noInventory">No inventory</option>
+              </select>
+            </label>
+            <label>
+              <span>Units</span>
+              <select id="unitModeSelect" class="select">
+                <option value="quantity">Total quantity</option>
+                <option value="records">Number of records</option>
+              </select>
+            </label>
+            <button id="resetBtn" class="button" type="button">Reset</button>
+          </div>
+
+          <p class="file-note" id="dataSourceNote">Loading CSV. Replace CSV_FILE_NAME and REQUIRED_FIELDS in the script.</p>
+        </div>
+      </section>
+
+      <section class="kpi-grid" id="kpiGrid"></section>
+
+      <section class="grid">
+        <article class="card wide" data-panel="overview drilldown">
+          <div class="card-inner">
+            <div class="card-header">
+              <div>
+                <h2 id="barTitle">Inventory by Level 1</h2>
+                <p class="card-subtitle">Drill down through the configured hierarchy. Toggle heat map to convert stacked bars into a matrix view.</p>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:nowrap">
+                <span class="tag info" id="scopeTag">Level 1 view</span>
+                <button id="heatMapToggle" class="button secondary chart-toggle" type="button">Stacked bars</button>
+              </div>
+            </div>
+
+            <div id="drillTrail" class="drill-row"></div>
+
+            <div class="legend">
+              <span class="legend-item"><i class="dot" style="background:#16A34A"></i>Working</span>
+              <span class="legend-item"><i class="dot" style="background:#B91C1C"></i>Broken</span>
+              <span class="legend-item"><i class="dot" style="background:#FBBF24"></i>Spares</span>
+              <span class="legend-item"><i class="dot" style="background:#7C3AED"></i>Needs attention</span>
+              <span class="legend-item"><i class="dot" style="background:#475569"></i>No inventory</span>
+            </div>
+
+            <div id="inventoryBars" class="bars"></div>
+          </div>
+        </article>
+
+        <article class="card" data-panel="overview issues">
+          <div class="card-inner">
+            <div class="card-header">
+              <div>
+                <h2>Condition Share</h2>
+                <p class="card-subtitle">Composition of working, broken, spare, and no-inventory records in the current scope.</p>
+              </div>
+              <button id="conditionChartToggle" class="button secondary chart-toggle" type="button">Chart type: Donut</button>
+            </div>
+            <div id="conditionChartBody" class="donut-layout"></div>
+          </div>
+        </article>
+
+        <article class="card" data-panel="overview issues">
+          <div class="card-inner">
+            <div class="card-header">
+              <div>
+                <h2>Issue Summary</h2>
+                <p class="card-subtitle">Counts of records with readiness concerns or missing requirements.</p>
+              </div>
+              <button id="issueChartToggle" class="button secondary chart-toggle" type="button">Chart type: Histogram</button>
+            </div>
+            <div id="issueHistogram" class="histogram"></div>
+          </div>
+        </article>
+
+        <article class="card wide" data-panel="overview records issues">
+          <div class="card-inner">
+            <div class="card-header">
+              <div>
+                <h2>Inventory Records</h2>
+                <p class="card-subtitle">Search, filter, sort, paginate, and open record-level details.</p>
+              </div>
+              <label style="width:min(320px,100%)">
+                <span>Search records / remarks</span>
+                <input id="recordSearch" class="search" type="search" placeholder="Search ID, name, hierarchy, remarks..." />
+              </label>
+            </div>
+
+            <div class="table-controls" id="tableControlsTop"></div>
+
+            <div class="table-wrap">
+              <table id="recordsTable">
+                <thead>
+                  <tr>
+                    <th class="col-freeze col-freeze-1" style="width:90px"><button class="sort-button" type="button" data-sort-key="id">ID <span class="sort-icon">↕</span></button></th>
+                    <th class="col-freeze col-freeze-2" style="width:200px"><button class="sort-button" type="button" data-sort-key="name">Name <span class="sort-icon">↕</span></button></th>
+                    <th><button class="sort-button" type="button" data-sort-key="level1">Level 1 <span class="sort-icon">↕</span></button></th>
+                    <th><button class="sort-button" type="button" data-sort-key="level2">Level 2 <span class="sort-icon">↕</span></button></th>
+                    <th><button class="sort-button" type="button" data-sort-key="working">Working <span class="sort-icon">↕</span></button></th>
+                    <th><button class="sort-button" type="button" data-sort-key="broken">Broken <span class="sort-icon">↕</span></button></th>
+                    <th><button class="sort-button" type="button" data-sort-key="spare">Spare <span class="sort-icon">↕</span></button></th>
+                    <th><button class="sort-button" type="button" data-sort-key="statusA">Status A <span class="sort-icon">↕</span></button></th>
+                    <th><button class="sort-button" type="button" data-sort-key="statusB">Status B <span class="sort-icon">↕</span></button></th>
+                    <th><button class="sort-button" type="button" data-sort-key="attention">Attention <span class="sort-icon">↕</span></button></th>
+                  </tr>
+                  <tr>
+                    <th class="col-freeze col-freeze-1"><input class="column-filter" type="search" data-column-filter="id" placeholder="Filter"></th>
+                    <th class="col-freeze col-freeze-2"><input class="column-filter" type="search" data-column-filter="name" placeholder="Filter"></th>
+                    <th><input class="column-filter" type="search" data-column-filter="level1" placeholder="Filter"></th>
+                    <th><input class="column-filter" type="search" data-column-filter="level2" placeholder="Filter"></th>
+                    <th><input class="column-filter" type="search" data-column-filter="working" placeholder="#"></th>
+                    <th><input class="column-filter" type="search" data-column-filter="broken" placeholder="#"></th>
+                    <th><input class="column-filter" type="search" data-column-filter="spare" placeholder="#"></th>
+                    <th>
+                      <select class="column-filter" data-column-filter="statusA">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                        <option value="N/A">N/A</option>
+                        <option value="Blank">Blank</option>
+                      </select>
+                    </th>
+                    <th>
+                      <select class="column-filter" data-column-filter="statusB">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                        <option value="N/A">N/A</option>
+                        <option value="Blank">Blank</option>
+                      </select>
+                    </th>
+                    <th>
+                      <select class="column-filter" data-column-filter="attention">
+                        <option value="">All</option>
+                        <option value="Review">Review</option>
+                        <option value="OK">OK</option>
+                      </select>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="recordTableBody"></tbody>
+              </table>
+            </div>
+
+            <div class="table-controls" id="tableControlsBottom"></div>
+          </div>
+        </article>
+      </section>
+    </section>
+  </main>
+</div>
+
+<div id="recordModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <section class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="modalTitle">Record Details</h2>
+        <p id="modalMeta">Inventory and monitoring details.</p>
+      </div>
+      <button class="modal-close" type="button" onclick="closeRecordModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid" id="modalDetails"></div>
+      <p class="note" id="modalRemarks">No remarks.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+/*
+REPLACE THESE CONSTANTS FOR YOUR DATASET.
+The CSV must be reachable from the same folder as this HTML or served through a local web server.
+*/
+const CSV_FILE_NAME = "your_data.csv";
+const CSV_FILE_CANDIDATES = [
+  CSV_FILE_NAME,
+  "./" + CSV_FILE_NAME,
+  "data/" + CSV_FILE_NAME,
+  "./data/" + CSV_FILE_NAME
+];
+
+/*
+Use lowercase exact CSV header names.
+Example for CCTV:
+["school_id","iern","u9_cctv_recording_clear","u9_dvr_room_cool_locked","u9_cctv_wires_protected","u9_cctv_working","u9_cctv_broken","u9_cctv_spares","unit9_updated_at"]
+*/
+const REQUIRED_FIELDS = [
+  "id",
+  "name",
+  "level1",
+  "level2",
+  "level3",
+  "working",
+  "broken",
+  "spare"
+];
+
+let rawRows = [];
+let drill = { level1:null, level2:null, level3:null, level4:null };
+let level3Mode = "level3";
+let drillChartMode = "stacked";
+let unitMode = "quantity";
+let conditionChartMode = "donut";
+let issueChartMode = "histogram";
+const currentPage = document.body.dataset.currentPage || inferCurrentPage();
+let tableState = { page:1, pageSize:25, sortKey:"level1", sortDirection:"asc", filters:{} };
+
+function parseCsv(text){
+  const rows = [];
+  let row = [], cell = "", quote = false;
+
+  for(let i=0;i<text.length;i++){
+    const ch = text[i], next = text[i+1];
+
+    if(ch === '"' && quote && next === '"'){
+      cell += '"';
+      i++;
+      continue;
+    }
+
+    if(ch === '"'){
+      quote = !quote;
+      continue;
+    }
+
+    if(ch === "," && !quote){
+      row.push(cell);
+      cell = "";
+      continue;
+    }
+
+    if((ch === "\n" || ch === "\r") && !quote){
+      if(ch === "\r" && next === "\n") i++;
+      row.push(cell);
+      if(row.some(v => String(v).trim() !== "")) rows.push(row);
+      row = [];
+      cell = "";
+      continue;
+    }
+
+    cell += ch;
+  }
+
+  if(cell || row.length){
+    row.push(cell);
+    if(row.some(v => String(v).trim() !== "")) rows.push(row);
+  }
+
+  if(!rows.length) return [];
+
+  const headers = rows.shift().map(h => h.trim());
+  validateCsvHeaders(headers);
+
+  return rows.map(values => {
+    const obj = {};
+    headers.forEach((h,i) => obj[h] = (values[i] ?? "").trim());
+    return normalizeRow(obj);
+  });
+}
+
+function validateCsvHeaders(headers){
+  const normalized = headers.map(h => h.trim().toLowerCase());
+  const missing = REQUIRED_FIELDS.filter(field => !normalized.includes(field));
+  if(missing.length){
+    throw new Error("Missing required field(s): " + missing.join(", "));
+  }
+}
+
+function normalizeRow(r){
+  /*
+  EDIT THIS FUNCTION FOR YOUR DATASET.
+
+  Map raw CSV fields into the standard row shape:
+  - id
+  - name
+  - level1 to level4
+  - working, broken, spare
+  - statusA, statusB, statusC
+  - remarks
+  - updated_at
+  - noInventory
+  - issue
+  */
+
+  const working = number(r.working);
+  const broken = number(r.broken);
+  const spare = number(r.spare);
+  const remarks = r.remarks || "";
+  const statusA = status(r.status_a || r.statusA || "");
+  const statusB = status(r.status_b || r.statusB || "");
+  const statusC = status(r.status_c || r.statusC || "");
+
+  const noInventory = working === 0 && broken === 0 && spare === 0;
+  const textAttention = /repair|replace|broken|risk|issue|urgent|missing|failed/i.test(remarks);
+  const issue = broken > 0 || statusA === "no" || statusB === "no" || statusC === "no" || textAttention;
+
+  return {
+    id: cleanText(r.id, "No ID"),
+    name: cleanText(r.name, "Unnamed record"),
+    level1: cleanText(r.level1 || r.region || r.category, "Unassigned"),
+    level2: cleanText(r.level2 || r.division || r.subcategory, "Unassigned"),
+    level3: cleanText(r.level3 || r.municipality || r.group, "Unassigned"),
+    alternateLevel3: cleanText(r.alternateLevel3 || r.legislative_district || r.alt_group, "Unassigned"),
+    level4: cleanText(r.level4 || r.school_district || r.site, "Unassigned"),
+    working,
+    broken,
+    spare,
+    statusA,
+    statusB,
+    statusC,
+    remarks,
+    updated_at: r.updated_at || r.last_updated || "",
+    noInventory,
+    issue
+  };
+}
+
+function cleanText(v,fallback="Unassigned"){ return String(v || fallback).trim() || fallback; }
+function number(v){ return Math.max(0, Number(String(v ?? "0").replace(/[^\d.-]/g,"")) || 0); }
+function status(v){
+  const s = String(v || "").trim().toLowerCase();
+  if(["yes","true","1","ok","pass","passed"].includes(s)) return "yes";
+  if(["no","false","0","fail","failed"].includes(s)) return "no";
+  if(["n/a","na","not applicable"].includes(s)) return "n/a";
+  return "blank";
+}
+function labelStatus(s){ return s === "yes" ? "Yes" : s === "no" ? "No" : s === "n/a" ? "N/A" : "Blank"; }
+function fmt(v){ return Number(v || 0).toLocaleString(); }
+function pct(v){ return Math.round(v || 0) + "%"; }
+function escapeJs(s){ return String(s || "").replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
+
+function filteredRows(){
+  const q = recordSearch.value.trim().toLowerCase();
+  const level1 = level1Select.value;
+  const level2 = level2Select.value;
+  const statusFilter = statusSelect.value;
+
+  return rawRows.filter(r => {
+    if(level1 !== "all" && r.level1 !== level1) return false;
+    if(level2 !== "all" && r.level2 !== level2) return false;
+    if(drill.level1 && r.level1 !== drill.level1) return false;
+    if(drill.level2 && r.level2 !== drill.level2) return false;
+    if(drill.level3 && r[level3Mode] !== drill.level3) return false;
+    if(drill.level4 && r.level4 !== drill.level4) return false;
+
+    if(statusFilter === "hasWorking" && r.working <= 0) return false;
+    if(statusFilter === "hasBroken" && r.broken <= 0) return false;
+    if(statusFilter === "needsAttention" && !r.issue) return false;
+    if(statusFilter === "noInventory" && !r.noInventory) return false;
+
+    if(q){
+      const haystack = [r.id,r.name,r.level1,r.level2,r.level3,r.alternateLevel3,r.level4,r.remarks].join(" ").toLowerCase();
+      if(!haystack.includes(q)) return false;
+    }
+
+    return true;
+  });
+}
+
+function aggregate(rows,key){
+  const map = new Map();
+
+  rows.forEach(r => {
+    const name = r[key] || "Unassigned";
+
+    if(!map.has(name)){
+      map.set(name,{
+        name,
+        records:0,
+        working:0,
+        broken:0,
+        spare:0,
+        workingRecords:0,
+        brokenRecords:0,
+        spareRecords:0,
+        inventoryRecords:0,
+        issue:0,
+        noInventory:0,
+        statusANo:0,
+        statusBNo:0,
+        statusCNo:0
+      });
+    }
+
+    const g = map.get(name);
+    g.records++;
+    g.working += r.working;
+    g.broken += r.broken;
+    g.spare += r.spare;
+    if(r.working > 0) g.workingRecords++;
+    if(r.broken > 0) g.brokenRecords++;
+    if(r.spare > 0) g.spareRecords++;
+    if(r.working > 0 || r.broken > 0 || r.spare > 0) g.inventoryRecords++;
+    if(r.issue) g.issue++;
+    if(r.noInventory) g.noInventory++;
+    if(r.statusA === "no") g.statusANo++;
+    if(r.statusB === "no") g.statusBNo++;
+    if(r.statusC === "no") g.statusCNo++;
+  });
+
+  return Array.from(map.values()).sort((a,b) => a.name.localeCompare(b.name));
+}
+
+function totals(rows){
+  return rows.reduce((t,r) => {
+    t.records++;
+    t.working += r.working;
+    t.broken += r.broken;
+    t.spare += r.spare;
+    if(r.working > 0) t.workingRecords++;
+    if(r.broken > 0) t.brokenRecords++;
+    if(r.spare > 0) t.spareRecords++;
+    if(r.working > 0 || r.broken > 0 || r.spare > 0) t.inventoryRecords++;
+    if(r.issue) t.issue++;
+    if(r.noInventory) t.noInventory++;
+    if(r.statusA === "no") t.statusANo++;
+    if(r.statusB === "no") t.statusBNo++;
+    if(r.statusC === "no") t.statusCNo++;
+    return t;
+  },{
+    records:0,
+    working:0,
+    broken:0,
+    spare:0,
+    workingRecords:0,
+    brokenRecords:0,
+    spareRecords:0,
+    inventoryRecords:0,
+    issue:0,
+    noInventory:0,
+    statusANo:0,
+    statusBNo:0,
+    statusCNo:0
+  });
+}
+
+function isRecordUnitMode(){ return unitMode === "records"; }
+function metricValue(summary,key){
+  if(!isRecordUnitMode()) return summary[key] || 0;
+  if(key === "working") return summary.workingRecords || 0;
+  if(key === "broken") return summary.brokenRecords || 0;
+  if(key === "spare") return summary.spareRecords || 0;
+  if(key === "inventory") return summary.inventoryRecords || 0;
+  return summary[key] || 0;
+}
+
+function renderControls(){
+  const level1s = ["all",...Array.from(new Set(rawRows.map(r => r.level1))).sort()];
+  const oldLevel1 = level1Select.value || "all";
+  level1Select.innerHTML = level1s.map(v => `<option value="${v}">${v === "all" ? "All level 1" : v}</option>`).join("");
+  level1Select.value = level1s.includes(oldLevel1) ? oldLevel1 : "all";
+
+  const level2s = ["all",...Array.from(new Set(rawRows.filter(r => level1Select.value === "all" || r.level1 === level1Select.value).map(r => r.level2))).sort()];
+  const oldLevel2 = level2Select.value || "all";
+  level2Select.innerHTML = level2s.map(v => `<option value="${v}">${v === "all" ? "All level 2" : v}</option>`).join("");
+  level2Select.value = level2s.includes(oldLevel2) ? oldLevel2 : "all";
+
+  level3ModeSelect.value = level3Mode;
+  unitModeSelect.value = unitMode;
+}
+
+function renderKpis(rows){
+  const t = totals(rows);
+  const inventoryTotal = isRecordUnitMode() ? metricValue(t,"inventory") : t.working + t.broken + t.spare;
+
+  const cards = [
+    ["Total Records",fmt(t.records),"records in current scope","info"],
+    [isRecordUnitMode() ? "Records With Inventory" : "Total Inventory",fmt(inventoryTotal),isRecordUnitMode() ? "records with working, broken, or spare quantity" : "working + broken + spare quantity","info"],
+    ["Working",fmt(metricValue(t,"working")),isRecordUnitMode() ? "records with working quantity" : "working quantity","ok"],
+    ["Broken",fmt(metricValue(t,"broken")),isRecordUnitMode() ? "records with broken quantity" : "broken quantity","risk"],
+    ["Spare",fmt(metricValue(t,"spare")),isRecordUnitMode() ? "records with spare quantity" : "spare quantity","warn"],
+    ["Attention",fmt(t.issue),"records with issues","purple"],
+    ["No Inventory",fmt(t.noInventory),"records with zero quantity","slate"]
+  ];
+
+  kpiGrid.innerHTML = cards.map(c => `
+    <article class="card kpi-card">
+      <div class="card-inner">
+        <p class="kpi-title">${c[0]}</p>
+        <h2 class="kpi-number">${c[1]}</h2>
+        <p class="kpi-sub">${c[2]}</p>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderTrail(){
+  const crumbs = [`<button class="crumb ${!drill.level1 ? "active" : ""}" onclick="setDrill(null,null,null,null)">All</button>`];
+
+  if(drill.level1) crumbs.push(`<button class="crumb ${!drill.level2 ? "active" : ""}" onclick="setDrill('${escapeJs(drill.level1)}',null,null,null)">${drill.level1}</button>`);
+  if(drill.level2) crumbs.push(`<button class="crumb ${!drill.level3 ? "active" : ""}" onclick="setDrill('${escapeJs(drill.level1)}','${escapeJs(drill.level2)}',null,null)">${drill.level2}</button>`);
+  if(drill.level3) crumbs.push(`<button class="crumb ${!drill.level4 ? "active" : ""}" onclick="setDrill('${escapeJs(drill.level1)}','${escapeJs(drill.level2)}','${escapeJs(drill.level3)}',null)">${drill.level3}</button>`);
+  if(drill.level4) crumbs.push(`<button class="crumb active">${drill.level4}</button>`);
+
+  drillTrail.innerHTML = crumbs.join("");
+}
+
+function setDrill(level1,level2,level3,level4){
+  drill.level1 = level1;
+  drill.level2 = level2;
+  drill.level3 = level3;
+  drill.level4 = level4;
+  tableState.page = 1;
+  renderAll();
+}
+
+function hexToRgb(hex){
+  const clean = hex.replace("#","");
+  return {
+    r:parseInt(clean.slice(0,2),16),
+    g:parseInt(clean.slice(2,4),16),
+    b:parseInt(clean.slice(4,6),16)
+  };
+}
+
+function rgbToHex({r,g,b}){
+  return "#" + [r,g,b].map(v => Math.round(v).toString(16).padStart(2,"0")).join("");
+}
+
+function mixColor(a,b,t){
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return rgbToHex({
+    r:ca.r + (cb.r - ca.r) * t,
+    g:ca.g + (cb.g - ca.g) * t,
+    b:ca.b + (cb.b - ca.b) * t
+  });
+}
+
+function gradientColor(value,range,palette){
+  const min = Number.isFinite(range.min) ? range.min : 0;
+  const max = Number.isFinite(range.max) ? range.max : 0;
+  const t = max === min ? 1 : Math.max(0,Math.min(1,(value - min) / (max - min)));
+
+  if(t <= .5){
+    return mixColor(palette[0],palette[1],t * 2);
+  }
+  return mixColor(palette[1],palette[2],(t - .5) * 2);
+}
+
+function heatMapStyle(value,range,palette){
+  const bg = gradientColor(value,range,palette);
+  const min = Number.isFinite(range.min) ? range.min : 0;
+  const max = Number.isFinite(range.max) ? range.max : 0;
+  const t = max === min ? 1 : Math.max(0,Math.min(1,(value - min) / (max - min)));
+  const text = t >= .72 ? "#FFFFFF" : "var(--navy)";
+  const border = t >= .72 ? "rgba(8,49,95,.32)" : "rgba(8,49,95,.14)";
+  return `background:${bg};border-color:${border};color:${text}`;
+}
+
+function valueRange(items,getValue){
+  const values = items.map(getValue).filter(v => Number.isFinite(v));
+  return {
+    min:Math.min(...values,0),
+    max:Math.max(...values,0)
+  };
+}
+
+function renderBars(rows){
+  let level = "level1";
+  let title = "Inventory by Level 1";
+  let tag = "Level 1";
+
+  if(drill.level1){ level = "level2"; title = "Inventory by Level 2"; tag = "Level 2"; }
+  if(drill.level2){ level = level3Mode; title = "Inventory by Level 3"; tag = "Level 3"; }
+  if(drill.level3){ level = "level4"; title = "Inventory by Level 4"; tag = "Level 4"; }
+  if(drill.level4){ level = "level4"; title = "Selected Group"; tag = "End of drilldown"; }
+
+  barTitle.textContent = title;
+  scopeTag.textContent = tag;
+  heatMapToggle.classList.toggle("active",drillChartMode !== "stacked");
+  heatMapToggle.textContent = drillChartMode === "stacked" ? "Normal stacked bar" : "Heat map";
+
+  const groups = aggregate(rows,level);
+  const heatMapEnabled = drillChartMode === "heatmap";
+  inventoryBars.className = heatMapEnabled ? "heatmap-matrix" : "bars";
+  inventoryBars.innerHTML = heatMapEnabled ? `
+    <div class="matrix-row matrix-header">
+      <div class="matrix-cell">Group</div>
+      <div class="matrix-cell">Working</div>
+      <div class="matrix-cell">Broken</div>
+      <div class="matrix-cell">Spare</div>
+      <div class="matrix-cell">Attention</div>
+      <div class="matrix-cell">No inventory</div>
+    </div>
+  ` : "";
+
+  const palettes = {
+    total:["#E0F2FE","#FBBF24","#B91C1C"],
+    records:["#DBEAFE","#60A5FA","#08315F"],
+    working:["#DCFCE7","#86EFAC","#15803D"],
+    broken:["#FEE2E2","#F97316","#B91C1C"],
+    spare:["#FEF3C7","#FBBF24","#D97706"],
+    issue:["#EDE9FE","#A78BFA","#5B21B6"],
+    noInventory:["#F1F5F9","#94A3B8","#334155"],
+    share:["#E0F2FE","#FBBF24","#B91C1C"]
+  };
+
+  const ranges = {
+    total:valueRange(groups,g => metricValue(g,"working") + metricValue(g,"broken") + metricValue(g,"spare") + g.noInventory),
+    records:valueRange(groups,g => g.records),
+    working:valueRange(groups,g => metricValue(g,"working")),
+    broken:valueRange(groups,g => metricValue(g,"broken")),
+    spare:valueRange(groups,g => metricValue(g,"spare")),
+    issue:valueRange(groups,g => g.issue),
+    noInventory:valueRange(groups,g => g.noInventory),
+    share:valueRange(groups,g => g.issue / Math.max(g.records,1) * 100)
+  };
+  const maxStackTotal = Math.max(...groups.map(g => metricValue(g,"working") + metricValue(g,"broken") + metricValue(g,"spare") + g.noInventory),1);
+
+  groups.forEach((g,i) => {
+    const workingValue = metricValue(g,"working");
+    const brokenValue = metricValue(g,"broken");
+    const spareValue = metricValue(g,"spare");
+    const noInventoryValue = g.noInventory;
+    const total = Math.max(workingValue + brokenValue + spareValue + noInventoryValue,1);
+    const issueRate = g.issue / Math.max(g.records,1) * 100;
+    const row = document.createElement("div");
+    row.style.animationDelay = `${i * 18}ms`;
+
+    if(heatMapEnabled){
+      row.className = "matrix-row drillable";
+      const totalValue = workingValue + brokenValue + spareValue + noInventoryValue;
+      row.innerHTML = `
+        <div class="matrix-cell matrix-label heat-value" style="${heatMapStyle(totalValue,ranges.total,palettes.total)}"><strong>${g.name}</strong><small>${fmt(g.records)} records · ${pct(issueRate)} attention</small></div>
+        <div class="matrix-cell heat-value" style="${heatMapStyle(workingValue,ranges.working,palettes.working)}"><b>${fmt(workingValue)}</b><small>Working</small></div>
+        <div class="matrix-cell heat-value" style="${heatMapStyle(brokenValue,ranges.broken,palettes.broken)}"><b>${fmt(brokenValue)}</b><small>Broken</small></div>
+        <div class="matrix-cell heat-value" style="${heatMapStyle(spareValue,ranges.spare,palettes.spare)}"><b>${fmt(spareValue)}</b><small>Spare</small></div>
+        <div class="matrix-cell heat-value" style="${heatMapStyle(g.issue,ranges.issue,palettes.issue)}"><b>${fmt(g.issue)}</b><small>Attention</small></div>
+        <div class="matrix-cell heat-value" style="${heatMapStyle(noInventoryValue,ranges.noInventory,palettes.noInventory)}"><b>${fmt(noInventoryValue)}</b><small>No inv.</small></div>
+      `;
+    }else{
+      row.className = "bar-row drillable";
+      const trackWidth = Math.max(total / maxStackTotal * 100,4);
+      row.innerHTML = `
+        <span>${g.name}</span>
+        <div class="track" style="width:${trackWidth}%" title="Working ${fmt(workingValue)} · Broken ${fmt(brokenValue)} · Spare ${fmt(spareValue)} · No inventory ${fmt(noInventoryValue)}">
+          <div class="segment seg-working" style="width:${workingValue/total*100}%">${workingValue ? fmt(workingValue) : ""}</div>
+          <div class="segment seg-broken" style="width:${brokenValue/total*100}%">${brokenValue ? fmt(brokenValue) : ""}</div>
+          <div class="segment seg-spare" style="width:${spareValue/total*100}%">${spareValue ? fmt(spareValue) : ""}</div>
+          <div class="segment seg-none" style="width:${noInventoryValue/total*100}%">${noInventoryValue ? fmt(noInventoryValue) : ""}</div>
+        </div>
+        <b>${fmt(total)}</b>
+      `;
+    }
+
+    row.onclick = () => {
+      if(level === "level1") setDrill(g.name,null,null,null);
+      else if(level === "level2") setDrill(drill.level1,g.name,null,null);
+      else if(level === level3Mode) setDrill(drill.level1,drill.level2,g.name,null);
+      else if(level === "level4") setDrill(drill.level1,drill.level2,drill.level3,g.name);
+    };
+
+    inventoryBars.appendChild(row);
+  });
+}
+
+function renderConditionChart(rows){
+  const t = totals(rows);
+
+  const values = [
+    { label:"Working", value:metricValue(t,"working"), color:"#16A34A" },
+    { label:"Broken", value:metricValue(t,"broken"), color:"#B91C1C" },
+    { label:"Spare", value:metricValue(t,"spare"), color:"#FBBF24" },
+    { label:"No inventory", value:t.noInventory, color:"#475569" }
+  ];
+
+  const total = Math.max(values.reduce((s,v) => s + v.value,0),1);
+
+  if(conditionChartMode === "histogram"){
+    conditionChartToggle.textContent = "Chart type: Histogram";
+    conditionChartBody.className = "histogram";
+    conditionChartBody.style.setProperty("--cols",values.length);
+    const max = Math.max(...values.map(v => v.value),1);
+
+    conditionChartBody.innerHTML = values.map((v,idx) => `
+      <div class="hist-col" style="animation-delay:${idx*40}ms">
+        <div class="hist-area">
+          <div class="hist-wrap" style="height:${Math.max(v.value/max*100,8)}%">
+            <div class="hist-value">${fmt(v.value)}</div>
+            <div class="hist-bar" style="height:calc(100% - 22px);background:${v.color}"></div>
+          </div>
+        </div>
+        <div class="hist-label">${v.label}</div>
+      </div>
+    `).join("");
+    return;
+  }
+
+  conditionChartToggle.textContent = "Chart type: Donut";
+  conditionChartBody.className = "donut-layout";
+
+  let start = 0;
+  const stops = values.map(v => {
+    const p = v.value / total * 100;
+    const stop = `${v.color} ${start}% ${start+p}%`;
+    start += p;
+    return stop;
+  });
+
+  conditionChartBody.innerHTML = `
+    <div class="donut-stack">
+      <div class="donut" style="background:conic-gradient(${stops.join(",")})"></div>
+      <div class="donut-center">${fmt(total)}<br>${isRecordUnitMode() ? "records" : "units"}</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Segment</th><th>Value</th><th>Share</th></tr></thead>
+        <tbody>
+          ${values.map(v => `<tr><td><span class="dot" style="background:${v.color};margin-right:7px"></span>${v.label}</td><td><b>${fmt(v.value)}</b></td><td><b>${pct(v.value/total*100)}</b></td></tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderIssueChart(rows){
+  const t = totals(rows);
+
+  const items = [
+    { label:"Status A issue", value:t.statusANo, color:"#B91C1C" },
+    { label:"Status B issue", value:t.statusBNo, color:"#D97706" },
+    { label:"Status C issue", value:t.statusCNo, color:"#7C3AED" },
+    { label:isRecordUnitMode() ? "Records with broken quantity" : "Broken quantity", value:metricValue(t,"broken"), color:"#EF4444" },
+    { label:"Needs attention", value:t.issue, color:"#075985" }
+  ];
+
+  if(issueChartMode === "donut"){
+    issueChartToggle.textContent = "Chart type: Donut";
+    issueHistogram.className = "donut-layout";
+    const total = Math.max(items.reduce((s,i) => s + i.value,0),1);
+    let start = 0;
+    const radius = 15.91549430918954;
+    const svgContent = items.map(i => {
+      const p = i.value / total * 100;
+      const offset = 100 - start;
+      start += p;
+      const tooltip = `<div class="bar-tt-title">${safe(i.label)}</div><div class="bar-tt-row"><span class="dot" style="background:${i.color}"></span><span class="tt-label">Value</span><span class="tt-val">${fmt(i.value)}</span></div><div class="bar-tt-row"><span class="tt-label">Share</span><span class="tt-val">${Math.round(i.value/total*100)}%</span></div>`;
+      return `<circle cx="21" cy="21" r="${radius}" fill="transparent" stroke="${i.color}" stroke-width="7" stroke-dasharray="${p} ${100-p}" stroke-dashoffset="${offset}" data-tooltip="${safe(tooltip)}" onpointermove="showBarTooltip(event, this.getAttribute('data-tooltip'))" onpointerleave="hideBarTooltip()" style="cursor:pointer;transition:stroke-width 0.15s ease" onmouseover="this.setAttribute('stroke-width', '8')" onmouseout="this.setAttribute('stroke-width', '7')"></circle>`;
+    }).join("");
+
+    issueHistogram.innerHTML = `
+      <div class="donut-stack">
+        <div class="donut"><svg viewBox="0 0 42 42">${svgContent}</svg></div>
+        <div class="donut-center">${fmt(total)}<br>issues</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Issue</th><th>Value</th><th>Share</th></tr></thead>
+          <tbody>
+            ${items.map(i => `<tr><td><span class="dot" style="background:${i.color};margin-right:7px"></span>${i.label}</td><td><b>${fmt(i.value)}</b></td><td><b>${pct(i.value/total*100)}</b></td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+    return;
+  }
+
+  issueChartToggle.textContent = "Chart type: Histogram";
+  issueHistogram.className = "histogram";
+  issueHistogram.style.setProperty("--cols",items.length);
+
+  const max = Math.max(...items.map(i => i.value),1);
+
+  issueHistogram.innerHTML = items.map((i,idx) => `
+    <div class="hist-col" style="animation-delay:${idx*40}ms">
+      <div class="hist-area">
+        <div class="hist-wrap" style="height:${Math.max(i.value/max*100,8)}%">
+          <div class="hist-value">${fmt(i.value)}</div>
+          <div class="hist-bar" style="height:calc(100% - 22px);background:${i.color}"></div>
+        </div>
+      </div>
+      <div class="hist-label">${i.label}</div>
+    </div>
+  `).join("");
+}
+
+function tableColumnValue(r,key){
+  const values = {
+    level1:r.level1,
+    level2:r.level2,
+    id:r.id,
+    name:r.name,
+    working:r.working,
+    broken:r.broken,
+    spare:r.spare,
+    statusA:labelStatus(r.statusA),
+    statusB:labelStatus(r.statusB),
+    attention:r.issue ? "Review" : "OK"
+  };
+
+  return values[key] ?? "";
+}
+
+const TABLE_COLLATOR = new Intl.Collator(undefined,{ numeric:true, sensitivity:"base" });
+function isNumericTableColumn(key){ return ["working","broken","spare"].includes(key); }
+
+function applyTableColumnFilters(rows){
+  const filters = tableState.filters || {};
+
+  return rows.filter(r => Object.entries(filters).every(([key,raw]) => {
+    const filter = String(raw || "").trim().toLowerCase();
+    if(!filter) return true;
+
+    const value = tableColumnValue(r,key);
+
+    if(["statusA","statusB","attention"].includes(key)){
+      return String(value).toLowerCase() === filter;
+    }
+
+    return String(value).toLowerCase().includes(filter);
+  }));
+}
+
+function sortTableRows(rows){
+  const key = tableState.sortKey || "level1";
+  const direction = tableState.sortDirection === "desc" ? -1 : 1;
+
+  return rows.sort((a,b) => {
+    const av = tableColumnValue(a,key);
+    const bv = tableColumnValue(b,key);
+
+    if(isNumericTableColumn(key)){
+      return ((Number(av) || 0) - (Number(bv) || 0)) * direction;
+    }
+
+    const primary = TABLE_COLLATOR.compare(String(av),String(bv)) * direction;
+    if(primary) return primary;
+
+    return TABLE_COLLATOR.compare(String(a.id),String(b.id));
+  });
+}
+
+function syncTableHeader(){
+  document.querySelectorAll("[data-sort-key]").forEach(btn => {
+    const active = btn.dataset.sortKey === tableState.sortKey;
+    btn.classList.toggle("active",active);
+    const icon = btn.querySelector(".sort-icon");
+    if(icon) icon.textContent = active ? (tableState.sortDirection === "asc" ? "▲" : "▼") : "↕";
+  });
+
+  document.querySelectorAll("[data-column-filter]").forEach(input => {
+    if(document.activeElement !== input){
+      input.value = tableState.filters?.[input.dataset.columnFilter] || "";
+    }
+  });
+}
+
+function renderTable(rows){
+  const list = sortTableRows(applyTableColumnFilters(rows.slice()));
+  const totalPages = Math.max(1,Math.ceil(list.length / tableState.pageSize));
+  tableState.page = Math.min(Math.max(1,tableState.page),totalPages);
+
+  const start = (tableState.page - 1) * tableState.pageSize;
+  const pageRows = list.slice(start,start + tableState.pageSize);
+
+  recordTableBody.innerHTML = pageRows.map((r,i) => `
+    <tr class="record-row" onclick="openRecordModal('${escapeJs(r.id)}')" style="animation-delay:${Math.min(i*12,160)}ms">
+      <td class="col-freeze col-freeze-1"><b>${r.id}</b></td>
+      <td class="col-freeze col-freeze-2">${r.name}</td>
+      <td>${r.level1}</td>
+      <td>${r.level2}</td>
+      <td>${fmt(r.working)}</td>
+      <td>${fmt(r.broken)}</td>
+      <td>${fmt(r.spare)}</td>
+      <td>${statusBadge(r.statusA)}</td>
+      <td>${statusBadge(r.statusB)}</td>
+      <td>${r.issue ? `<span class="update-age risk">Review</span>` : `<span class="update-age ok">OK</span>`}</td>
+    </tr>
+  `).join("");
+
+  syncTableHeader();
+  renderTableControls(list.length,totalPages,start,pageRows.length);
+}
+
+function renderTableControls(totalRows,totalPages,start,count){
+  const label = totalRows ? `Rows ${fmt(start + 1)}–${fmt(start + count)} of ${fmt(totalRows)} · Page ${fmt(tableState.page)} of ${fmt(totalPages)}` : "No records";
+
+  const controls = `
+    <span class="table-page-label">${label}</span>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <select class="select" data-page-size>
+        <option value="10"${tableState.pageSize===10?" selected":""}>10 rows</option>
+        <option value="25"${tableState.pageSize===25?" selected":""}>25 rows</option>
+        <option value="50"${tableState.pageSize===50?" selected":""}>50 rows</option>
+        <option value="100"${tableState.pageSize===100?" selected":""}>100 rows</option>
+      </select>
+      <button class="button secondary" type="button" data-page="prev"${tableState.page<=1?" disabled":""}>Prev</button>
+      <button class="button secondary" type="button" data-page="next"${tableState.page>=totalPages?" disabled":""}>Next</button>
+    </div>
+  `;
+
+  [tableControlsTop,tableControlsBottom].forEach(el => {
+    el.innerHTML = controls;
+
+    el.querySelector("[data-page-size]").onchange = e => {
+      tableState.pageSize = Number(e.target.value);
+      tableState.page = 1;
+      renderAll();
+    };
+
+    el.querySelector("[data-page='prev']").onclick = () => {
+      tableState.page = Math.max(1,tableState.page - 1);
+      renderAll();
+    };
+
+    el.querySelector("[data-page='next']").onclick = () => {
+      tableState.page = Math.min(totalPages,tableState.page + 1);
+      renderAll();
+    };
+  });
+}
+
+function statusBadge(s){
+  if(s === "yes") return `<span class="update-age ok">Yes</span>`;
+  if(s === "no") return `<span class="update-age risk">No</span>`;
+  if(s === "n/a") return `<span class="update-age neutral">N/A</span>`;
+  return `<span class="update-age warn">Blank</span>`;
+}
+
+function openRecordModal(id){
+  const r = rawRows.find(x => x.id === id);
+  if(!r) return;
+
+  modalTitle.textContent = r.name;
+  modalMeta.textContent = `${r.id} · ${r.level1} · ${r.level2} · ${r[level3Mode]} · ${r.level4}`;
+
+  modalDetails.innerHTML = [
+    ["ID",r.id],
+    ["Working",fmt(r.working)],
+    ["Broken",fmt(r.broken)],
+    ["Spare",fmt(r.spare)],
+    ["Status A",labelStatus(r.statusA)],
+    ["Status B",labelStatus(r.statusB)],
+    ["Status C",labelStatus(r.statusC)],
+    ["Needs attention",r.issue ? "Yes" : "No"],
+    ["No inventory",r.noInventory ? "Yes" : "No"],
+    ["Updated at",r.updated_at || "—"]
+  ].map(([k,v]) => `<div class="detail"><small>${k}</small><b>${v}</b></div>`).join("");
+
+  modalRemarks.textContent = r.remarks || "No remarks recorded.";
+  recordModal.classList.add("open");
+}
+
+function closeRecordModal(){ recordModal.classList.remove("open"); }
+
+function inferCurrentPage(){
+  const file = window.location.pathname.split("/").pop().replace(".html","");
+  return file || "overview";
+}
+
+function setActiveSidebarPage(){
+  document.querySelectorAll(".nav a").forEach(a => {
+    a.classList.toggle("active",a.dataset.page === currentPage);
+  });
+}
+
+function renderAll(){
+  renderControls();
+
+  const rows = filteredRows();
+
+  renderKpis(rows);
+  renderTrail();
+  renderBars(rows);
+  renderConditionChart(rows);
+  renderIssueChart(rows);
+  renderTable(rows);
+  setActiveSidebarPage();
+}
+
+async function fetchFirstAvailableCsv(){
+  const errors = [];
+
+  for(const url of CSV_FILE_CANDIDATES){
+    try{
+      const response = await fetch(url, { cache:"no-store" });
+      if(!response.ok) throw new Error(`HTTP ${response.status}`);
+      const text = decodeCsvText(await response.arrayBuffer());
+      return { url, text };
+    }catch(error){
+      errors.push(`${url}: ${error.message || error}`);
+    }
+  }
+
+  throw new Error(errors.join(" | "));
+}
+
+async function loadCsvFromAttachedFile(){
+  try{
+    if(dataSourceNote) dataSourceNote.textContent = `Loading CSV from the same folder as this HTML: ${CSV_FILE_NAME}...`;
+
+    const loaded = await fetchFirstAvailableCsv();
+    rawRows = parseCsv(loaded.text);
+    drill = { level1:null, level2:null, level3:null, level4:null };
+
+    if(dataSourceNote) dataSourceNote.textContent = `Loaded ${fmt(rawRows.length)} rows from ${loaded.url}. Missing hierarchy values are grouped as Unassigned.`;
+    renderAll();
+  }catch(error){
+    console.error("Unable to load CSV.", error);
+    rawRows = [];
+
+    if(dataSourceNote){
+      dataSourceNote.textContent = `Could not load ${CSV_FILE_NAME}. Put the HTML and CSV in the same folder and open them through a local web server, for example: python -m http.server 8000, then visit http://localhost:8000/.`;
+    }
+
+    renderAll();
+  }
+}
+
+level1Select.addEventListener("change",() => {
+  drill = { level1:null, level2:null, level3:null, level4:null };
+  tableState.page = 1;
+  renderAll();
+});
+
+level2Select.addEventListener("change",() => {
+  drill = { level1:null, level2:null, level3:null, level4:null };
+  tableState.page = 1;
+  renderAll();
+});
+
+level3ModeSelect.addEventListener("change",() => {
+  level3Mode = level3ModeSelect.value;
+  drill.level3 = null;
+  drill.level4 = null;
+  tableState.page = 1;
+  renderAll();
+});
+
+unitModeSelect.addEventListener("change",() => {
+  unitMode = unitModeSelect.value;
+  tableState.page = 1;
+  renderAll();
+});
+
+heatMapToggle.addEventListener("click",(event) => {
+  event.stopPropagation();
+  drillChartMode = drillChartMode === "stacked" ? "heatmap" : "stacked";
+  renderBars(filteredRows());
+  heatMapToggle.blur();
+});
+
+conditionChartToggle.addEventListener("click",(event) => {
+  event.stopPropagation();
+  conditionChartMode = conditionChartMode === "donut" ? "histogram" : "donut";
+  renderConditionChart(filteredRows());
+  conditionChartToggle.blur();
+});
+
+issueChartToggle.addEventListener("click",(event) => {
+  event.stopPropagation();
+  issueChartMode = issueChartMode === "histogram" ? "donut" : "histogram";
+  renderIssueChart(filteredRows());
+  issueChartToggle.blur();
+});
+
+statusSelect.addEventListener("change",() => {
+  tableState.page = 1;
+  renderAll();
+});
+
+recordSearch.addEventListener("input",() => {
+  tableState.page = 1;
+  renderAll();
+});
+
+document.querySelectorAll("[data-sort-key]").forEach(btn => btn.addEventListener("click",() => {
+  const key = btn.dataset.sortKey;
+
+  if(tableState.sortKey === key){
+    tableState.sortDirection = tableState.sortDirection === "asc" ? "desc" : "asc";
+  }else{
+    tableState.sortKey = key;
+    tableState.sortDirection = "asc";
+  }
+
+  tableState.page = 1;
+  renderAll();
+}));
+
+document.querySelectorAll("[data-column-filter]").forEach(input => {
+  const handler = () => {
+    const key = input.dataset.columnFilter;
+    tableState.filters[key] = input.value;
+    tableState.page = 1;
+    renderAll();
+  };
+
+  input.addEventListener("input",handler);
+  input.addEventListener("change",handler);
+});
+
+resetBtn.addEventListener("click",() => {
+  drill = { level1:null, level2:null, level3:null, level4:null };
+  level1Select.value = "all";
+  level2Select.value = "all";
+  statusSelect.value = "all";
+  unitMode = "quantity";
+  unitModeSelect.value = unitMode;
+  recordSearch.value = "";
+  tableState.page = 1;
+  tableState.sortKey = "level1";
+  tableState.sortDirection = "asc";
+  tableState.filters = {};
+  renderAll();
+});
+
+document.querySelectorAll(".nav a").forEach(a => {
+  a.classList.toggle("active",a.dataset.page === currentPage);
+});
+
+recordModal.addEventListener("click",e => {
+  if(e.target.id === "recordModal") closeRecordModal();
+});
+
+loadCsvFromAttachedFile();
+</script>
+</body>
+</html>
+```
+
+## 7. Quick prompt to reuse
+
+Copy this prompt when asking AI to generate a new dashboard:
+
+```
+Create a complete single-file HTML inventory and monitoring dashboard using the same design, layout, interaction model, and code architecture as the CCTV Inventory dashboard pattern.
+
+Use my dataset fields below:
+[PASTE CSV HEADERS OR SAMPLE ROWS]
+
+Map the data into:
+- ID:
+- Name:
+- Level 1:
+- Level 2:
+- Level 3:
+- Alternate Level 3:
+- Level 4:
+- Working/available count:
+- Broken/unavailable count:
+- Spare/pending count:
+- Status/checklist fields:
+- Remarks:
+- Updated date:
+
+The dashboard must include:
+1. Auto-expanding sidebar page navigation with separate page links. If multiple files are provided, each file must be a sidebar page link with its own dedicated dashboard page/screen, not a tab inside the content.
+2. Hero/topbar with the standardized DepEd / HROD / Infrastructure eyebrow.
+3. Data controls.
+4. KPI grid.
+5. Drilldown chart toggle cycling through normal stacked bars and heat map.
+6. Condition share donut/histogram toggle.
+7. Issue summary histogram/donut toggle.
+8. Searchable, sortable, filterable, paginated table.
+9. Record detail modal.
+10. CSV loading and required-header validation.
+11. Responsive layout.
+12. Embedded CSS and JavaScript only.
+```
+
+## 8. Implementation checklist
+
+Before considering the dashboard complete, verify:
+
+- [ ]  The file is a complete HTML document.
+- [ ]  CSS variables are defined.
+- [ ]  Typography uses Plus Jakarta Sans for headings/high-emphasis UI (via `--font-head`) and DM Sans for body text, labels, and filters (via `--font`), not IBM Plex Sans.
+- [ ]  No sidebar is shown unless explicitly requested for page/file navigation.
+- [ ]  Sidebar links navigate to distinct pages/screens instead of hiding/showing page sections.
+- [ ]  Multiple files/datasets appear as sidebar page links, not as tabs or buttons inside the main content.
+- [ ]  Each file/dataset page has its own dedicated main-panel dashboard.
+- [ ]  Collapsed sidebar uses `insighted_logo_vertical.png`.
+- [ ]  Expanded sidebar uses `insighted_logo_horizontal.png`.
+- [ ]  Expanded sidebar logo is fully visible and not clipped.
+- [ ]  Sidebar logo has no white background/container behind it.
+- [ ]  Mobile sidebar becomes bottom navigation.
+- [ ]  Topbar uses the same visual architecture, with the standardized eyebrow: `DEPARTMENT OF EDUCATION | HUMAN RESOURCE AND ORGANIZATIONAL DEVELOPMENT AND INFRASTRUCTURE`.
+- [ ]  Controls are wired to filtering logic.
+- [ ]  The second-level filter (division) depends on the first-level filter (region): selecting a region limits the division options to that region and resets a now-invalid division selection.
+- [ ]  Geographic dashboards include common basic-mode location filters when available: Region, Province, Division, and Municipality / Legislative District.
+- [ ]  Basic filters are grouped in a dedicated nested subcard inside Data Controls: location filters occupy the full first row, subsequent non-location filters/toggles appear inside the same subcard on the next row, and no "Location Filters" text is shown unless requested.
+- [ ]  Geographic drilldown follows Region → Province → Division → Municipality / Legislative District.
+- [ ]  If both municipality and legislative district columns exist, Municipality is the default basic-mode selector and its label/header includes a compact icon-only toggle to switch to Legislative District; do not use text labels like "Use LD" for the toggle.
+- [ ]  If both municipality and legislative district columns exist, the advanced controls card includes a Jurisdiction field for selecting Municipal or Legislative District drilldown.
+- [ ]  Categorical (non-numeric) columns are auto-detected on CSV load and each categorical attribute gets its own filter dropdown in the data controls (for example classification and gender), excluding numeric columns and deep geographic levels below division.
+- [ ]  Selecting a region or division filter auto-activates the drilldown to that group's next hierarchy level.
+- [ ]  Data controls include a mode toggle that says "Toggle Advanced Mode" in basic mode and "Toggle Basic Mode" in advanced mode, with the Reset button placed beside it in the data-controls header.
+- [ ]  The Reset button and Advanced Mode toggle do not show the decorative ⇄ swap-arrow icon behind their text.
+- [ ]  The data controls card does not show a loading/status helper-text line below the filters unless the user explicitly requests it.
+- [ ]  The "Toggle Advanced Mode" button state is yellow/gold, while the "Toggle Basic Mode" state uses the normal secondary/blue treatment.
+- [ ]  Advanced controls are enclosed in a highlighted nested card inside the data controls area, visually distinct from the basic filters.
+- [ ]  The advanced card heading is plain text reading "Advanced Controls" in the same navy/font color family as the main Data Controls heading — not a pill, badge, button, or sticker.
+- [ ]  Advanced card input labels, including Distribution by and Units, use the same muted label color as regular input titles such as Region and Division.
+- [ ]  The advanced card contains Distribution by before Units, keeps advanced-control filters on one row where space allows, and omits/hides alternate drilldown controls when they are not needed for the dataset.
+- [ ]  "Distribution by" globally changes the breakdown/segmentation variable that divides every chart (bar segments, donut slices, histogram bars) without changing the chart axes, excludes location/hierarchy variables, and each chart card has its own "Split by" dropdown near its chart-type toggle that changes only that card's segmentation, with all per-card dropdowns syncing to the global selection whenever it changes. Split-by dropdowns list only real available dataset/CSV columns that are valid segmentation variables — no synthetic "Readiness gaps" option unless the source data has that column and the user explicitly asks for it. The default option is labeled with the actual default variable name (not "Default breakdown") and no variable appears twice in the dropdown.
+- [ ]  "Units" switches the displayed metric between record count and sums of numeric variables (for example learners or headcount).
+- [ ]  KPI cards show the dataset record count (with a specific entity label, not a generic "Total rows"), the total of each numeric column, and one card per active "Distribution by" category value (for example per gender or per grade level) using the primary numeric metric.
+- [ ]  KPI card numbers use a prominent Resource Mapping-style scale, about `clamp(36px,2.5vw,43px)` or equivalent — large enough to dominate the card but not so big the value and unit wrap onto separate lines — and the KPI number selector out-specifies `.card h2` (for example `.kpi-card .kpi-number`).
+- [ ]  KPI cards respond to the selected "Distribution by" category and respect the category-picker selection.
+- [ ]  KPI cards are distributed as evenly as possible across rows with no blank cells in any row (the last row stretches to fill).
+- [ ]  KPI cards update after filters.
+- [ ]  Drilldown breadcrumbs work.
+- [ ]  Normal stacked bars render with total bar length proportional to the largest group.
+- [ ]  Stacked bars are compact (tight row spacing, slim bars) with enlarged readable value labels inside the segments, labels switch to black/dark text on light bar colors for contrast, and labels are omitted when a segment is too small to fit them.
+- [ ]  Stacked-bar data labels activate consistently using absolute rendered segment width, not only segment percentage within the row.
+- [ ]  Hovering a bar shows a styled tooltip at the pointer location above the bars listing only the selected/filtered categories and the total.
+- [ ]  On tablet/touch, bar short-tap drills down, long-press shows a temporary tooltip preview, and releasing the press hides the tooltip without drilling down.
+- [ ]  Browser native right-click/context-menu options are suppressed on long-press for stacked bar rows, so the custom dashboard tooltip appears instead.
+- [ ]  Distribution variables have a compact gear-icon category-picker modal (checkboxes, totals, debounced search, Top 5 / Select all / Clear, and a value/alphabetical sort toggle) and auto-limit to the top 5 values when there are more than 5.
+- [ ]  The category-picker sort toggle is visually distinct from the Top 5 / Select all / Clear buttons and is positioned on the opposite/right side of the modal toolbar.
+- [ ]  Side-by-side composition and issue chart cards are equal width, and the donut legend table is compact/space-efficient.
+- [ ]  Heat map columns reflect the same category/composition breakdown shown in the stacked bar segments.
+- [ ]  Heat map renders as a simple gradient-shaded table (not blocky separated cells) with per-column sorting controls in the header and a green → yellow → orange → red value gradient.
+- [ ]  Heat map shades clearly distinguish low, middle, and extreme values within each column range.
+- [ ]  Each chart card keeps its "Split by" dropdown and chart-type toggle on a single header row; the chart-type toggle never wraps onto a new line.
+- [ ]  Chart toggles work.
+- [ ]  Each chart toggle updates only its own card and does not activate or redraw unrelated dashboard charts.
+- [ ]  Table search works.
+- [ ]  Column filters work.
+- [ ]  Table sorting works.
+- [ ]  Pagination works.
+- [ ]  The records table displays all dataset/CSV columns by default (unless the user requested a subset), plus any derived status column.
+- [ ]  The record identity columns (ID and name) are frozen/pinned as the first two sticky columns and stay visible while the other columns scroll horizontally.
+- [ ]  Rendering is scoped for performance: chart-only controls (such as "Distribution by") re-render only the KPIs/charts (not the full table), table sorting reuses a single cached Intl.Collator, and distinct category values are memoized after load.
+- [ ]  Row modal opens and closes.
+- [ ]  Dashboard reads live CSV files from the same folder or configured relative paths and does not keep hardcoded sample rows in the script.
+- [ ]  CSV loading uses `arrayBuffer()` plus explicit UTF-8 / Windows-1252 decoding, mojibake repair, BOM stripping, and canonical text cleanup before parsing.
+- [ ]  Special-character names such as `Las Piñas` and `Parañaque` render correctly and do not split into duplicate mojibake groups.
+- [ ]  A loading modal appears while CSV files are fetched and parsed before first render.
+- [ ]  CSV validation rejects missing required fields.
+- [ ]  Blank/empty cells are treated as null and excluded from summaries, breakdowns, chart categories, and filter lists (not labeled `"Unassigned"` unless the user explicitly asks for it).
+- [ ]  Numeric parsing is safe.
+- [ ]  The dashboard does not require external libraries except Google Fonts.
