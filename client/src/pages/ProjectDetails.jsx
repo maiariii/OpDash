@@ -1094,7 +1094,7 @@ const ProjectDetails = () => {
                                                         const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
                                                         const isSelected = editForm.lead_personnel?.includes(name);
                                                         return (
-                                                            <div key={e.id} onClick={() => toggleLead(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                            <div key={e.id} onClick={() => toggleLead(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1 rounded">
                                                                 {isSelected ?
                                                                     <CheckSquare size={16} className="text-blue-600" /> :
                                                                     <Square size={16} className="text-slate-300" />
@@ -1134,7 +1134,7 @@ const ProjectDetails = () => {
                                                         const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
                                                         const isSelected = editForm.supervising_officer?.includes(name);
                                                         return (
-                                                            <div key={e.id} onClick={() => toggleSupervisor(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                            <div key={e.id} onClick={() => toggleSupervisor(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1 rounded">
                                                                 {isSelected ?
                                                                     <CheckSquare size={16} className="text-blue-600" /> :
                                                                     <Square size={16} className="text-slate-300" />
@@ -1174,7 +1174,7 @@ const ProjectDetails = () => {
                                                         const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
                                                         const isSelected = editForm.assisting_personnel?.includes(name);
                                                         return (
-                                                            <div key={e.id} onClick={() => toggleMember(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                            <div key={e.id} onClick={() => toggleMember(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1 rounded">
                                                                 {isSelected ?
                                                                     <CheckSquare size={16} className="text-blue-600" /> :
                                                                     <Square size={16} className="text-slate-300" />
@@ -1201,7 +1201,7 @@ const ProjectDetails = () => {
                                         {basecampOptions.map((option, idx) => {
                                             const isSelected = editForm.basecamp_target?.split(',').map(s => s.trim()).includes(option);
                                             return (
-                                                <div key={idx} onClick={() => toggleBasecamp(option)} className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                <div key={idx} onClick={() => toggleBasecamp(option)} className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1 rounded">
                                                     {isSelected ?
                                                         <CheckSquare size={16} className="text-blue-600 mt-0.5 flex-shrink-0" /> :
                                                         <Square size={16} className="text-slate-300 mt-0.5 flex-shrink-0" />
@@ -1214,7 +1214,7 @@ const ProjectDetails = () => {
                                         })}
                                         {/* Others Option */}
                                         <div
-                                            className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"
+                                            className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1 rounded"
                                             onClick={() => {
                                                 let current = editForm.basecamp_target ? editForm.basecamp_target.split(',').map(s => s.trim()).filter(Boolean) : [];
                                                 // Check if any custom value exists

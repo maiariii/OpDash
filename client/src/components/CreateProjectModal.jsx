@@ -363,7 +363,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                                 ) : filteredLeads.length === 0 ? (
                                     <p className="text-xs text-slate-400">No matching employees found.</p>
                                 ) : filteredLeads.map(e => (
-                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded px-1">
                                         <input
                                             type="checkbox"
                                             checked={formData.lead_personnel.includes(e.name)}
@@ -398,7 +398,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                                 ) : filteredSupervisors.length === 0 ? (
                                     <p className="text-xs text-slate-400">No matching employees found.</p>
                                 ) : filteredSupervisors.map(e => (
-                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded px-1">
                                         <input
                                             type="checkbox"
                                             checked={formData.supervising_officer.includes(e.name)}
@@ -433,7 +433,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                                 ) : filteredAssisting.length === 0 ? (
                                     <p className="text-xs text-slate-400">No matching employees found.</p>
                                 ) : filteredAssisting.map(e => (
-                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded px-1">
                                         <input
                                             type="checkbox"
                                             checked={formData.assisting_personnel.includes(e.name)}
@@ -454,7 +454,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                         </label>
                         <div className="border border-slate-300 rounded-lg p-3 max-h-40 overflow-y-auto bg-slate-50">
                             {basecampOptions.map((option, idx) => (
-                                <label key={idx} className="flex items-start gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                                <label key={idx} className="flex items-start gap-2 py-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded px-1">
                                     <input
                                         type="checkbox"
                                         checked={selectedBasecamp.includes(option)}
@@ -464,7 +464,7 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
                                     <span className="text-sm text-slate-700 leading-snug">{option}</span>
                                 </label>
                             ))}
-                            <label className="flex items-start gap-2 py-1 cursor-pointer hover:bg-slate-100 rounded px-1">
+                            <label className="flex items-start gap-2 py-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded px-1">
                                 <input
                                     type="checkbox"
                                     checked={selectedBasecamp.some(opt => !basecampOptions.includes(opt))}

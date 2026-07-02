@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Quicksand:wght@600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -22,8 +22,8 @@
   --text: #0F172A;
   --muted: #64748B;
   --line: #BAE6FD;
-  --font-heading: Quicksand, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-body: "Comic Neue", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-heading: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: "DM Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --radius: 22px;
   font-family: var(--font-body);
 }
@@ -1060,6 +1060,14 @@ label span, .label {
   font-family: var(--font-heading);
   color: var(--navy);
 }
+.dark .schema-note {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  color: var(--blue-400);
+}
+.dark .schema-note b {
+  color: var(--navy);
+}
 .mini-button {
   border: 0;
   border-radius: 999px;
@@ -1601,4 +1609,45 @@ label span, .label {
   background-color: rgba(148, 163, 184, 0.1) !important;
   color: #94a3b8 !important; /* slate-400 */
   border-color: rgba(148, 163, 184, 0.15) !important;
+}
+
+/* Dark mode action badge overrides */
+.dark .bg-blue-100 {
+  background-color: rgba(14, 165, 233, 0.22) !important;
+  border-color: rgba(14, 165, 233, 0.45) !important;
+}
+.dark .text-blue-800 {
+  color: #7dd3fc !important; /* sky-300, extremely bright */
+}
+
+.dark .bg-emerald-100 {
+  background-color: rgba(52, 211, 153, 0.15) !important;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+}
+.dark .text-emerald-800 {
+  color: #34d399 !important;
+}
+
+.dark .bg-red-100 {
+  background-color: rgba(248, 113, 113, 0.15) !important;
+  border-color: rgba(248, 113, 113, 0.3) !important;
+}
+.dark .text-red-800 {
+  color: #f87171 !important;
+}
+
+.dark .bg-purple-100 {
+  background-color: rgba(192, 132, 252, 0.15) !important;
+  border-color: rgba(192, 132, 252, 0.3) !important;
+}
+.dark .text-purple-800 {
+  color: #c084fc !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: rgba(148, 163, 184, 0.15) !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+}
+.dark .text-slate-800 {
+  color: #94a3b8 !important;
 }
