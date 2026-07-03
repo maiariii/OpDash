@@ -72,13 +72,11 @@ const Projects = () => {
     // Per-card split states
     const [mainSplitBy, setMainSplitBy] = useState('status');
     const [detailsSplitBy, setDetailsSplitBy] = useState('status');
-    const [snapshotSplitBy, setSnapshotSplitBy] = useState('status');
 
     // Sync per-card split states with global distributionMode
     useEffect(() => {
         setMainSplitBy(distributionMode);
         setDetailsSplitBy(distributionMode);
-        setSnapshotSplitBy(distributionMode);
     }, [distributionMode]);
 
     const renderStackedSegments = (values, scale, classes, labels, formatValue = fmt) => {
@@ -341,39 +339,20 @@ const Projects = () => {
         };
     }, [activeActivities]);
 
-    const donutData = useMemo(() => {
-        let segments = [];
-        if (snapshotSplitBy === 'budget') {
-            segments = [
-                { label: "Utilized", value: totals.used, color: colors.blue, format: "peso" },
-                { label: "Unutilized", value: Math.max(totals.budget - totals.used, 0), color: colors.gold, format: "peso" }
-            ];
-        } else if (snapshotSplitBy === 'fund') {
-            segments = fundSources.map(f => {
-                const rows = activeActivities.filter(a => a.sourceOfFund === f.label);
-                return { label: f.label, shortLabel: f.shortLabel || f.label, value: metricValue(rows), color: f.color };
-            });
-        } else {
-            segments = [
-                { label: "Pending", value: metricValue(totals.pending), color: colors.gold },
-                { label: "Accomplished", value: metricValue(totals.accomplished), color: colors.green },
-                { label: "Delayed", value: metricValue(totals.delayed), color: colors.red }
-            ];
-        }
+    const activityDonutData = useMemo(() => {
+        return [
+            { label: "Pending", value: totals.pending.length, color: colors.gold },
+            { label: "Accomplished", value: totals.accomplished.length, color: colors.green },
+            { label: "Delayed", value: totals.delayed.length, color: colors.red }
+        ];
+    }, [totals]);
 
-        if (snapshotSplitBy === distributionMode && isAdvancedMode) {
-            segments = segments.filter(d => activeCategoryIds.includes(d.label));
-        }
-        return segments;
-    }, [snapshotSplitBy, distributionMode, isAdvancedMode, activeCategoryIds, totals, activeActivities, unitMode]);
+    const activityDonutTotal = useMemo(() => activityDonutData.reduce((s, r) => s + r.value, 0) || 1, [activityDonutData]);
 
-    const donutTotal = useMemo(() => donutData.reduce((s, r) => s + r.value, 0) || 1, [donutData]);
-    const donutFormat = (val) => donutData.some(r => r.format === 'peso') ? peso(val) : metricFormat(val);
-
-    const donutStyle = useMemo(() => {
+    const activityDonutStyle = useMemo(() => {
         let start = 0;
-        const stops = donutData.map(r => {
-            const p = (r.value / donutTotal) * 100;
+        const stops = activityDonutData.map(r => {
+            const p = (r.value / activityDonutTotal) * 100;
             const s = `${r.color} ${start.toFixed(2)}% ${(start + p).toFixed(2)}%`;
             start += p;
             return s;
@@ -381,7 +360,29 @@ const Projects = () => {
         return {
             background: `conic-gradient(${stops.join(",")})`
         };
-    }, [donutData, donutTotal]);
+    }, [activityDonutData, activityDonutTotal]);
+
+    const financialDonutData = useMemo(() => {
+        return [
+            { label: "Utilized", value: totals.used, color: colors.blue },
+            { label: "Unutilized", value: Math.max(totals.budget - totals.used, 0), color: colors.gold }
+        ];
+    }, [totals]);
+
+    const financialDonutTotal = useMemo(() => financialDonutData.reduce((s, r) => s + r.value, 0) || 1, [financialDonutData]);
+
+    const financialDonutStyle = useMemo(() => {
+        let start = 0;
+        const stops = financialDonutData.map(r => {
+            const p = (r.value / financialDonutTotal) * 100;
+            const s = `${r.color} ${start.toFixed(2)}% ${(start + p).toFixed(2)}%`;
+            start += p;
+            return s;
+        });
+        return {
+            background: `conic-gradient(${stops.join(",")})`
+        };
+    }, [financialDonutData, financialDonutTotal]);
 
     const getBadgeStyle = (mode = distributionMode) => {
         if (mode === 'budget') return 'badge gold';
@@ -1003,53 +1004,82 @@ const Projects = () => {
                         <article className="card flex-1 flex flex-col justify-between animate-slide-in" id="distributionPanel" style={{ marginBottom: 0 }}>
                             <div className="section-head">
                                 <div>
-                                    <h2 className="section-title">Distribution Snapshot</h2>
-                                    <p className="subtext text-xs text-slate-500 font-bold">Overview breakdown and percentage shares.</p>
-                                </div>
-                                <div className="flex gap-2 items-center flex-wrap">
-                                    <select
-                                        value={snapshotSplitBy}
-                                        onChange={(e) => setSnapshotSplitBy(e.target.value)}
-                                        className="select py-1 px-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900"
-                                        style={{ width: 'auto', minWidth: '120px', margin: 0 }}
-                                    >
-                                        <option value="status">Split by Status</option>
-                                        <option value="budget">Split by Budget</option>
-                                        <option value="fund">Split by Fund</option>
-                                    </select>
-                                    <span className={getBadgeStyle(snapshotSplitBy)}>{getBadgeText(snapshotSplitBy)}</span>
+                                    <h2 className="section-title">Accomplishment Snapshot</h2>
+                                    <p className="subtext text-xs text-slate-500 font-bold">Activity and Financial breakdowns side-by-side.</p>
                                 </div>
                             </div>
 
-                            <div className="donut-layout">
-                                <div className="donut" style={donutStyle}>
-                                    <div className="donut-center">
-                                        <span>{donutFormat(donutTotal)}</span>
-                                        <small className="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5" style={{ display: 'block' }}>{metricLabel()}</small>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4">
+                                {/* Activities Accomplishment */}
+                                <div className="flex flex-col items-center">
+                                    <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Activities Accomplishment</h3>
+                                    <div className="donut-layout flex-col items-center gap-4 w-full">
+                                        <div className="donut" style={activityDonutStyle}>
+                                            <div className="donut-center">
+                                                <span>{activityDonutTotal}</span>
+                                                <small className="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5" style={{ display: 'block' }}>activities</small>
+                                            </div>
+                                        </div>
+                                        <div id="activityDonutTable" className="w-full text-xs">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Status</th>
+                                                        <th className="text-right">Count</th>
+                                                        <th className="text-right">Share</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {activityDonutData.map((d, i) => (
+                                                        <tr key={i}>
+                                                            <td>
+                                                                <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
+                                                                {d.label}
+                                                            </td>
+                                                            <td className="text-right"><b>{fmt(d.value)}</b></td>
+                                                            <td className="text-right"><b>{pct((d.value / activityDonutTotal) * 100)}</b></td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
-                                <div id="distributionDonutTable" className="flex-1 w-full">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Segment</th>
-                                                <th>Value</th>
-                                                <th>Share</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {donutData.map((d, i) => (
-                                                <tr key={i}>
-                                                    <td>
-                                                        <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
-                                                        {d.label}
-                                                    </td>
-                                                    <td><b>{donutFormat(d.value)}</b></td>
-                                                    <td><b>{pct((d.value / donutTotal) * 100)}</b></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+
+                                {/* Financial Accomplishment */}
+                                <div className="flex flex-col items-center border-t sm:border-t-0 sm:border-l border-slate-100 pt-4 sm:pt-0 sm:pl-6">
+                                    <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Financial Accomplishment</h3>
+                                    <div className="donut-layout flex-col items-center gap-4 w-full">
+                                        <div className="donut" style={financialDonutStyle}>
+                                            <div className="donut-center">
+                                                <span style={{ fontSize: '10px' }}>{peso(totals.budget)}</span>
+                                                <small className="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5" style={{ display: 'block' }}>budget</small>
+                                            </div>
+                                        </div>
+                                        <div id="financialDonutTable" className="w-full text-xs">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Type</th>
+                                                        <th className="text-right">Amount</th>
+                                                        <th className="text-right">Share</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {financialDonutData.map((d, i) => (
+                                                        <tr key={i}>
+                                                            <td>
+                                                                <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
+                                                                {d.label}
+                                                            </td>
+                                                            <td className="text-right"><b>{peso(d.value)}</b></td>
+                                                            <td className="text-right"><b>{pct((d.value / financialDonutTotal) * 100)}</b></td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </article>

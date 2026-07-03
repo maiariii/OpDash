@@ -354,87 +354,187 @@ const MetricCard = ({ title, value, subtext, icon: Icon, color, onClick, clickab
 const SimplePieChart = ({ data, onSliceClick }) => {
     const total = data.reduce((sum, item) => sum + item.value, 0);
     const [hoveredIndex, setHoveredIndex] = useState(null);
+    const [tooltip, setTooltip] = useState({
+        visible: false,
+        x: 0,
+        y: 0,
+        label: '',
+        value: '',
+        share: 0,
+        color: ''
+    });
 
     if (total === 0) return <div className="text-center text-slate-400 py-10">No activities found</div>;
 
-    let cumulativePercent = 0;
+    const radius = 15.91549430918954;
+    let currentStart = 0;
+
     const slices = data.map((item, index) => {
-        const startPercent = cumulativePercent;
-        const slicePercent = item.value / total;
-        cumulativePercent += slicePercent;
-        const endPercent = cumulativePercent;
+        const p = (item.value / total) * 100;
+        const offset = 100 - currentStart;
+        currentStart += p;
 
-        const getCoordinatesForPercent = (percent) => {
-            const x = Math.cos(2 * Math.PI * percent);
-            const y = Math.sin(2 * Math.PI * percent);
-            return [x, y];
+        return {
+            ...item,
+            percent: p,
+            offset: offset,
+            share: Math.round(p)
         };
-
-        const [startX, startY] = getCoordinatesForPercent(startPercent);
-        const [endX, endY] = getCoordinatesForPercent(endPercent);
-
-        const largeArcFlag = slicePercent > 0.5 ? 1 : 0;
-        const pathData = slicePercent === 1
-            ? `M 1 0 A 1 1 0 1 1 -1 0 A 1 1 0 1 1 1 0 Z`
-            : `M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} L 0 0`;
-
-        return { ...item, path: pathData, percent: Math.round(slicePercent * 100) };
     });
 
+    const formatVal = (val, isCurrency) => isCurrency ? `₱${Number(val).toLocaleString()}` : val;
+
     return (
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+        <div className="flex flex-col items-center justify-center gap-6 relative w-full">
             <div className="relative w-48 h-48 flex items-center justify-center">
-                <svg viewBox="-1.1 -1.1 2.2 2.2" className="w-full h-full transform -rotate-90">
+                <svg viewBox="0 0 42 42" className="w-full h-full transform -rotate-90">
                     {slices.map((slice, i) => (
-                        <path
+                        <circle
                             key={i}
-                            d={slice.path}
-                            fill={slice.color}
-                            stroke="white"
-                            strokeWidth="0.02"
-                            className={clsx("transition-opacity cursor-pointer", hoveredIndex === i ? "opacity-100" : (hoveredIndex !== null ? "opacity-50" : "opacity-100"))}
-                            onMouseEnter={() => setHoveredIndex(i)}
-                            onMouseLeave={() => setHoveredIndex(null)}
+                            cx="21"
+                            cy="21"
+                            r={radius}
+                            fill="transparent"
+                            stroke={slice.color}
+                            strokeWidth={hoveredIndex === i ? 6.5 : 5.5}
+                            strokeDasharray={`${slice.percent} ${100 - slice.percent}`}
+                            strokeDashoffset={slice.offset}
+                            style={{
+                                cursor: 'pointer',
+                                transition: 'stroke-width 0.15s ease',
+                            }}
+                            onPointerOver={(e) => {
+                                setHoveredIndex(i);
+                                setTooltip({
+                                    visible: true,
+                                    x: e.clientX,
+                                    y: e.clientY,
+                                    label: slice.label,
+                                    value: formatVal(slice.value, slice.isCurrency),
+                                    share: slice.share,
+                                    color: slice.color
+                                });
+                            }}
+                            onPointerMove={(e) => {
+                                setTooltip(prev => ({
+                                    ...prev,
+                                    x: e.clientX,
+                                    y: e.clientY
+                                }));
+                            }}
+                            onPointerLeave={() => {
+                                setHoveredIndex(null);
+                                setTooltip(prev => ({ ...prev, visible: false }));
+                            }}
                             onClick={() => onSliceClick && onSliceClick(slice)}
                         />
                     ))}
-                    <circle cx="0" cy="0" r="0.6" fill="white" />
                 </svg>
                 <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
                     <span className="text-xl font-bold text-slate-800">
-                        {hoveredIndex !== null ? (slices[hoveredIndex].isCurrency ? `₱${slices[hoveredIndex].value.toLocaleString()}` : slices[hoveredIndex].value) : (slices[0]?.isCurrency ? `₱${total.toLocaleString()}` : total)}
+                        {hoveredIndex !== null ? formatVal(slices[hoveredIndex].value, slices[hoveredIndex].isCurrency) : formatVal(total, slices[0]?.isCurrency)}
                     </span>
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                         {hoveredIndex !== null ? slices[hoveredIndex].label : "Total"}
                     </span>
                 </div>
             </div>
+            
             <div className="flex-1 w-full min-w-[200px]">
                 <table className="w-full text-sm">
                     <tbody>
                         {slices.map((item, i) => (
-                            <tr
-                                key={i}
-                                className="cursor-pointer hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
-                                onMouseEnter={() => setHoveredIndex(i)}
-                                onMouseLeave={() => setHoveredIndex(null)}
+                            <tr 
+                                key={i} 
+                                className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 cursor-pointer"
                                 onClick={() => onSliceClick && onSliceClick(item)}
+                                onPointerOver={(e) => {
+                                    setHoveredIndex(i);
+                                    setTooltip({
+                                        visible: true,
+                                        x: e.clientX,
+                                        y: e.clientY,
+                                        label: item.label,
+                                        value: formatVal(item.value, item.isCurrency),
+                                        share: item.share,
+                                        color: item.color
+                                    });
+                                }}
+                                onPointerMove={(e) => {
+                                    setTooltip(prev => ({
+                                        ...prev,
+                                        x: e.clientX,
+                                        y: e.clientY
+                                    }));
+                                }}
+                                onPointerLeave={() => {
+                                    setHoveredIndex(null);
+                                    setTooltip(prev => ({ ...prev, visible: false }));
+                                }}
                             >
-                                <td className="py-2.5 pr-4 flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: item.color }} />
-                                    <span className="font-medium text-slate-700">{item.label}</span>
+                                <td className="py-2 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                                    <span className="text-slate-600 font-medium">{item.label}</span>
                                 </td>
-                                <td className="py-2.5 px-4 text-right font-bold text-slate-700">
-                                    {item.isCurrency ? `₱${item.value.toLocaleString()}` : item.value}
+                                <td className="py-2 text-right font-bold text-slate-800">
+                                    {formatVal(item.value, item.isCurrency)}
                                 </td>
-                                <td className="py-2.5 pl-4 text-right font-black text-slate-900">
-                                    {item.percent}%
+                                <td className="py-2 text-right font-black text-slate-400 w-12">
+                                    {item.share}%
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
+
+            {tooltip.visible && (
+                <div 
+                    className="bar-hover-tooltip"
+                    style={{
+                        position: 'fixed',
+                        left: tooltip.x + 15,
+                        top: tooltip.y + 15,
+                        backgroundColor: '#FFFFFF',
+                        color: '#08315F',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        boxShadow: '0 10px 18px -3px rgba(8, 49, 95, 0.12), 0 4px 6px -2px rgba(8, 49, 95, 0.08)',
+                        zIndex: 9999,
+                        pointerEvents: 'none',
+                        transition: 'opacity 0.1s ease',
+                        border: '2px solid #DBEAFE',
+                        fontFamily: 'var(--font)'
+                    }}
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                            <span 
+                                style={{ 
+                                    width: '8px', 
+                                    height: '8px', 
+                                    borderRadius: '50%', 
+                                    backgroundColor: tooltip.color,
+                                    display: 'inline-block',
+                                    boxShadow: `0 0 6px ${tooltip.color}`
+                                }} 
+                            />
+                            <span style={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.08em', color: '#08315F' }}>
+                                {tooltip.label}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', fontSize: '11px' }}>
+                            <span style={{ color: '#475569', fontWeight: '600' }}>Amount:</span>
+                            <span style={{ fontWeight: 'bold', fontFamily: 'monospace', color: '#08315F' }}>{tooltip.value}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', fontSize: '11px' }}>
+                            <span style={{ color: '#475569', fontWeight: '600' }}>Share:</span>
+                            <span style={{ fontWeight: 'bold', color: '#16A34A' }}>{tooltip.share}%</span>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -483,8 +583,6 @@ const DashboardCharts = ({ metrics }) => {
     // Add missing fallback for detailed arrays to avoid crashes
     const totalGaaPsVal = totalGaaPs || 0;
     const totalGaaMooeVal = totalGaaMooe || 0;
-
-    const [activeChart, setActiveChart] = useState('status'); // 'status' | 'financial'
 
     const [modalState, setModalState] = useState({
         isOpen: false,
@@ -560,42 +658,25 @@ const DashboardCharts = ({ metrics }) => {
                 />
             </div>
 
-            {/* Graphs Row - Combined into a single card */}
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-slate-100 pb-4">
-                    <h3 className="text-lg font-bold text-slate-800">
-                        {activeChart === 'status' ? 'Activity Status' : 'Financial Overview'}
-                    </h3>
-                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200/60">
-                        <button
-                            onClick={() => setActiveChart('status')}
-                            className={clsx(
-                                "px-3 py-1.5 rounded-md text-xs font-bold transition-all",
-                                activeChart === 'status' 
-                                    ? "bg-white text-slate-800 shadow" 
-                                    : "text-slate-500 hover:text-slate-800"
-                            )}
-                        >
-                            Activity Status
-                        </button>
-                        <button
-                            onClick={() => setActiveChart('financial')}
-                            className={clsx(
-                                "px-3 py-1.5 rounded-md text-xs font-bold transition-all",
-                                activeChart === 'financial' 
-                                    ? "bg-white text-slate-800 shadow" 
-                                    : "text-slate-500 hover:text-slate-800"
-                            )}
-                        >
-                            Financial Overview
-                        </button>
+            {/* Graphs Row - Side-by-side separated donut charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Activity Status */}
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div className="mb-6 border-b border-slate-100 pb-4">
+                        <h3 className="text-lg font-bold text-slate-800">Activity Status</h3>
+                    </div>
+                    <div className="space-y-6 flex-1 flex flex-col justify-between">
+                        <SimplePieChart data={activityData} onSliceClick={handleSliceClick} />
+                        <div className="h-[76px] mt-6 bg-transparent pointer-events-none" />
                     </div>
                 </div>
 
-                {activeChart === 'status' ? (
-                    <SimplePieChart data={activityData} onSliceClick={handleSliceClick} />
-                ) : (
-                    <div className="space-y-6">
+                {/* Financial Overview */}
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div className="mb-6 border-b border-slate-100 pb-4">
+                        <h3 className="text-lg font-bold text-slate-800">Financial Overview</h3>
+                    </div>
+                    <div className="space-y-6 flex-1 flex flex-col justify-between">
                         <SimplePieChart data={financialPieData} onSliceClick={() => openModal('Project Financial Breakdown', allProjects, 'financial')} />
                         <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-100 bg-slate-50/50 p-4 rounded-xl">
                             <div className="flex flex-col">
@@ -610,7 +691,7 @@ const DashboardCharts = ({ metrics }) => {
                             </div>
                         </div>
                     </div>
-                )}
+                </div>
             </div>
 
             {/* Breakdown Modal */}

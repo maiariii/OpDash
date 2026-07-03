@@ -8,6 +8,260 @@ import CreateTaskModal from '../components/CreateTaskModal';
 import { Settings, X, Activity } from 'lucide-react';
 import clsx from 'clsx';
 
+const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEditActivity }) => {
+    const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
+    const [selectedActivity, setSelectedActivity] = useState(null);
+
+    // Reset selected activity when modal closes or data changes
+    useEffect(() => {
+        setSelectedActivity(null);
+    }, [isOpen, activities]);
+    
+    if (!isOpen) return null;
+
+    const fmt = v => Number(v || 0).toLocaleString("en-PH");
+    const peso = v => "₱" + Number(v || 0).toLocaleString("en-PH");
+
+    if (selectedActivity) {
+        let statusBadgeClass = 'bg-slate-100 text-slate-700';
+        if (selectedActivity.status === 'Completed' || selectedActivity.status === 'Accomplished') {
+            statusBadgeClass = 'bg-green-100 text-green-700';
+        } else if (selectedActivity.status === 'In Progress') {
+            statusBadgeClass = 'bg-blue-100 text-blue-700';
+        } else if (selectedActivity.status === 'Delayed') {
+            statusBadgeClass = 'bg-red-100 text-red-700';
+        }
+
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 backdrop-blur-xs">
+                <div className="bg-white rounded-2xl border-2 border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50 flex-shrink-0">
+                        <h3 className="text-lg font-bold text-slate-800">Activity Details</h3>
+                        <button onClick={() => setSelectedActivity(null)} className="text-slate-400 hover:text-slate-650 p-1 bg-white rounded-full border border-slate-200 shadow-xs transition-colors cursor-pointer">
+                            <X size={18} />
+                        </button>
+                    </div>
+                    <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
+                        <div>
+                            <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Activity Title</label>
+                            <p className="text-lg font-bold text-slate-800 mt-1">{selectedActivity.name}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Division</label>
+                                <p className="text-sm font-semibold text-slate-700 mt-1">{selectedActivity.division || 'Unassigned'}</p>
+                            </div>
+                            <div>
+                                <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Project</label>
+                                <p className="text-sm font-semibold text-slate-700 mt-1">{selectedActivity.project}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div>
+                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Status</label>
+                                <span className={clsx("px-2.5 py-0.5 rounded-full text-xs font-bold mt-1.5 inline-block", statusBadgeClass)}>
+                                    {selectedActivity.status || 'Pending'}
+                                </span>
+                            </div>
+                            <div>
+                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Allocation</label>
+                                <span className="text-sm font-mono font-bold text-slate-800 block mt-1.5">{peso(selectedActivity.budget)}</span>
+                            </div>
+                            <div>
+                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Obligated</label>
+                                <span className="text-sm font-mono font-bold text-slate-800 block mt-1.5">{peso(selectedActivity.obligated)}</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Last Updated</label>
+                                <p className="text-xs text-slate-650 mt-1 font-semibold">
+                                    {selectedActivity.lastUpdate ? new Date(selectedActivity.lastUpdate).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'Not available'}
+                                </p>
+                            </div>
+                            <div>
+                                <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Due Date</label>
+                                <p className="text-xs text-slate-650 mt-1 font-semibold">
+                                    {selectedActivity.due ? new Date(selectedActivity.due).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'Not specified'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Remarks / Description</label>
+                            <p className="text-sm text-slate-600 mt-1 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap min-h-[60px]">
+                                {selectedActivity.remarks || selectedActivity.description || "No remarks or description recorded."}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">
+                        <button
+                            onClick={() => setSelectedActivity(null)}
+                            className="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                        >
+                            Back to List
+                        </button>
+                        <button
+                            onClick={() => {
+                                onEditActivity(selectedActivity);
+                                setSelectedActivity(null);
+                            }}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                        >
+                            Edit Activity
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 backdrop-blur-xs">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border-b border-slate-100 bg-white shadow-xs z-10 gap-3">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <div className="bg-blue-50 p-2 rounded-lg text-blue-600 flex-shrink-0">
+                            <Activity size={20} />
+                        </div>
+                        <div className="min-w-0">
+                            <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-tight truncate">{title}</h3>
+                            <p className="text-xs text-slate-500">{activities.length} records found</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0">
+                        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                            <button
+                                onClick={() => setViewMode('list')}
+                                className={clsx("p-1.5 rounded-md transition-all cursor-pointer", viewMode === 'list' ? "bg-white shadow text-blue-600" : "text-slate-400 hover:text-slate-650")}
+                                title="List View"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                            </button>
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                className={clsx("p-1.5 rounded-md transition-all cursor-pointer", viewMode === 'grid' ? "bg-white shadow text-blue-600" : "text-slate-400 hover:text-slate-650")}
+                                title="Grid View"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                            </button>
+                        </div>
+                        <button onClick={onClose} className="text-slate-400 hover:text-slate-650 hover:bg-slate-100 p-2 rounded-full transition-colors ml-auto sm:ml-0 cursor-pointer">
+                            <X size={24} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto bg-slate-50/50 p-4">
+                    {activities.length === 0 ? (
+                        <div className="p-8 text-center text-slate-500">No records found.</div>
+                    ) : viewMode === 'list' ? (
+                        <div className="overflow-x-auto bg-white rounded-xl border border-slate-100 shadow-xs">
+                            <table className="w-full text-sm text-left border-collapse">
+                                <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-xs sticky top-0 border-b border-slate-100">
+                                    <tr>
+                                        <th className="px-4 py-3">Activity</th>
+                                        <th className="px-4 py-3">Division</th>
+                                        <th className="px-4 py-3">Project</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3">Fund</th>
+                                        <th className="px-4 py-3 text-right">Allocation</th>
+                                        <th className="px-4 py-3 text-right">Obligated</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {activities.map((item, idx) => {
+                                        let statusClass = 'bg-slate-100 text-slate-600';
+                                        if (item.status === 'Completed' || item.status === 'Accomplished') statusClass = 'bg-green-100 text-green-700';
+                                        else if (item.status === 'In Progress') statusClass = 'bg-blue-100 text-blue-700';
+                                        else if (item.status === 'Delayed') statusClass = 'bg-red-100 text-red-700';
+
+                                        return (
+                                            <tr
+                                                key={item.id || idx}
+                                                onClick={() => setSelectedActivity(item)}
+                                                className="transition-colors hover:bg-slate-50 cursor-pointer"
+                                            >
+                                                <td className="px-4 py-3 font-semibold text-slate-800 max-w-xs truncate" title={item.name}>
+                                                    {item.name}
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-500 text-xs">{item.division}</td>
+                                                <td className="px-4 py-3 text-slate-500 text-xs truncate max-w-[150px]" title={item.project}>{item.project}</td>
+                                                <td className="px-4 py-3">
+                                                    <span className={clsx("px-2 py-0.5 rounded-full text-xs font-bold inline-block", statusClass)}>
+                                                        {item.status || 'Pending'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-500 text-xs">{item.sourceOfFund}</td>
+                                                <td className="px-4 py-3 text-right font-mono font-semibold">{peso(item.budget)}</td>
+                                                <td className="px-4 py-3 text-right font-mono font-semibold">{peso(item.obligated)}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {activities.map((item, idx) => {
+                                let statusClass = 'bg-slate-100 text-slate-600';
+                                if (item.status === 'Completed' || item.status === 'Accomplished') statusClass = 'bg-green-100 text-green-700';
+                                else if (item.status === 'In Progress') statusClass = 'bg-blue-100 text-blue-700';
+                                else if (item.status === 'Delayed') statusClass = 'bg-red-100 text-red-700';
+
+                                return (
+                                    <div 
+                                        key={item.id || idx} 
+                                        onClick={() => setSelectedActivity(item)}
+                                        className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                                    >
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 mb-2 truncate" title={item.name}>
+                                                {item.name}
+                                            </h4>
+                                            <div className="text-xs text-slate-500 space-y-1.5">
+                                                <div className="flex justify-between items-center">
+                                                    <span>Status:</span>
+                                                    <span className={clsx("px-2 py-0.5 rounded-full text-[10px] font-bold", statusClass)}>{item.status || 'Pending'}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>Project:</span>
+                                                    <span className="truncate max-w-[150px]" title={item.project}>{item.project}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>Division:</span>
+                                                    <span>{item.division}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>Fund:</span>
+                                                    <span>{item.sourceOfFund}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-xs text-slate-500 space-y-1 mt-3 pt-3 border-t border-slate-100">
+                                            <div className="flex justify-between">
+                                                <span>Allocation:</span>
+                                                <span className="font-mono font-bold text-slate-700">{peso(item.budget)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Obligated:</span>
+                                                <span className="font-mono font-bold text-slate-700">{peso(item.obligated)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -29,6 +283,11 @@ const Dashboard = () => {
     const [selectedDivision, setSelectedDivision] = useState(null);
     const [distributionView, setDistributionView] = useState('bar');
     const [editingTask, setEditingTask] = useState(null);
+    const [detailModal, setDetailModal] = useState({
+        isOpen: false,
+        title: '',
+        activities: []
+    });
 
     // New dashboard filters
     const [fundFilter, setFundFilter] = useState('all');
@@ -41,6 +300,67 @@ const Dashboard = () => {
     const [categorySearchQuery, setCategorySearchQuery] = useState('');
     const [categorySortMode, setCategorySortMode] = useState('value');
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [tooltip, setTooltip] = useState({
+        visible: false,
+        x: 0,
+        y: 0,
+        content: null
+    });
+
+    const showTooltip = (e, label, value, share, color = null) => {
+        setTooltip({
+            visible: true,
+            x: e.clientX,
+            y: e.clientY,
+            color: color,
+            content: (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                        {color && (
+                            <span 
+                                style={{ 
+                                    width: '8px', 
+                                    height: '8px', 
+                                    borderRadius: '50%', 
+                                    backgroundColor: color,
+                                    display: 'inline-block',
+                                    boxShadow: `0 0 6px ${color}`
+                                }} 
+                            />
+                        )}
+                        <span style={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.08em', color: '#08315F' }}>
+                            {label}
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', fontSize: '11px' }}>
+                        <span style={{ color: '#475569', fontWeight: '600' }}>Amount:</span>
+                        <span style={{ fontWeight: 'bold', fontFamily: 'monospace', color: '#08315F' }}>{value}</span>
+                    </div>
+                    {share !== undefined && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', fontSize: '11px' }}>
+                            <span style={{ color: '#475569', fontWeight: '600' }}>Share:</span>
+                            <span style={{ fontWeight: 'bold', color: '#16A34A' }}>{share}%</span>
+                        </div>
+                    )}
+                </div>
+            )
+        });
+    };
+
+    const updateTooltipPosition = (e) => {
+        setTooltip(prev => ({
+            ...prev,
+            x: e.clientX,
+            y: e.clientY
+        }));
+    };
+
+    const hideTooltip = () => {
+        setTooltip(prev => ({
+            ...prev,
+            visible: false
+        }));
+    };
 
     // Per-card split states
     const [mainSplitBy, setMainSplitBy] = useState('status');
@@ -86,6 +406,20 @@ const Dashboard = () => {
     const normalizeDivision = (div) => {
         if (!div || div.trim().toLowerCase() === 'n/a') return 'Unassigned';
         return div;
+    };
+
+    const getFilteredActivities = (list, type, val) => {
+        if (type === 'status') {
+            return list.filter(a => a.status === val);
+        }
+        if (type === 'budget') {
+            if (val === 'Utilized') return list.filter(a => a.obligated > 0 || a.used > 0);
+            if (val === 'Unutilized') return list.filter(a => (a.budget - a.obligated) > 0 || (a.budget - a.used) > 0);
+        }
+        if (type === 'fund') {
+            return list.filter(a => a.sourceOfFund === val);
+        }
+        return list;
     };
 
     // Load API Data
@@ -516,19 +850,36 @@ const Dashboard = () => {
     }
 
     // Stacked segments helper
-    const renderStackedSegments = (values, scale, classes, labels, formatValue = fmt) => {
+    const renderStackedSegments = (values, scale, classes, labels, formatValue = fmt, onClickSegment = null, totalForShare = null) => {
+        const totalSum = totalForShare || values.reduce((s, val) => s + val, 0) || 1;
         return values.map((v, i) => {
             const width = scale ? Math.max((v / scale) * 100, 0) : 0;
             if (v === 0) return null;
             const text = formatValue(v);
-            // Hide text if the segment width is too small to display the text length neatly
-            const showText = width * 4.5 > text.length * 6;
+            const share = Math.round((v / totalSum) * 100);
+            
+            let segColor = null;
+            if (classes[i]) {
+                const name = classes[i].replace('seg-', '');
+                segColor = colors[name] || null;
+            }
+            
             return (
                 <div 
                     key={i}
                     className={`segment ${classes[i]}`} 
-                    style={{ width: `${width}%` }} 
+                    style={{ width: `${width}%`, cursor: onClickSegment ? 'pointer' : 'default' }} 
                     title={`${labels[i]}: ${text}`}
+                    onClick={(e) => {
+                        if (onClickSegment) {
+                            e.stopPropagation();
+                            onClickSegment(labels[i]);
+                        }
+                    }}
+                    onPointerDown={(e) => showTooltip(e, labels[i], text, share, segColor)}
+                    onPointerOver={(e) => showTooltip(e, labels[i], text, share, segColor)}
+                    onPointerMove={updateTooltipPosition}
+                    onPointerLeave={hideTooltip}
                 >
                     <span>{text}</span>
                 </div>
@@ -877,7 +1228,11 @@ const Dashboard = () => {
                                                     maxBudgetTotal,
                                                     ["seg-blue", "seg-gold"],
                                                     ["Utilized", "Unutilized"],
-                                                    peso
+                                                    peso,
+                                                    (label) => {
+                                                        const filtered = getFilteredActivities(r, 'budget', label);
+                                                        setDetailModal({ isOpen: true, title: `${d} — ${label} Activities (Budget)`, activities: filtered });
+                                                    }
                                                 );
                                             })()}
                                             {mainSplitBy === 'fund' && (() => {
@@ -891,7 +1246,11 @@ const Dashboard = () => {
                                                     maxTotal,
                                                     fundSources.map(f => f.seg),
                                                     fundSources.map(f => f.label),
-                                                    metricFormat
+                                                    metricFormat,
+                                                    (label) => {
+                                                        const filtered = getFilteredActivities(r, 'fund', label);
+                                                        setDetailModal({ isOpen: true, title: `${d} — Fund: ${label} Activities`, activities: filtered });
+                                                    }
                                                 );
                                             })()}
                                             {mainSplitBy === 'status' && (() => {
@@ -909,7 +1268,11 @@ const Dashboard = () => {
                                                     maxTotal,
                                                     ["seg-gold", "seg-green", "seg-red"],
                                                     ["Pending", "Accomplished", "Delayed"],
-                                                    metricFormat
+                                                    metricFormat,
+                                                    (label) => {
+                                                        const filtered = getFilteredActivities(r, 'status', label);
+                                                        setDetailModal({ isOpen: true, title: `${d} — ${label} Activities (Status)`, activities: filtered });
+                                                    }
                                                 );
                                             })()}
                                         </div>
@@ -990,13 +1353,29 @@ const Dashboard = () => {
                                         const unIntensity = un / maxVal;
 
                                         if (isBudgetUtilizedVisible) {
+                                            const share = Math.round(u / Math.max(b, 1) * 100);
                                             cells.push(
-                                                <div key="u" className={`heat-cell ${u === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.blue} ${Math.round(16 + uIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.blue} 48%, #DBEAFE)`, color: uIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(u)}</div>
+                                                <div key="u" onClick={() => {
+                                                    const filtered = getFilteredActivities(r, 'budget', 'Utilized');
+                                                    setDetailModal({ isOpen: true, title: `${d} — Utilized Budget Activities`, activities: filtered });
+                                                }} 
+                                                onPointerOver={(e) => showTooltip(e, 'Utilized', peso(u), share)}
+                                                onPointerMove={updateTooltipPosition}
+                                                onPointerLeave={hideTooltip}
+                                                className={`heat-cell cursor-pointer hover:opacity-80 ${u === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.blue} ${Math.round(16 + uIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.blue} 48%, #DBEAFE)`, color: uIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(u)}</div>
                                             );
                                         }
                                         if (isBudgetUnutilizedVisible) {
+                                            const share = Math.round(un / Math.max(b, 1) * 100);
                                             cells.push(
-                                                <div key="un" className={`heat-cell ${un === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + unIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: unIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(un)}</div>
+                                                <div key="un" onClick={() => {
+                                                    const filtered = getFilteredActivities(r, 'budget', 'Unutilized');
+                                                    setDetailModal({ isOpen: true, title: `${d} — Unutilized Budget Activities`, activities: filtered });
+                                                }} 
+                                                onPointerOver={(e) => showTooltip(e, 'Unutilized', peso(un), share)}
+                                                onPointerMove={updateTooltipPosition}
+                                                onPointerLeave={hideTooltip}
+                                                className={`heat-cell cursor-pointer hover:opacity-80 ${un === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + unIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: unIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(un)}</div>
                                             );
                                         }
                                     } else if (isFund) {
@@ -1007,8 +1386,16 @@ const Dashboard = () => {
                                         visibleFundSources.forEach(f => {
                                             const v = metricValue(r.filter(a => a.sourceOfFund === f.label));
                                             const intensity = v / maxVal;
+                                            const share = Math.round(v / Math.max(totalVal, 1) * 100);
                                             cells.push(
-                                                <div key={f.label} className={`heat-cell ${v === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${f.color} ${Math.round(16 + intensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${f.color} 48%, #DBEAFE)`, color: intensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(v)}</div>
+                                                <div key={f.label} onClick={() => {
+                                                    const filtered = getFilteredActivities(r, 'fund', f.label);
+                                                    setDetailModal({ isOpen: true, title: `${d} — Fund: ${f.label} Activities`, activities: filtered });
+                                                }} 
+                                                onPointerOver={(e) => showTooltip(e, f.label, metricFormat(v), share)}
+                                                onPointerMove={updateTooltipPosition}
+                                                onPointerLeave={hideTooltip}
+                                                className={`heat-cell cursor-pointer hover:opacity-80 ${v === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${f.color} ${Math.round(16 + intensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${f.color} 48%, #DBEAFE)`, color: intensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(v)}</div>
                                             );
                                         });
                                     } else {
@@ -1028,18 +1415,42 @@ const Dashboard = () => {
                                         const delIntensity = del / maxVal;
 
                                         if (isStatusPendingVisible) {
+                                            const share = Math.round(p / Math.max(totalVal, 1) * 100);
                                             cells.push(
-                                                <div key="p" className={`heat-cell ${p === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + pIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: pIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(p)}</div>
+                                                <div key="p" onClick={() => {
+                                                    const filtered = getFilteredActivities(r, 'status', 'Pending');
+                                                    setDetailModal({ isOpen: true, title: `${d} — Pending Activities`, activities: filtered });
+                                                }} 
+                                                onPointerOver={(e) => showTooltip(e, 'Pending', metricFormat(p), share)}
+                                                onPointerMove={updateTooltipPosition}
+                                                onPointerLeave={hideTooltip}
+                                                className={`heat-cell cursor-pointer hover:opacity-80 ${p === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + pIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: pIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(p)}</div>
                                             );
                                         }
                                         if (isStatusAccomplishedVisible) {
+                                            const share = Math.round(acc / Math.max(totalVal, 1) * 100);
                                             cells.push(
-                                                <div key="acc" className={`heat-cell ${acc === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.green} ${Math.round(16 + accIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.green} 48%, #DBEAFE)`, color: accIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(acc)}</div>
+                                                <div key="acc" onClick={() => {
+                                                    const filtered = getFilteredActivities(r, 'status', 'Accomplished');
+                                                    setDetailModal({ isOpen: true, title: `${d} — Accomplished Activities`, activities: filtered });
+                                                }} 
+                                                onPointerOver={(e) => showTooltip(e, 'Accomplished', metricFormat(acc), share)}
+                                                onPointerMove={updateTooltipPosition}
+                                                onPointerLeave={hideTooltip}
+                                                className={`heat-cell cursor-pointer hover:opacity-80 ${acc === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.green} ${Math.round(16 + accIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.green} 48%, #DBEAFE)`, color: accIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(acc)}</div>
                                             );
                                         }
                                         if (isStatusDelayedVisible) {
+                                            const share = Math.round(del / Math.max(totalVal, 1) * 100);
                                             cells.push(
-                                                <div key="del" className={`heat-cell ${del === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.red} ${Math.round(16 + delIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.red} 48%, #DBEAFE)`, color: delIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(del)}</div>
+                                                <div key="del" onClick={() => {
+                                                    const filtered = getFilteredActivities(r, 'status', 'Delayed');
+                                                    setDetailModal({ isOpen: true, title: `${d} — Delayed Activities`, activities: filtered });
+                                                }} 
+                                                onPointerOver={(e) => showTooltip(e, 'Delayed', metricFormat(del), share)}
+                                                onPointerMove={updateTooltipPosition}
+                                                onPointerLeave={hideTooltip}
+                                                className={`heat-cell cursor-pointer hover:opacity-80 ${del === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.red} ${Math.round(16 + delIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.red} 48%, #DBEAFE)`, color: delIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(del)}</div>
                                             );
                                         }
                                     }
@@ -1054,7 +1465,13 @@ const Dashboard = () => {
                                                 {d}
                                             </div>
                                             {cells}
-                                            <div className="heat-cell heat-total font-bold">{metricFormat(totalVal)}</div>
+                                            <div onClick={() => {
+                                                setDetailModal({ isOpen: true, title: `${d} — All Activities`, activities: r });
+                                            }} 
+                                            onPointerOver={(e) => showTooltip(e, 'Total', metricFormat(totalVal))}
+                                            onPointerMove={updateTooltipPosition}
+                                            onPointerLeave={hideTooltip}
+                                            className="heat-cell heat-total font-bold cursor-pointer hover:opacity-80">{metricFormat(totalVal)}</div>
                                         </React.Fragment>
                                     );
                                 })}
@@ -1116,12 +1533,25 @@ const Dashboard = () => {
                             const detailsFormat = (val) => detailsData.some(r => r.format === 'peso') ? peso(val) : metricFormat(val);
                             const maxVal = Math.max(...detailsData.map(x => x.value), 1);
 
+                            const totalSum = detailsData.reduce((s, x) => s + x.value, 0) || 1;
+
                             return (
                                 <div className="histogram" style={{ '--cols': detailsData.length }}>
                                     {detailsData.map((d, i) => {
                                         const hPct = Math.max((d.value / maxVal) * 100, 8);
+                                        const share = Math.round(d.value / totalSum * 100);
                                         return (
-                                            <div key={i} className="hist-col">
+                                            <div 
+                                                key={i} 
+                                                className="hist-col cursor-pointer hover:opacity-90"
+                                                onClick={() => {
+                                                    const filtered = getFilteredActivities(activeActivities, detailsSplitBy, d.label);
+                                                    setDetailModal({ isOpen: true, title: `${d.label} Activities (${detailsSplitBy})`, activities: filtered });
+                                                }}
+                                                onPointerOver={(e) => showTooltip(e, d.label, detailsFormat(d.value), share, d.color)}
+                                                onPointerMove={updateTooltipPosition}
+                                                onPointerLeave={hideTooltip}
+                                            >
                                                 <div className="hist-area">
                                                     <div className="hist-bar-wrap" style={{ height: `${hPct}%` }}>
                                                         <div className="hist-value">{detailsFormat(d.value)}</div>
@@ -1169,7 +1599,13 @@ const Dashboard = () => {
                         </div>
 
                         <div className="donut-layout">
-                            <div className="donut" style={donutStyle}>
+                            <div 
+                                className="donut cursor-pointer hover:opacity-90" 
+                                style={donutStyle}
+                                onClick={() => {
+                                    setDetailModal({ isOpen: true, title: `Snapshot — All Active Activities`, activities: activeActivities });
+                                }}
+                            >
                                 <div className="donut-center">
                                     <span>{donutFormat(donutTotal)}</span>
                                     <small className="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5" style={{ display: 'block' }}>{metricLabel()}</small>
@@ -1185,16 +1621,29 @@ const Dashboard = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {donutData.map((d, i) => (
-                                            <tr key={i}>
-                                                <td>
-                                                    <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
-                                                    {d.label}
-                                                </td>
-                                                <td><b>{donutFormat(d.value)}</b></td>
-                                                <td><b>{pct((d.value / donutTotal) * 100)}</b></td>
-                                            </tr>
-                                        ))}
+                                        {donutData.map((d, i) => {
+                                            const share = Math.round((d.value / donutTotal) * 100);
+                                            return (
+                                                <tr 
+                                                    key={i} 
+                                                    className="hover:bg-slate-50 cursor-pointer"
+                                                    onClick={() => {
+                                                        const filtered = getFilteredActivities(activeActivities, snapshotSplitBy, d.label);
+                                                        setDetailModal({ isOpen: true, title: `${d.label} Activities (${snapshotSplitBy})`, activities: filtered });
+                                                    }}
+                                                    onPointerOver={(e) => showTooltip(e, d.label, donutFormat(d.value), share, d.color)}
+                                                    onPointerMove={updateTooltipPosition}
+                                                    onPointerLeave={hideTooltip}
+                                                >
+                                                    <td>
+                                                        <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
+                                                        {d.label}
+                                                    </td>
+                                                    <td><b>{donutFormat(d.value)}</b></td>
+                                                    <td><b>{pct((d.value / donutTotal) * 100)}</b></td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
@@ -1261,7 +1710,10 @@ const Dashboard = () => {
                                         {/* Left Stacked Bar */}
                                         <div className="left" title={leftLabels.join(" + ")}>
                                             <div style={{ display: 'flex', flexDirection: 'row-reverse', width: `${lWidth}%`, height: '100%', marginLeft: 'auto' }}>
-                                                {renderStackedSegments(leftVals, leftTotal || 1, leftClasses, leftLabels, distributionMode === 'budget' ? peso : fmt)}
+                                                {renderStackedSegments(leftVals, leftTotal || 1, leftClasses, leftLabels, distributionMode === 'budget' ? peso : fmt, (label) => {
+                                                    const filtered = getFilteredActivities(r, distributionMode, label);
+                                                    setDetailModal({ isOpen: true, title: `${d} — ${label} Activities (${distributionMode})`, activities: filtered });
+                                                }, null, totalVal)}
                                             </div>
                                         </div>
 
@@ -1270,7 +1722,10 @@ const Dashboard = () => {
                                         {/* Right Stacked Bar */}
                                         <div className="right" title={rightLabels.join(" + ")}>
                                             <div style={{ display: 'flex', width: `${rWidth}%`, height: '100%' }}>
-                                                {renderStackedSegments(rightVals, rightTotal || 1, rightClasses, rightLabels, distributionMode === 'budget' ? peso : fmt)}
+                                                {renderStackedSegments(rightVals, rightTotal || 1, rightClasses, rightLabels, distributionMode === 'budget' ? peso : fmt, (label) => {
+                                                    const filtered = getFilteredActivities(r, distributionMode, label);
+                                                    setDetailModal({ isOpen: true, title: `${d} — ${label} Activities (${distributionMode})`, activities: filtered });
+                                                }, null, totalVal)}
                                             </div>
                                         </div>
 
@@ -1757,6 +2212,45 @@ const Dashboard = () => {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+            {detailModal.isOpen && (
+                <ActivityBreakdownModal
+                    isOpen={detailModal.isOpen}
+                    onClose={() => setDetailModal(prev => ({ ...prev, isOpen: false }))}
+                    title={detailModal.title}
+                    activities={detailModal.activities}
+                    onEditActivity={(r) => {
+                        setDetailModal(prev => ({ ...prev, isOpen: false }));
+                        setEditingTask({
+                            ...r,
+                            title: r.name,
+                            project_id: r.id
+                        });
+                    }}
+                />
+            )}
+            {tooltip.visible && (
+                <div 
+                    className="bar-hover-tooltip"
+                    style={{
+                        position: 'fixed',
+                        left: tooltip.x + 15,
+                        top: tooltip.y + 15,
+                        backgroundColor: '#FFFFFF', // Card style background
+                        color: '#08315F', // Navy text
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        boxShadow: '0 10px 18px -3px rgba(8, 49, 95, 0.12), 0 4px 6px -2px rgba(8, 49, 95, 0.08)',
+                        zIndex: 9999,
+                        pointerEvents: 'none',
+                        transition: 'opacity 0.1s ease',
+                        border: '2px solid #DBEAFE', // Card style border matching dashboard
+                        fontFamily: 'var(--font)'
+                    }}
+                >
+                    {tooltip.content}
                 </div>
             )}
         </div>

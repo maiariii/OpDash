@@ -311,16 +311,6 @@ const Layout = () => {
                 )}
             </aside>
 
-            {/* Mobile floating theme toggle */}
-            <button
-                onClick={toggleTheme}
-                className="mobile-theme-toggle"
-                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                aria-label="Toggle Theme"
-            >
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-
             {/* Main Content Area */}
             <main className="main-content">
                 <header className="topbar">
@@ -329,26 +319,6 @@ const Layout = () => {
                         <h1>{topbarTitle}</h1>
                         <p>{topbarNote}</p>
                     </div>
-
-                    {/* Mobile user avatar + logout */}
-                    {user && (
-                        <div className="mobile-user-menu-wrapper">
-                            <div className="w-9 h-9 rounded-full bg-red-100 text-red-650 flex items-center justify-center font-bold text-sm shadow-md border-2 border-white/80">
-                                {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
-                            </div>
-                            <button
-                                onClick={() => {
-                                    localStorage.removeItem('opdash_token');
-                                    localStorage.removeItem('opdash_user');
-                                    window.location.href = '/opdash/login';
-                                }}
-                                className="mobile-logout-btn"
-                                aria-label="Log out"
-                            >
-                                <LogOut size={18} />
-                            </button>
-                        </div>
-                    )}
                 </header>
 
                 {/* Sub-page content */}
