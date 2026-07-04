@@ -339,7 +339,7 @@ const MetricCard = ({ title, value, subtext, icon: Icon, color, onClick, clickab
                 {title}
                 {isWarning && <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Exceeded</span>}
             </p>
-            <h3 className={clsx("text-2xl font-bold", isWarning ? "text-red-600" : "text-slate-800")}>{value}</h3>
+            <h3 className={clsx("text-3xl md:text-4xl font-extrabold tracking-tight", isWarning ? "text-red-600" : "text-slate-800 dark:text-slate-100")}>{value}</h3>
             {subtext && <p className={clsx("text-xs mt-1", isWarning ? "text-red-500 font-medium" : "text-slate-400")}>{subtext}</p>}
         </div>
         <div className={clsx("p-3 rounded-lg transition-transform group-hover:scale-110", isWarning ? "bg-red-500" : color)}>
@@ -629,32 +629,32 @@ const DashboardCharts = ({ metrics }) => {
         openModal(titleMap[slice.label] || `${slice.label} Activities`, data, 'task');
     };
 
+    const accomplishmentRate = totalActivities > 0 ? (accomplishedActivities / totalActivities) * 100 : 0;
+    const utilizationRate = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+
     return (
         <div className="space-y-6">
             {/* Metric Cards Row (Activities & Milestones) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <MetricCard
-                    title="Total Activities"
-                    value={totalActivities}
+                    title="Activity Accomplishment Rate"
+                    value={`${accomplishmentRate.toFixed(1)}%`}
+                    subtext={`${accomplishedActivities} of ${totalActivities} activities accomplished`}
                     icon={Activity}
                     color="bg-blue-500"
                     clickable
                     isFeatured
-                    onClick={() => openModal('All Activities', allTasks, 'task')}
+                    onClick={() => openModal('Accomplished Activities', accomplishedTasks, 'task')}
                 />
                 <MetricCard
-                    title="Milestones Reached"
-                    value={metrics.milestonesReached || 0}
-                    icon={CheckCircle2}
+                    title="Utilization Rate"
+                    value={`${utilizationRate.toFixed(1)}%`}
+                    subtext={`₱${totalSpent.toLocaleString()} obligated of ₱${totalBudget.toLocaleString()}`}
+                    icon={DollarSign}
                     color="bg-emerald-600"
                     clickable
                     borderColor="moving-green-border"
-                    onClick={() => {
-                        const reached = (metrics.allMilestones || []).filter(m =>
-                            ['Accomplished', 'Completed', 'Done'].includes(m.status)
-                        );
-                        openModal('Milestones Reached', reached, 'milestone');
-                    }}
+                    onClick={() => openModal('Project Financial Breakdown', allProjects, 'financial')}
                 />
             </div>
 

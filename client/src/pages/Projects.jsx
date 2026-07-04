@@ -63,8 +63,72 @@ const Projects = () => {
     const [distributionView, setDistributionView] = useState('bar'); // 'bar' | 'heatmap'
 
     // Advanced Data Controls & Category Picker
+    const [fundFilter, setFundFilter] = useState('all');
+    const [expenditureFilter, setExpenditureFilter] = useState('all');
+    const [utilizationFilter, setUtilizationFilter] = useState('all');
     const [isAdvancedMode, setIsAdvancedMode] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState(null);
+    const [tooltip, setTooltip] = useState({
+        visible: false,
+        x: 0,
+        y: 0,
+        content: null
+    });
+
+    const showTooltip = (e, label, value, share, color = null) => {
+        setTooltip({
+            visible: true,
+            x: e.clientX,
+            y: e.clientY,
+            color: color,
+            content: (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                        {color && (
+                            <span 
+                                style={{ 
+                                    width: '8px', 
+                                    height: '8px', 
+                                    borderRadius: '50%', 
+                                    backgroundColor: color,
+                                    display: 'inline-block',
+                                    boxShadow: `0 0 6px ${color}`
+                                }} 
+                            />
+                        )}
+                        <span style={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.08em', color: '#08315F' }}>
+                            {label}
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', fontSize: '11px' }}>
+                        <span style={{ color: '#475569', fontWeight: '600' }}>Amount:</span>
+                        <span style={{ fontWeight: 'bold', fontFamily: 'monospace', color: '#08315F' }}>{value}</span>
+                    </div>
+                    {share !== undefined && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', fontSize: '11px' }}>
+                            <span style={{ color: '#475569', fontWeight: '600' }}>Share:</span>
+                            <span style={{ fontWeight: 'bold', color: '#16A34A' }}>{share}%</span>
+                        </div>
+                    )}
+                </div>
+            )
+        });
+    };
+
+    const updateTooltipPosition = (e) => {
+        setTooltip(prev => ({
+            ...prev,
+            x: e.clientX,
+            y: e.clientY
+        }));
+    };
+
+    const hideTooltip = () => {
+        setTooltip(prev => ({
+            ...prev,
+            visible: false
+        }));
+    };
     const [categorySearchQuery, setCategorySearchQuery] = useState('');
     const [categorySortMode, setCategorySortMode] = useState('value');
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -79,20 +143,38 @@ const Projects = () => {
         setDetailsSplitBy(distributionMode);
     }, [distributionMode]);
 
-    const renderStackedSegments = (values, scale, classes, labels, formatValue = fmt) => {
+    const renderStackedSegments = (values, scale, classes, labels, formatValue = fmt, onClickSegment = null, totalForShare = null) => {
+        const totalSum = totalForShare || values.reduce((s, val) => s + val, 0) || 1;
         return values.map((v, i) => {
             const width = scale ? Math.max((v / scale) * 100, 0) : 0;
             if (v === 0) return null;
             const text = formatValue(v);
-            const showText = width * 4.5 > text.length * 6;
+            const share = Math.round((v / totalSum) * 100);
+            
+            let segColor = null;
+            if (classes[i]) {
+                const name = classes[i].replace('seg-', '');
+                segColor = colors[name] || null;
+            }
+            
             return (
                 <div 
                     key={i}
                     className={`segment ${classes[i]}`} 
-                    style={{ width: `${width}%` }} 
+                    style={{ width: `${width}%`, cursor: onClickSegment ? 'pointer' : 'default' }} 
                     title={`${labels[i]}: ${text}`}
+                    onClick={(e) => {
+                        if (onClickSegment) {
+                            e.stopPropagation();
+                            onClickSegment(labels[i]);
+                        }
+                    }}
+                    onPointerDown={(e) => showTooltip(e, labels[i], text, share, segColor)}
+                    onPointerOver={(e) => showTooltip(e, labels[i], text, share, segColor)}
+                    onPointerMove={updateTooltipPosition}
+                    onPointerLeave={hideTooltip}
                 >
-                    {showText && <span>{text}</span>}
+                    <span>{text}</span>
                 </div>
             );
         });
@@ -166,6 +248,10 @@ const Projects = () => {
             const projectTotalBudget = Number(p.sof_allocation || p.total_budget || 0);
             const tasksBudgetSum = p.tasks ? p.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
 
+            const expenditureFramework = p.expenditure_framework || 'Not Specified';
+            const projectObligated = p.tasks ? p.tasks.reduce((sum, t) => sum + Number(t.obligated_amount || 0), 0) : 0;
+            const projectUtilizationPct = projectTotalBudget > 0 ? (projectObligated / projectTotalBudget) * 100 : 0;
+
             if (p.tasks && p.tasks.length > 0) {
                 p.tasks.forEach((t, idx) => {
                     let taskBudget = Number(t.allocation || t.gms_allocation || 0);
@@ -197,6 +283,8 @@ const Projects = () => {
                         obligated: Number(t.obligated_amount || 0),
                         used: Number(t.obligated_amount || 0),
                         sourceOfFund: projectSourceOfFund,
+                        expenditureFramework,
+                        projectUtilizationPct,
                     });
                 });
             } else {
@@ -210,6 +298,8 @@ const Projects = () => {
                     obligated: 0,
                     used: 0,
                     sourceOfFund: projectSourceOfFund,
+                    expenditureFramework,
+                    projectUtilizationPct,
                 });
             }
         });
@@ -217,11 +307,30 @@ const Projects = () => {
     }, [projectsWithTasks]);
 
     const activeActivities = useMemo(() => {
+        let list = processedActivities;
         if (selectedDivision) {
-            return processedActivities.filter(a => a.division === selectedDivision);
+            list = list.filter(a => a.division === selectedDivision);
         }
-        return processedActivities;
-    }, [processedActivities, selectedDivision]);
+        if (fundFilter !== 'all') {
+            list = list.filter(a => a.sourceOfFund === fundFilter);
+        }
+        if (expenditureFilter !== 'all') {
+            list = list.filter(a => a.expenditureFramework === expenditureFilter);
+        }
+        if (utilizationFilter !== 'all') {
+            list = list.filter(a => {
+                const pctVal = a.projectUtilizationPct;
+                if (utilizationFilter === 'unutilized') {
+                    return pctVal === 0;
+                }
+                if (utilizationFilter === 'utilized') {
+                    return pctVal > 0;
+                }
+                return true;
+            });
+        }
+        return list;
+    }, [processedActivities, selectedDivision, fundFilter, expenditureFilter, utilizationFilter]);
 
     // Available categories dynamically based on distributionMode
     const availableCategories = useMemo(() => {
@@ -435,11 +544,36 @@ const Projects = () => {
 
     const filteredProjects = projects.filter(p => {
         const matchesDivision = !selectedDivision || p.division === selectedDivision;
+        
+        // fund
+        const projectSourceOfFund = p.source_of_fund || 'GAA-PS';
+        const matchesFund = fundFilter === 'all' || projectSourceOfFund === fundFilter;
+        
+        // expenditure framework
+        const expenditureFramework = p.expenditure_framework || 'Not Specified';
+        const matchesExpenditure = expenditureFilter === 'all' || expenditureFramework === expenditureFilter;
+
+        // utilization
+        let matchesUtilization = true;
+        if (utilizationFilter !== 'all') {
+            const projectSofAllocation = Number(p.sof_allocation || p.total_budget || 0);
+            const tasksBudgetSum = p.tasks ? p.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
+            const projectTotalBudget = projectSofAllocation > 0 ? projectSofAllocation : tasksBudgetSum;
+            const projectObligated = p.tasks ? p.tasks.reduce((sum, t) => sum + Number(t.obligated_amount || 0), 0) : 0;
+            const projectUtilizationPct = projectTotalBudget > 0 ? (projectObligated / projectTotalBudget) * 100 : 0;
+            
+            if (utilizationFilter === 'unutilized') {
+                matchesUtilization = projectUtilizationPct === 0;
+            } else if (utilizationFilter === 'utilized') {
+                matchesUtilization = projectUtilizationPct > 0;
+            }
+        }
+
         const matchesSearch = !projectSearch || 
             (p.name || '').toLowerCase().includes(projectSearch.toLowerCase()) ||
             (p.description || '').toLowerCase().includes(projectSearch.toLowerCase()) ||
             (p.lead_personnel || '').toLowerCase().includes(projectSearch.toLowerCase());
-        return matchesDivision && matchesSearch;
+        return matchesDivision && matchesFund && matchesExpenditure && matchesUtilization && matchesSearch;
     });
 
     const [sortBy, setSortBy] = useState('latest');
@@ -458,7 +592,47 @@ const Projects = () => {
     });
 
     // View Mode State
-    const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+    const [viewMode, setViewMode] = useState('table'); // 'grid' | 'table'
+
+    const [tableFilters, setTableFilters] = useState({ 
+        name: '', 
+        division: '',
+        lead: '', 
+        allocation: '', 
+        obligated: '', 
+        utilization: '', 
+        milestones: '', 
+        activities: '', 
+        tasks: '' 
+    });
+
+    const tableFilteredProjects = useMemo(() => {
+        const showDivisionCol = !selectedDivision;
+        return sortedProjects.filter(project => {
+            const stats = projectStats[project.id] || { milestones: 0, activities: 0, tasks: 0 };
+            
+            // Calculate budget metrics
+            const projectSofAllocation = Number(project.sof_allocation || project.total_budget || 0);
+            const tasksBudgetSum = project.tasks ? project.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
+            const projectTotalBudget = projectSofAllocation > 0 ? projectSofAllocation : tasksBudgetSum;
+            const projectObligated = project.tasks ? project.tasks.reduce((sum, t) => sum + Number(t.obligated_amount || 0), 0) : 0;
+            const projectUtilizationPct = projectTotalBudget > 0 ? (projectObligated / projectTotalBudget) * 100 : 0;
+
+            const nameMatch = !tableFilters.name || (project.name || '').toLowerCase().includes(tableFilters.name.toLowerCase());
+            const divisionMatch = !showDivisionCol || !tableFilters.division || (project.division || '').toLowerCase().includes(tableFilters.division.toLowerCase());
+            const leadMatch = !tableFilters.lead || (project.lead_personnel || '').toLowerCase().includes(tableFilters.lead.toLowerCase());
+            
+            const allocMatch = !tableFilters.allocation || String(projectTotalBudget).includes(tableFilters.allocation) || peso(projectTotalBudget).toLowerCase().includes(tableFilters.allocation.toLowerCase());
+            const obligMatch = !tableFilters.obligated || String(projectObligated).includes(tableFilters.obligated) || peso(projectObligated).toLowerCase().includes(tableFilters.obligated.toLowerCase());
+            const utilMatch = !tableFilters.utilization || String(Math.round(projectUtilizationPct)).includes(tableFilters.utilization) || pct(projectUtilizationPct).toLowerCase().includes(tableFilters.utilization.toLowerCase());
+            
+            const milestoneMatch = !tableFilters.milestones || String(stats.milestones).includes(tableFilters.milestones);
+            const activityMatch = !tableFilters.activities || String(stats.activities).includes(tableFilters.activities);
+            const taskMatch = !tableFilters.tasks || String(stats.tasks).includes(tableFilters.tasks);
+
+            return nameMatch && divisionMatch && leadMatch && allocMatch && obligMatch && utilMatch && milestoneMatch && activityMatch && taskMatch;
+        });
+    }, [sortedProjects, tableFilters, projectStats, selectedDivision]);
 
     return (
         <div>
@@ -466,46 +640,50 @@ const Projects = () => {
                 <h2 className="text-2xl font-bold text-slate-800">{selectedDivision ? `${selectedDivision} Projects` : 'All Projects'}</h2>
 
                 <div className="flex items-center gap-3 flex-nowrap">
-                    <div className="relative flex items-center">
-                        <Search size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
-                        <input
-                            type="search"
-                            placeholder="Search projects..."
-                            value={projectSearch}
-                            onChange={(e) => setProjectSearch(e.target.value)}
-                            className="column-filter"
-                            style={{ width: '220px', height: '38px', margin: 0, paddingLeft: '32px' }}
-                        />
-                    </div>
-                    {/* View Toggle */}
-                    <div className="flex bg-white border border-slate-200 rounded-lg p-1">
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-slate-100 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                            title="Grid View"
-                        >
-                            <LayoutGrid size={18} />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('table')}
-                            className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-slate-100 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                            title="Table View"
-                        >
-                            <List size={18} />
-                        </button>
-                    </div>
+                    {viewMode === 'grid' && (
+                        <>
+                            <div className="relative flex items-center">
+                                <Search size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
+                                <input
+                                    type="search"
+                                    placeholder="Search projects..."
+                                    value={projectSearch}
+                                    onChange={(e) => setProjectSearch(e.target.value)}
+                                    className="column-filter"
+                                    style={{ width: '220px', height: '38px', margin: 0, paddingLeft: '32px' }}
+                                />
+                            </div>
+                            {/* View Toggle */}
+                            <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1">
+                                <button
+                                    onClick={() => setViewMode('grid')}
+                                    className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    title="Grid View"
+                                >
+                                    <LayoutGrid size={18} />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('table')}
+                                    className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    title="Table View"
+                                >
+                                    <List size={18} />
+                                </button>
+                            </div>
 
-                    <select 
-                        value={sortBy} 
-                        onChange={(e) => setSortBy(e.target.value)} 
-                        className="select" 
-                        style={{ minWidth: '200px', margin: 0 }}
-                    >
-                        <option value="latest">Created Date (Newest First)</option>
-                        <option value="oldest">Created Date (Oldest First)</option>
-                        <option value="name_asc">Project Name (A - Z)</option>
-                        <option value="name_desc">Project Name (Z - A)</option>
-                    </select>
+                            <select 
+                                value={sortBy} 
+                                onChange={(e) => setSortBy(e.target.value)} 
+                                className="select" 
+                                style={{ minWidth: '200px', margin: 0 }}
+                            >
+                                <option value="latest">Created Date (Newest First)</option>
+                                <option value="oldest">Created Date (Oldest First)</option>
+                                <option value="name_asc">Project Name (A - Z)</option>
+                                <option value="name_desc">Project Name (Z - A)</option>
+                            </select>
+                        </>
+                    )}
 
                     <button
                         onClick={() => setIsModalOpen(true)}
@@ -515,126 +693,229 @@ const Projects = () => {
                     </button>
                 </div>
             </div>
-
             {/* Filter Panel (Upgraded Data Controls) */}
-            {selectedDivision && (() => {
-                const resetFilters = () => {
-                    setDistributionMode('status');
-                    setUnitMode('count');
-                    setSelectedCategories(null);
-                };
+            <section className="card filters mb-6">
+                <div className="card-inner">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                        <div>
+                            <h2 className="section-title mb-0 flex items-center gap-2" style={{ marginBottom: 0 }}>
+                                <Activity className="text-blue-600 w-5 h-5" /> Data Controls
+                            </h2>
+                            <p className="subtext text-xs text-slate-500 font-bold">
+                                Filter records, configure active distribution categories, switch unit aggregation, and reset the view.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+                            <button
+                                id="resetBtn"
+                                type="button"
+                                onClick={() => {
+                                    setFundFilter('all');
+                                    setExpenditureFilter('all');
+                                    setUtilizationFilter('all');
+                                    setDistributionMode('status');
+                                    setUnitMode('count');
+                                    setSelectedDivision('');
+                                    setSearchParams({});
+                                    setSelectedCategories(null);
+                                }}
+                                className="px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-55 dark:hover:bg-slate-805 text-slate-600 dark:text-slate-300 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                                style={{ background: 'none' }}
+                            >
+                                Reset
+                            </button>
+                            <button
+                                id="advancedToggle"
+                                type="button"
+                                onClick={() => setIsAdvancedMode(!isAdvancedMode)}
+                                className={clsx(
+                                    "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer",
+                                    isAdvancedMode 
+                                        ? "bg-sky-600 hover:bg-sky-700 text-white" 
+                                        : "bg-amber-400 hover:bg-amber-550 text-slate-909"
+                                )}
+                            >
+                                {isAdvancedMode ? 'Toggle Basic Mode' : 'Toggle Advanced Mode'}
+                            </button>
+                        </div>
+                    </div>
 
-                return (
-                    <section className="card filters mb-6">
-                        <div className="card-inner">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-                                <div>
-                                    <h2 className="section-title mb-0 flex items-center gap-2" style={{ marginBottom: 0 }}>
-                                        <Activity className="text-blue-600 w-5 h-5" /> Data Controls
-                                    </h2>
-                                    <p className="subtext text-xs text-slate-500 font-bold">
-                                        Filter records, configure active distribution categories, switch unit aggregation, and reset the view.
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
-                                    <button
-                                        id="resetBtn"
-                                        type="button"
-                                        onClick={resetFilters}
-                                        className="px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-                                        style={{ background: 'none' }}
-                                    >
-                                        Reset
-                                    </button>
-                                    <button
-                                        id="advancedToggle"
-                                        type="button"
-                                        onClick={() => setIsAdvancedMode(!isAdvancedMode)}
-                                        className={clsx(
-                                            "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer",
-                                            isAdvancedMode 
-                                                ? "bg-sky-600 hover:bg-sky-700 text-white" 
-                                                : "bg-amber-400 hover:bg-amber-500 text-slate-900"
-                                        )}
-                                    >
-                                        {isAdvancedMode ? 'Toggle Basic Mode' : 'Toggle Advanced Mode'}
-                                    </button>
-                                </div>
-                            </div>
+                    {/* Basic Filters Subcard */}
+                    <div className="bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 rounded-xl p-4 mb-4">
+                        {/* First Row: Division filter */}
+                        <div className="grid grid-cols-1 gap-4 mb-4">
+                            <label className="flex flex-col gap-1.5 w-full">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Division</span>
+                                <select 
+                                    value={selectedDivision} 
+                                    onChange={(e) => handleDivisionChange(e.target.value)} 
+                                    className="select w-full"
+                                    style={{ margin: 0 }}
+                                >
+                                    <option value="">All Divisions</option>
+                                    {divisions.map(d => d.name).sort().map(div => (
+                                        <option key={div} value={div}>{div}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
 
-                            {/* Basic Filters Subcard */}
-                            <div className="bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 rounded-xl p-4 mb-4">
-                                <div className="grid grid-cols-1 gap-4">
-                                    <label className="flex flex-col gap-1.5 w-full">
-                                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Division</span>
-                                        <select 
-                                            value={selectedDivision} 
-                                            onChange={(e) => handleDivisionChange(e.target.value)} 
-                                            className="select w-full"
+                        {/* Second Row: Fund, Expenditure Framework, Budget Utilization */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Source of Fund</span>
+                                <select
+                                    value={fundFilter}
+                                    onChange={(e) => setFundFilter(e.target.value)}
+                                    className="select w-full"
+                                    style={{ margin: 0 }}
+                                >
+                                    <option value="all">All Funds</option>
+                                    <option value="GAA-PS">GAA-PS</option>
+                                    <option value="GAA-MOOE">GAA-MOOE</option>
+                                    <option value="GMS">GMS</option>
+                                    <option value="APB">APB</option>
+                                    <option value="HRD">HRD</option>
+                                    <option value="HRDP">HRDP</option>
+                                    <option value="Basic Education Inputs Program">Basic Education Inputs Program</option>
+                                </select>
+                            </label>
+
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Expenditure Framework</span>
+                                <select
+                                    value={expenditureFilter}
+                                    onChange={(e) => setExpenditureFilter(e.target.value)}
+                                    className="select w-full"
+                                    style={{ margin: 0 }}
+                                >
+                                    <option value="all">All Frameworks</option>
+                                    <option value="PREXC">PREXC</option>
+                                    <option value="WFP">WFP</option>
+                                </select>
+                            </label>
+
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Budget Utilization</span>
+                                <select
+                                    value={utilizationFilter}
+                                    onChange={(e) => setUtilizationFilter(e.target.value)}
+                                    className="select w-full"
+                                    style={{ margin: 0 }}
+                                >
+                                    <option value="all">All</option>
+                                    <option value="utilized">Utilized</option>
+                                    <option value="unutilized">Unutilized</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Advanced Controls Card (Highlight Treatment) */}
+                    {isAdvancedMode && (
+                        <div className="bg-amber-500/5 border-2 border-amber-400/40 rounded-xl p-4 animate-fadeIn">
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3" style={{ color: 'var(--navy)' }}>
+                                Advanced Controls
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Distribution by</span>
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={distributionMode}
+                                            onChange={(e) => {
+                                                setDistributionMode(e.target.value);
+                                                setSelectedCategories(null);
+                                            }}
+                                            className="select flex-1"
                                             style={{ margin: 0 }}
                                         >
-                                            <option value="">All Divisions</option>
-                                            {divisions.map(d => d.name).sort().map(div => (
-                                                <option key={div} value={div}>{div}</option>
-                                            ))}
+                                            <option value="status">Activity status</option>
+                                            <option value="budget">Budget utilization</option>
+                                            <option value="fund">Sources of fund</option>
                                         </select>
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Advanced Controls Card (Highlight Treatment) */}
-                            {isAdvancedMode && (
-                                <div className="bg-amber-500/5 border-2 border-amber-400/40 rounded-xl p-4 animate-fadeIn">
-                                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3" style={{ color: 'var(--navy)' }}>
-                                        Advanced Controls
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="flex flex-col gap-1.5">
-                                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Distribution by</span>
-                                            <div className="flex gap-2">
-                                                <select
-                                                    value={distributionMode}
-                                                    onChange={(e) => {
-                                                        setDistributionMode(e.target.value);
-                                                        setSelectedCategories(null);
-                                                    }}
-                                                    className="select flex-1"
-                                                    style={{ margin: 0 }}
-                                                >
-                                                    <option value="status">Activity status</option>
-                                                    <option value="budget">Budget utilization</option>
-                                                    <option value="fund">Sources of fund</option>
-                                                </select>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsCategoryModalOpen(true)}
-                                                    className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-805 hover:bg-slate-55 text-slate-600 dark:text-slate-350 rounded-lg cursor-pointer flex items-center justify-center"
-                                                    title="Configure values picker"
-                                                >
-                                                    <Settings size={18} />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <label className="flex flex-col gap-1.5">
-                                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Units</span>
-                                            <select
-                                                value={unitMode}
-                                                onChange={(e) => setUnitMode(e.target.value)}
-                                                className="select w-full"
-                                                style={{ margin: 0 }}
-                                            >
-                                                <option value="count">Number of activities</option>
-                                                <option value="budget">Budget</option>
-                                            </select>
-                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCategoryModalOpen(true)}
+                                            className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-805 hover:bg-slate-55 text-slate-600 dark:text-slate-350 rounded-lg cursor-pointer flex items-center justify-center"
+                                            title="Configure values picker"
+                                        >
+                                            <Settings size={18} />
+                                        </button>
                                     </div>
                                 </div>
-                            )}
+
+                                <label className="flex flex-col gap-1.5">
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Units</span>
+                                    <select
+                                        value={unitMode}
+                                        onChange={(e) => setUnitMode(e.target.value)}
+                                        className="select w-full"
+                                        style={{ margin: 0 }}
+                                    >
+                                        <option value="count">Number of activities</option>
+                                        <option value="budget">Budget</option>
+                                    </select>
+                                </label>
+                            </div>
                         </div>
-                    </section>
-                );
-            })()}
+                    )}
+                </div>
+            </section>
+
+            {/* KPI Grid */}
+            {selectedDivision && (
+                <div className="flex flex-wrap gap-4 w-full mb-6">
+                    {/* Activities Completion Rate Card */}
+                    <div className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                        <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Activities Completion Rate</span>
+                        <div className="mt-2 flex items-baseline gap-2">
+                            <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
+                                {pct(activeActivities.length > 0 ? (totals.accomplished.length / activeActivities.length) * 100 : 0)}
+                            </span>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-405 font-medium">
+                            {totals.accomplished.length} of {activeActivities.length} accomplished
+                        </div>
+                    </div>
+                    
+                    {/* Budget Utilization Rate Card */}
+                    <div className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-855 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                        <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Budget Utilization Rate</span>
+                        <div className="mt-2 flex items-baseline gap-2">
+                            <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
+                                {pct(totals.budget > 0 ? (totals.obligated / totals.budget) * 100 : 0)}
+                            </span>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-405 font-medium">
+                            {peso(totals.obligated)} obligated of {peso(totals.budget)}
+                        </div>
+                    </div>
+
+                    {/* Dynamic KPI Cards */}
+                    {availableCategories
+                        .filter(cat => activeCategoryIds.includes(cat.id))
+                        .map(cat => {
+                            const displayValue = unitMode === 'budget' ? peso(cat.value) : fmt(cat.count);
+                            const displayLabel = cat.label;
+                            const subtitle = unitMode === 'budget' ? `${fmt(cat.count)} activities` : peso(cat.value);
+                            return (
+                                <div key={cat.id} className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-855 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{displayLabel}</span>
+                                    <div className="mt-2 flex items-baseline gap-2">
+                                        <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
+                                            {displayValue}
+                                        </span>
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-405 font-medium">
+                                        {subtitle}
+                                    </div>
+                                </div>
+                            );
+                        })
+                    }
+                </div>
+            )}
 
             {/* Distribution Graph Section (Copied from Dashboard) */}
             {filteredProjects.length > 0 && selectedDivision && (
@@ -846,13 +1127,33 @@ const Projects = () => {
                                             const unIntensity = un / maxVal;
 
                                             if (isBudgetUtilizedVisible) {
+                                                const share = Math.round(u / Math.max(b, 1) * 100);
                                                 cells.push(
-                                                    <div key="u" className={`heat-cell ${u === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.blue} ${Math.round(16 + uIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.blue} 48%, #DBEAFE)`, color: uIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(u)}</div>
+                                                    <div 
+                                                        key="u" 
+                                                        onPointerOver={(e) => showTooltip(e, 'Utilized', peso(u), share, colors.blue)}
+                                                        onPointerMove={updateTooltipPosition}
+                                                        onPointerLeave={hideTooltip}
+                                                        className={`heat-cell ${u === 0 ? 'heat-zero' : ''}`} 
+                                                        style={{ background: `color-mix(in srgb, ${colors.blue} ${Math.round(16 + uIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.blue} 48%, #DBEAFE)`, color: uIntensity > 0.58 ? 'white' : 'var(--navy)' }}
+                                                    >
+                                                        {peso(u)}
+                                                    </div>
                                                 );
                                             }
                                             if (isBudgetUnutilizedVisible) {
+                                                const share = Math.round(un / Math.max(b, 1) * 100);
                                                 cells.push(
-                                                    <div key="un" className={`heat-cell ${un === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + unIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: unIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{peso(un)}</div>
+                                                    <div 
+                                                        key="un" 
+                                                        onPointerOver={(e) => showTooltip(e, 'Unutilized', peso(un), share, colors.gold)}
+                                                        onPointerMove={updateTooltipPosition}
+                                                        onPointerLeave={hideTooltip}
+                                                        className={`heat-cell ${un === 0 ? 'heat-zero' : ''}`} 
+                                                        style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + unIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: unIntensity > 0.58 ? 'white' : 'var(--navy)' }}
+                                                    >
+                                                        {peso(un)}
+                                                    </div>
                                                 );
                                             }
                                         } else if (isFund) {
@@ -863,8 +1164,18 @@ const Projects = () => {
                                             visibleFundSources.forEach(f => {
                                                 const v = metricValue(r.filter(a => a.sourceOfFund === f.label));
                                                 const intensity = v / maxVal;
+                                                const share = Math.round(v / Math.max(totalVal, 1) * 100);
                                                 cells.push(
-                                                    <div key={f.label} className={`heat-cell ${v === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${f.color} ${Math.round(16 + intensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${f.color} 48%, #DBEAFE)`, color: intensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(v)}</div>
+                                                    <div 
+                                                        key={f.label} 
+                                                        onPointerOver={(e) => showTooltip(e, f.label, metricFormat(v), share, f.color)}
+                                                        onPointerMove={updateTooltipPosition}
+                                                        onPointerLeave={hideTooltip}
+                                                        className={`heat-cell ${v === 0 ? 'heat-zero' : ''}`} 
+                                                        style={{ background: `color-mix(in srgb, ${f.color} ${Math.round(16 + intensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${f.color} 48%, #DBEAFE)`, color: intensity > 0.58 ? 'white' : 'var(--navy)' }}
+                                                    >
+                                                        {metricFormat(v)}
+                                                    </div>
                                                 );
                                             });
                                         } else {
@@ -884,18 +1195,48 @@ const Projects = () => {
                                             const delIntensity = del / maxVal;
 
                                             if (isStatusPendingVisible) {
+                                                const share = Math.round(p / Math.max(totalVal, 1) * 100);
                                                 cells.push(
-                                                    <div key="p" className={`heat-cell ${p === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + pIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: pIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(p)}</div>
+                                                    <div 
+                                                        key="p" 
+                                                        onPointerOver={(e) => showTooltip(e, 'Pending', metricFormat(p), share, colors.gold)}
+                                                        onPointerMove={updateTooltipPosition}
+                                                        onPointerLeave={hideTooltip}
+                                                        className={`heat-cell ${p === 0 ? 'heat-zero' : ''}`} 
+                                                        style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + pIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: pIntensity > 0.58 ? 'white' : 'var(--navy)' }}
+                                                    >
+                                                        {metricFormat(p)}
+                                                    </div>
                                                 );
                                             }
                                             if (isStatusAccomplishedVisible) {
+                                                const share = Math.round(acc / Math.max(totalVal, 1) * 100);
                                                 cells.push(
-                                                    <div key="acc" className={`heat-cell ${acc === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.green} ${Math.round(16 + accIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.green} 48%, #DBEAFE)`, color: accIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(acc)}</div>
+                                                    <div 
+                                                        key="acc" 
+                                                        onPointerOver={(e) => showTooltip(e, 'Accomplished', metricFormat(acc), share, colors.green)}
+                                                        onPointerMove={updateTooltipPosition}
+                                                        onPointerLeave={hideTooltip}
+                                                        className={`heat-cell ${acc === 0 ? 'heat-zero' : ''}`} 
+                                                        style={{ background: `color-mix(in srgb, ${colors.green} ${Math.round(16 + accIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.green} 48%, #DBEAFE)`, color: accIntensity > 0.58 ? 'white' : 'var(--navy)' }}
+                                                    >
+                                                        {metricFormat(acc)}
+                                                    </div>
                                                 );
                                             }
                                             if (isStatusDelayedVisible) {
+                                                const share = Math.round(del / Math.max(totalVal, 1) * 100);
                                                 cells.push(
-                                                    <div key="del" className={`heat-cell ${del === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.red} ${Math.round(16 + delIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.red} 48%, #DBEAFE)`, color: delIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(del)}</div>
+                                                    <div 
+                                                        key="del" 
+                                                        onPointerOver={(e) => showTooltip(e, 'Delayed', metricFormat(del), share, colors.red)}
+                                                        onPointerMove={updateTooltipPosition}
+                                                        onPointerLeave={hideTooltip}
+                                                        className={`heat-cell ${del === 0 ? 'heat-zero' : ''}`} 
+                                                        style={{ background: `color-mix(in srgb, ${colors.red} ${Math.round(16 + delIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.red} 48%, #DBEAFE)`, color: delIntensity > 0.58 ? 'white' : 'var(--navy)' }}
+                                                    >
+                                                        {metricFormat(del)}
+                                                    </div>
                                                 );
                                             }
                                         }
@@ -908,7 +1249,14 @@ const Projects = () => {
                                                     {d}
                                                 </div>
                                                 {cells}
-                                                <div className="heat-cell heat-total font-bold">{metricFormat(totalVal)}</div>
+                                                <div 
+                                                    onPointerOver={(e) => showTooltip(e, 'Total', metricFormat(totalVal))}
+                                                    onPointerMove={updateTooltipPosition}
+                                                    onPointerLeave={hideTooltip}
+                                                    className="heat-cell heat-total font-bold"
+                                                >
+                                                    {metricFormat(totalVal)}
+                                                </div>
                                             </React.Fragment>
                                         );
                                     })}
@@ -970,12 +1318,20 @@ const Projects = () => {
                                 const detailsFormat = (val) => detailsData.some(r => r.format === 'peso') ? peso(val) : metricFormat(val);
                                 const maxVal = Math.max(...detailsData.map(x => x.value), 1);
 
+                                const totalSum = detailsData.reduce((s, x) => s + x.value, 0) || 1;
                                 return (
                                     <div className="histogram" style={{ '--cols': detailsData.length }}>
                                         {detailsData.map((d, i) => {
                                             const hPct = Math.max((d.value / maxVal) * 100, 8);
+                                            const share = Math.round(d.value / totalSum * 100);
                                             return (
-                                                <div key={i} className="hist-col">
+                                                <div 
+                                                    key={i} 
+                                                    className="hist-col cursor-pointer hover:opacity-90"
+                                                    onPointerOver={(e) => showTooltip(e, d.label, detailsFormat(d.value), share, d.color)}
+                                                    onPointerMove={updateTooltipPosition}
+                                                    onPointerLeave={hideTooltip}
+                                                >
                                                     <div className="hist-area">
                                                         <div className="hist-bar-wrap" style={{ height: `${hPct}%` }}>
                                                             <div className="hist-value">{detailsFormat(d.value)}</div>
@@ -1013,7 +1369,7 @@ const Projects = () => {
                                 {/* Activities Accomplishment */}
                                 <div className="flex flex-col items-center">
                                     <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Activities Accomplishment</h3>
-                                    <div className="donut-layout flex-col items-center gap-4 w-full">
+                                    <div className="donut-layout flex flex-col items-center gap-4 w-full">
                                         <div className="donut" style={activityDonutStyle}>
                                             <div className="donut-center">
                                                 <span>{activityDonutTotal}</span>
@@ -1030,16 +1386,25 @@ const Projects = () => {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {activityDonutData.map((d, i) => (
-                                                        <tr key={i}>
-                                                            <td>
-                                                                <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
-                                                                {d.label}
-                                                            </td>
-                                                            <td className="text-right"><b>{fmt(d.value)}</b></td>
-                                                            <td className="text-right"><b>{pct((d.value / activityDonutTotal) * 100)}</b></td>
-                                                        </tr>
-                                                    ))}
+                                                    {activityDonutData.map((d, i) => {
+                                                        const share = Math.round((d.value / activityDonutTotal) * 100);
+                                                        return (
+                                                            <tr 
+                                                                key={i}
+                                                                className="transition-colors hover:bg-slate-50 cursor-pointer"
+                                                                onPointerOver={(e) => showTooltip(e, d.label, fmt(d.value), share, d.color)}
+                                                                onPointerMove={updateTooltipPosition}
+                                                                onPointerLeave={hideTooltip}
+                                                            >
+                                                                <td>
+                                                                    <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
+                                                                    {d.label}
+                                                                </td>
+                                                                <td className="text-right"><b>{fmt(d.value)}</b></td>
+                                                                <td className="text-right"><b>{pct(share)}</b></td>
+                                                            </tr>
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1049,7 +1414,7 @@ const Projects = () => {
                                 {/* Financial Accomplishment */}
                                 <div className="flex flex-col items-center border-t sm:border-t-0 sm:border-l border-slate-100 pt-4 sm:pt-0 sm:pl-6">
                                     <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Financial Accomplishment</h3>
-                                    <div className="donut-layout flex-col items-center gap-4 w-full">
+                                    <div className="donut-layout flex flex-col items-center gap-4 w-full">
                                         <div className="donut" style={financialDonutStyle}>
                                             <div className="donut-center">
                                                 <span style={{ fontSize: '10px' }}>{peso(totals.budget)}</span>
@@ -1066,16 +1431,25 @@ const Projects = () => {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {financialDonutData.map((d, i) => (
-                                                        <tr key={i}>
-                                                            <td>
-                                                                <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
-                                                                {d.label}
-                                                            </td>
-                                                            <td className="text-right"><b>{peso(d.value)}</b></td>
-                                                            <td className="text-right"><b>{pct((d.value / financialDonutTotal) * 100)}</b></td>
-                                                        </tr>
-                                                    ))}
+                                                    {financialDonutData.map((d, i) => {
+                                                        const share = Math.round((d.value / financialDonutTotal) * 100);
+                                                        return (
+                                                            <tr 
+                                                                key={i}
+                                                                className="transition-colors hover:bg-slate-50 cursor-pointer"
+                                                                onPointerOver={(e) => showTooltip(e, d.label, peso(d.value), share, d.color)}
+                                                                onPointerMove={updateTooltipPosition}
+                                                                onPointerLeave={hideTooltip}
+                                                            >
+                                                                <td>
+                                                                    <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
+                                                                    {d.label}
+                                                                </td>
+                                                                <td className="text-right"><b>{peso(d.value)}</b></td>
+                                                                <td className="text-right"><b>{pct(share)}</b></td>
+                                                            </tr>
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1169,80 +1543,239 @@ const Projects = () => {
                 )
             ) : (
                 <div className="card-outlined overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    {/* Table Header Toolbar */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="flex flex-col">
+                            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Project List</h3>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500">All Projects per Division</p>
+                        </div>
+                        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap w-full sm:w-auto justify-start sm:justify-end">
+                            <div className="relative flex items-center w-full sm:w-auto">
+                                <Search size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
+                                <input
+                                    type="search"
+                                    placeholder="Search projects..."
+                                    value={projectSearch}
+                                    onChange={(e) => setProjectSearch(e.target.value)}
+                                    className="column-filter w-full sm:w-[220px]"
+                                    style={{ height: '38px', margin: 0, paddingLeft: '32px' }}
+                                />
+                            </div>
+                            {/* View Toggle */}
+                            <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1 shrink-0">
+                                <button
+                                    onClick={() => setViewMode('grid')}
+                                    className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    title="Grid View"
+                                >
+                                    <LayoutGrid size={18} />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('table')}
+                                    className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    title="Table View"
+                                >
+                                    <List size={18} />
+                                </button>
+                            </div>
+
+                            <select 
+                                value={sortBy} 
+                                onChange={(e) => setSortBy(e.target.value)} 
+                                className="select text-xs w-full sm:w-[200px]" 
+                                style={{ height: '38px', margin: 0 }}
+                            >
+                                <option value="latest">Created Date (Newest First)</option>
+                                <option value="oldest">Created Date (Oldest First)</option>
+                                <option value="name_asc">Project Name (A - Z)</option>
+                                <option value="name_desc">Project Name (Z - A)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto w-full">
+                        <table className="w-full text-left border-collapse" style={{ minWidth: !selectedDivision ? '1250px' : '1100px' }}>
                             <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercase tracking-wider">Project Name</th>
-                                    <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercase tracking-wider">Division</th>
-                                    <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercase tracking-wider">Lead</th>
-                                    <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercase tracking-wider text-right">Budget</th>
-                                    <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercase tracking-wider text-center" title="Milestones">
-                                        <Flag size={16} className="mx-auto text-amber-500" />
+                                <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                                    <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider min-w-[240px] max-w-[240px] w-[240px]">Project Name</th>
+                                    {!selectedDivision && (
+                                        <th className="sticky left-[240px] bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider min-w-[150px] max-w-[150px] w-[150px]">Division</th>
+                                    )}
+                                    <th 
+                                        className="sticky bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider min-w-[150px] max-w-[150px] w-[150px]"
+                                        style={{ left: !selectedDivision ? '390px' : '240px' }}
+                                    >
+                                        Lead Personnel
                                     </th>
-                                    <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercase tracking-wider text-center" title="Activities">
-                                        <Layers size={16} className="mx-auto text-blue-500" />
+                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right">Allocation</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right">Obligated</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right">Utilization Rate</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-center" title="Milestones">Milestone</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-center" title="Activities">Activity</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-center" title="Tasks">Task</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right">Actions</th>
+                                </tr>
+                                <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                                    <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-2">
+                                        <input
+                                            className="column-filter w-full text-xs font-normal"
+                                            type="search"
+                                            placeholder="Filter..."
+                                            value={tableFilters.name}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, name: e.target.value }))}
+                                        />
                                     </th>
-                                    <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercase tracking-wider text-center" title="Tasks">
-                                        <CheckSquare size={16} className="mx-auto text-emerald-500" />
+                                    {!selectedDivision && (
+                                        <th className="sticky left-[240px] bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-2">
+                                            <input
+                                                className="column-filter w-full text-xs font-normal"
+                                                type="search"
+                                                placeholder="Filter..."
+                                                value={tableFilters.division}
+                                                onChange={(e) => setTableFilters(prev => ({ ...prev, division: e.target.value }))}
+                                            />
+                                        </th>
+                                    )}
+                                    <th 
+                                        className="sticky bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-2"
+                                        style={{ left: !selectedDivision ? '390px' : '240px' }}
+                                    >
+                                        <input
+                                            className="column-filter w-full text-xs font-normal"
+                                            type="search"
+                                            placeholder="Filter..."
+                                            value={tableFilters.lead}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, lead: e.target.value }))}
+                                        />
                                     </th>
-                                    <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercase tracking-wider text-right">Actions</th>
+                                    <th className="px-4 py-2">
+                                        <input
+                                            className="column-filter w-full text-xs font-normal text-right"
+                                            type="search"
+                                            placeholder="Filter..."
+                                            value={tableFilters.allocation}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, allocation: e.target.value }))}
+                                        />
+                                    </th>
+                                    <th className="px-4 py-2">
+                                        <input
+                                            className="column-filter w-full text-xs font-normal text-right"
+                                            type="search"
+                                            placeholder="Filter..."
+                                            value={tableFilters.obligated}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, obligated: e.target.value }))}
+                                        />
+                                    </th>
+                                    <th className="px-4 py-2">
+                                        <input
+                                            className="column-filter w-full text-xs font-normal text-right"
+                                            type="search"
+                                            placeholder="Filter..."
+                                            value={tableFilters.utilization}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, utilization: e.target.value }))}
+                                        />
+                                    </th>
+                                    <th className="px-4 py-2">
+                                        <input
+                                            className="column-filter w-full text-xs font-normal text-center"
+                                            type="search"
+                                            placeholder="Filter..."
+                                            value={tableFilters.milestones}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, milestones: e.target.value }))}
+                                        />
+                                    </th>
+                                    <th className="px-4 py-2">
+                                        <input
+                                            className="column-filter w-full text-xs font-normal text-center"
+                                            type="search"
+                                            placeholder="Filter..."
+                                            value={tableFilters.activities}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, activities: e.target.value }))}
+                                        />
+                                    </th>
+                                    <th className="px-4 py-2">
+                                        <input
+                                            className="column-filter w-full text-xs font-normal text-center"
+                                            type="search"
+                                            placeholder="Filter..."
+                                            value={tableFilters.tasks}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, tasks: e.target.value }))}
+                                        />
+                                    </th>
+                                    <th className="px-4 py-2"></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {sortedProjects.length === 0 ? (
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {tableFilteredProjects.length === 0 ? (
                                     <tr>
-                                        <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
+                                        <td colSpan={!selectedDivision ? 10 : 9} className="px-6 py-8 text-center text-slate-500">
                                             No projects found matching the criteria.
                                         </td>
                                     </tr>
                                 ) : (
-                                    sortedProjects.map(project => {
+                                    tableFilteredProjects.map(project => {
                                         const stats = projectStats[project.id] || { milestones: 0, activities: 0, tasks: 0 };
+                                        
+                                        // Calculate budget metrics
+                                        const projectSofAllocation = Number(project.sof_allocation || project.total_budget || 0);
+                                        const tasksBudgetSum = project.tasks ? project.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
+                                        const projectTotalBudget = projectSofAllocation > 0 ? projectSofAllocation : tasksBudgetSum;
+                                        const projectObligated = project.tasks ? project.tasks.reduce((sum, t) => sum + Number(t.obligated_amount || 0), 0) : 0;
+                                        const projectUtilizationPct = projectTotalBudget > 0 ? (projectObligated / projectTotalBudget) * 100 : 0;
+
                                         return (
-                                            <tr key={project.id} className="hover:bg-slate-50 transition-colors group">
-                                                <td className="px-6 py-4">
-                                                    <Link to={`/projects/${project.id}`} className="font-bold text-slate-900 hover:text-blue-600 transition-colors block">
+                                            <tr key={project.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
+                                                <td className="sticky left-0 bg-white dark:bg-slate-900 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 min-w-[240px] max-w-[240px] w-[240px]">
+                                                    <Link to={`/projects/${project.id}`} className="font-bold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors block truncate" title={project.name}>
                                                         {project.name}
                                                     </Link>
-                                                    <div className="text-xs text-slate-500 mt-1 line-clamp-1 max-w-xs">
-                                                        {project.description}
+                                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 truncate max-w-xs" title={project.description}>
+                                                        {project.description || 'No description provided.'}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`text-xs font-medium px-2 py-1 rounded-full border ${getDivisionStyles(project.division)}`}>
-                                                        {project.division || 'No Division'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-slate-600">
+                                                {!selectedDivision && (
+                                                    <td className="sticky left-[240px] bg-white dark:bg-slate-900 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 text-xs text-slate-600 dark:text-slate-300 font-semibold min-w-[150px] max-w-[150px] w-[150px] truncate" title={project.division || 'No Division'}>
+                                                        <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase ${getDivisionStyles(project.division)}`}>
+                                                            {project.division || 'No Division'}
+                                                        </span>
+                                                    </td>
+                                                )}
+                                                <td 
+                                                    className="sticky bg-white dark:bg-slate-900 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 text-xs text-slate-600 dark:text-slate-300 font-semibold min-w-[150px] max-w-[150px] w-[150px] truncate"
+                                                    style={{ left: !selectedDivision ? '390px' : '240px' }}
+                                                    title={project.lead_personnel || 'No Lead'}
+                                                >
                                                     {project.lead_personnel || '-'}
                                                 </td>
-                                                <td className="px-6 py-4 text-sm text-slate-600 text-right font-mono">
-                                                    {project.total_budget && !isNaN(project.total_budget)
-                                                        ? `₱${Number(project.total_budget).toLocaleString()}`
-                                                        : '-'}
+                                                <td className="px-4 py-3 text-xs text-slate-700 dark:text-slate-300 text-right font-mono font-bold">
+                                                    {projectTotalBudget > 0 ? peso(projectTotalBudget) : '-'}
                                                 </td>
-                                                <td className="px-6 py-4 text-center font-semibold text-slate-700">
+                                                <td className="px-4 py-3 text-xs text-slate-700 dark:text-slate-300 text-right font-mono font-bold">
+                                                    {projectObligated > 0 ? peso(projectObligated) : '-'}
+                                                </td>
+                                                <td className="px-4 py-3 text-xs text-right font-mono font-extrabold text-blue-600 dark:text-blue-400">
+                                                    {pct(projectUtilizationPct)}
+                                                </td>
+                                                <td className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400">
                                                     {stats.milestones}
                                                 </td>
-                                                <td className="px-6 py-4 text-center font-semibold text-slate-700">
+                                                <td className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400">
                                                     {stats.activities}
                                                 </td>
-                                                <td className="px-6 py-4 text-center font-semibold text-slate-700">
+                                                <td className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400">
                                                     {stats.tasks}
                                                 </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                                <td className="px-4 py-3 text-right">
+                                                    <div className="flex items-center justify-end gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                                         <Link
                                                             to={`/projects/${project.id}`}
-                                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
+                                                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-md transition-all"
                                                             title="Open Project"
                                                         >
                                                             <ArrowRight size={16} />
                                                         </Link>
                                                         <button
                                                             onClick={(e) => handleDeleteClick(e, project)}
-                                                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"
+                                                            className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-md transition-all"
                                                             title="Delete Project"
                                                         >
                                                             <Trash2 size={16} />
@@ -1405,6 +1938,20 @@ const Projects = () => {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Tooltip Overlay */}
+            {tooltip.visible && (
+                <div 
+                    className="fixed pointer-events-none bg-white/95 dark:bg-slate-900/95 border border-blue-100 dark:border-slate-800 shadow-xl rounded-xl p-3 z-[9999] backdrop-blur-xs transition-all duration-75 ease-out"
+                    style={{ 
+                        left: `${tooltip.x + 12}px`, 
+                        top: `${tooltip.y + 12}px`,
+                        transform: 'translate(0, 0)'
+                    }}
+                >
+                    {tooltip.content}
                 </div>
             )}
         </div >

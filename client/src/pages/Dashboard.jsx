@@ -1121,6 +1121,59 @@ const Dashboard = () => {
                     )}
                 </div>
             </section>
+
+            {/* KPI Grid */}
+            <div className="flex flex-wrap gap-4 w-full mb-6">
+                {/* Activities Completion Rate Card */}
+                <div className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Activities Completion Rate</span>
+                    <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
+                            {pct(activeActivities.length > 0 ? (totals.accomplished.length / activeActivities.length) * 100 : 0)}
+                        </span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-405 font-medium">
+                        {totals.accomplished.length} of {activeActivities.length} accomplished
+                    </div>
+                </div>
+                
+                {/* Budget Utilization Rate Card */}
+                <div className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-855 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Budget Utilization Rate</span>
+                    <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
+                            {pct(totals.budget > 0 ? (totals.obligated / totals.budget) * 100 : 0)}
+                        </span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-405 font-medium">
+                        {peso(totals.obligated)} obligated of {peso(totals.budget)}
+                    </div>
+                </div>
+
+                {/* Dynamic KPI Cards */}
+                {availableCategories
+                    .filter(cat => activeCategoryIds.includes(cat.id))
+                    .map(cat => {
+                        const displayValue = unitMode === 'budget' ? peso(cat.value) : fmt(cat.count);
+                        const displayLabel = cat.label;
+                        const subtitle = unitMode === 'budget' ? `${fmt(cat.count)} activities` : peso(cat.value);
+                        return (
+                            <div key={cat.id} className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{displayLabel}</span>
+                                <div className="mt-2 flex items-baseline gap-2">
+                                    <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
+                                        {displayValue}
+                                    </span>
+                                </div>
+                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-405 font-medium">
+                                    {subtitle}
+                                </div>
+                            </div>
+                        );
+                    })
+                }
+            </div>
+
             {/* Main Graphs Layout Grid */}
             <section className="flex flex-col gap-6">
                 {/* Distribution Main bar graph */}
@@ -1598,7 +1651,7 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        <div className="donut-layout">
+                        <div className="donut-layout flex flex-col items-center gap-4 w-full">
                             <div 
                                 className="donut cursor-pointer hover:opacity-90" 
                                 style={donutStyle}
@@ -1611,7 +1664,7 @@ const Dashboard = () => {
                                     <small className="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5" style={{ display: 'block' }}>{metricLabel()}</small>
                                 </div>
                             </div>
-                            <div id="distributionDonutTable" className="flex-1 w-full">
+                            <div id="distributionDonutTable" className="w-full text-xs">
                                 <table>
                                     <thead>
                                         <tr>
@@ -1662,6 +1715,22 @@ const Dashboard = () => {
                                 <p className="subtext">
                                     Accomplished metrics (Obligated/Accomplished) are aligned right, while Pending/Delayed obligations are aligned left.
                                 </p>
+                                <div className="flex gap-4 items-center mt-3 flex-wrap text-xs text-slate-500 font-bold dark:text-slate-400">
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#FBBF24' }} />
+                                        {distributionMode === 'budget' ? 'Unutilized (Left)' : 'Pending (Left)'}
+                                    </span>
+                                    {distributionMode !== 'budget' && (
+                                        <span className="flex items-center gap-1.5">
+                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#B91C1C' }} />
+                                            Delayed (Left)
+                                        </span>
+                                    )}
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: distributionMode === 'budget' ? '#0284C7' : '#16A34A' }} />
+                                        {distributionMode === 'budget' ? 'Utilized (Right)' : 'Accomplished (Right)'}
+                                    </span>
+                                </div>
                             </div>
                             <span className="badge purple">Compliance Analysis</span>
                         </div>
