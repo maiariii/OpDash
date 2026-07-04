@@ -4,13 +4,13 @@ import {
     eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths,
     addWeeks, subWeeks, isToday, startOfDay, endOfDay, isWithinInterval
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Layers, LayoutGrid, List, ChevronDown, Filter, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Layers, LayoutGrid, List, ChevronDown, Filter, Check, AlertTriangle } from 'lucide-react';
 import clsx from 'clsx';
 
 const CalendarView = ({ activities = [], title = "Activity Calendar", onActivityClick, onDayClick, onRangeSelect }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState('month'); // 'month', 'week', 'biweek'
-    const [filterStatus, setFilterStatus] = useState(['Pending', 'In Progress']); // Default: Pending & Ongoing
+    const [filterStatus, setFilterStatus] = useState(['Pending', 'In Progress', 'Delayed']); // Default: Pending, Ongoing & Delayed
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Activity Type Filter
@@ -70,7 +70,8 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
         'Deferred',
         'Waitlisted',
         'Continuing',
-        'Cancelled'
+        'Cancelled',
+        'Delayed'
     ];
 
     const uniqueStatuses = useMemo(() => {
@@ -81,10 +82,21 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
         return explicitStatuses;
     }, []);
 
+    const getResolvedStatus = (a) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const isAccomplished = a.status === 'Accomplished' || a.status === 'Done' || a.status === 'Completed';
+        const dateToCheck = a.due_date || a.target_date || a.due || a.start_date;
+        const isOverdue = dateToCheck && new Date(dateToCheck) < today;
+        if (isAccomplished) return 'Accomplished';
+        if (a.status === 'Delayed' || isOverdue) return 'Delayed';
+        return a.status || 'Pending';
+    };
+
     const filteredActivities = useMemo(() => {
         if (filterStatus.length === 0 && filterType.length === 0) return [];
         return activities.filter(a => {
-            const statusMatch = filterStatus.includes(a.status);
+            const statusMatch = filterStatus.includes(getResolvedStatus(a));
             // If activity has no type, treat it cautiously? Or include if only status match?
             // Let's assume default 'Deskwork' if missing, but better to check
             const type = a.activity_type || 'Deskwork';
@@ -126,7 +138,8 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
         if (!end) end = start;
         if (start > end) { const temp = start; start = end; end = temp; }
 
-        return { ...activity, normalizedStart: startOfDay(start), normalizedEnd: endOfDay(end) };
+        const resolved = getResolvedStatus(activity);
+        return { ...activity, resolvedStatus: resolved, normalizedStart: startOfDay(start), normalizedEnd: endOfDay(end) };
     });
 
     // 2. Sort activities: earlier start first, then longer duration
@@ -240,6 +253,7 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
             case 'Deferred':
                 return "bg-amber-50 text-amber-700 border border-amber-100";
             case 'Cancelled':
+            case 'Delayed':
                 return "bg-red-50 text-red-700 border border-red-100";
             default:
                 return "bg-slate-100 text-slate-600 border border-slate-200";
@@ -424,10 +438,15 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
                         const rows = dayRows[day.toString()] || [];
                         if (rows.length > maxRow) maxRow = rows.length;
                     });
-                    const weekHeight = Math.max(100, (maxRow * 28) + 40);
+                    const weekHeight = Math.max(75, (maxRow * 22) + 32);
+                    const isMonthView = viewMode === 'month';
 
                     return (
-                        <div key={`week-${weekIdx}`} className="flex relative border-b border-slate-200" style={{ minHeight: '100px', height: `${weekHeight}px` }}>
+                        <div 
+                            key={`week-${weekIdx}`} 
+                            className={clsx("flex relative border-b border-slate-200", isMonthView && "flex-1")} 
+                            style={isMonthView ? { minHeight: '75px' } : { minHeight: '75px', height: `${weekHeight}px` }}
+                        >
                             {/* Background Grid (Day Cells) */}
                             {weekDays.map((day) => {
                                 const isCurrentMonth = isSameMonth(day, currentDate);
@@ -447,10 +466,10 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
                                             (onRangeSelect || onDayClick) && "cursor-pointer hover:bg-slate-50"
                                         )}
                                     >
-                                        <div className="flex justify-between items-start mb-1 h-7 p-2">
+                                        <div className="flex justify-between items-start mb-0.5 h-6 p-1.5">
                                             <span className={clsx(
-                                                "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full z-10 relative",
-                                                isDayToday ? "bg-blue-600 text-white" : "text-slate-700",
+                                                "text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full z-10 relative",
+                                                isDayToday ? "bg-blue-600 text-white" : "text-slate-650",
                                                 viewMode === 'month' && !isCurrentMonth && !isDayToday && "text-slate-400"
                                             )}>
                                                 {format(day, 'd')}
@@ -461,7 +480,7 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
                             })}
 
                             {/* Events Layer (Absolute Positioning) */}
-                            <div className="absolute inset-x-0 top-[30px] bottom-0 pointer-events-none">
+                            <div className="absolute inset-x-0 top-[24px] bottom-0 pointer-events-none">
                                 {(() => {
                                     const renderedActivityKeys = new Set();
                                     const weekEvents = [];
@@ -505,8 +524,8 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
                                             <div
                                                 key={`${evt.activity.id}-${weekIdx}-${evt.startIdx}`}
                                                 className={clsx(
-                                                    "absolute h-[24px] text-[10px] px-2 flex items-center justify-center cursor-pointer transition-shadow hover:shadow-md hover:z-50 pointer-events-auto",
-                                                    getStatusColor(evt.activity.status),
+                                                    "absolute h-[19px] text-[10px] px-1.5 flex items-center justify-center cursor-pointer transition-shadow hover:shadow-md hover:z-50 pointer-events-auto",
+                                                    getStatusColor(evt.activity.resolvedStatus),
 
                                                     isActualStart ? "rounded-l" : "rounded-l-none border-l-0",
                                                     isActualEnd ? "rounded-r" : "rounded-r-none border-r-0",
@@ -514,7 +533,7 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
                                                     (!isActualEnd) && "-mr-[1px]"   // Overlap right border
                                                 )}
                                                 style={{
-                                                    top: `${evt.rowIndex * 28}px`,
+                                                    top: `${evt.rowIndex * 22}px`,
                                                     left: `${evt.startIdx * 14.28}%`,
                                                     width: `${(evt.endIdx - evt.startIdx + 1) * 14.28}%`,
                                                     zIndex: 20
@@ -525,8 +544,11 @@ const CalendarView = ({ activities = [], title = "Activity Calendar", onActivity
                                                 }}
                                                 title={`${evt.activity.title} - ${evt.activity.status}`}
                                             >
-                                                <span className="truncate font-semibold w-full text-center block">
-                                                    {evt.activity.title || 'Untitled'}
+                                                <span className="truncate font-semibold w-full text-center flex items-center justify-center gap-1">
+                                                    {evt.activity.resolvedStatus === 'Delayed' && (
+                                                        <AlertTriangle size={11} className="text-red-700 flex-shrink-0 animate-pulse" />
+                                                    )}
+                                                    <span className="truncate">{evt.activity.title || 'Untitled'}</span>
                                                 </span>
                                             </div>
                                         );

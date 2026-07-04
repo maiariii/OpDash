@@ -266,31 +266,6 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0">
-                        {/* Search Input */}
-                        <input
-                            type="search"
-                            placeholder="Search records..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-normal bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-                            style={{ width: '160px', height: '34px', margin: 0 }}
-                        />
-
-                        {/* Sort Dropdown */}
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            className="select text-xs"
-                            style={{ width: '160px', height: '34px', padding: '0 8px', margin: 0 }}
-                        >
-                            <option value="name_asc">Name (A - Z)</option>
-                            <option value="name_desc">Name (Z - A)</option>
-                            <option value="budget_desc">Budget (High - Low)</option>
-                            <option value="budget_asc">Budget (Low - High)</option>
-                            <option value="date_desc">Date (Newest - Oldest)</option>
-                            <option value="date_asc">Date (Oldest - Newest)</option>
-                        </select>
-
                         <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
                             <button
                                 onClick={() => setViewMode('list')}
@@ -546,6 +521,7 @@ const Dashboard = () => {
     const [categorySearchQuery, setCategorySearchQuery] = useState('');
     const [categorySortMode, setCategorySortMode] = useState('value');
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [hoveredDonutIndex, setHoveredDonutIndex] = useState(null);
     const [tooltip, setTooltip] = useState({
         visible: false,
         x: 0,
@@ -1165,17 +1141,18 @@ const Dashboard = () => {
     const donutTotal = donutData.reduce((s, r) => s + r.value, 0) || 1;
     const donutFormat = (val) => donutData.some(r => r.format === 'peso') ? peso(val) : metricFormat(val);
 
-    let start = 0;
-    const stops = donutData.map(r => {
+    let currentStart = 0;
+    const processedDonutSlices = donutData.map(r => {
         const p = (r.value / donutTotal) * 100;
-        const s = `${r.color} ${start.toFixed(2)}% ${(start + p).toFixed(2)}%`;
-        start += p;
-        return s;
+        const offset = 100 - currentStart;
+        currentStart += p;
+        return {
+            ...r,
+            percent: p,
+            offset: offset,
+            share: Math.round(p)
+        };
     });
-
-    const donutStyle = {
-        background: `conic-gradient(${stops.join(",")})`
-    };
 
     // Max limits for bar charts
     const maxTotal = Math.max(...Object.values(groupedActivities).map(r => metricValue(r)), 1);
@@ -1247,8 +1224,7 @@ const Dashboard = () => {
 
                     {/* Basic Filters Subcard */}
                     <div className="bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 rounded-xl p-4 mb-4">
-                        {/* First Row: Hierarchy filter (occupies full width) */}
-                        <div className="grid grid-cols-1 gap-4 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                             <label className="flex flex-col gap-1.5">
                                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Division</span>
                                 <select
@@ -1263,10 +1239,7 @@ const Dashboard = () => {
                                     ))}
                                 </select>
                             </label>
-                        </div>
 
-                        {/* Second Row: Non-location filters */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <label className="flex flex-col gap-1.5">
                                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Source of Fund</span>
                                 <select
@@ -1422,8 +1395,9 @@ const Dashboard = () => {
 
             {/* Main Graphs Layout Grid */}
             <section className="flex flex-col gap-6">
-                {/* Distribution Main bar graph */}
-                <article className="card animate-slide-in" id="distributionGraph">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-5 items-stretch">
+                    {/* Distribution Main bar graph */}
+                    <article className="card wide h-full md:col-span-3 animate-slide-in" id="distributionGraph" style={{ marginBottom: 0 }}>
                     <div className="section-head">
                         <div>
                             <h2 className="section-title">
@@ -1779,10 +1753,10 @@ const Dashboard = () => {
                     })()}
                 </article>
 
-                {/* Sub-Graphs Layout Grid (Two Columns Below) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Right side: Histogram Details and Donut Snapshot stacked vertically */}
+                <div className="md:col-span-2 flex flex-col gap-5 h-full justify-between">
                     {/* Histogram Details */}
-                    <article className="card animate-slide-in" id="distributionDetails">
+                    <article className="card flex-1 flex flex-col justify-between animate-slide-in" id="distributionDetails" style={{ marginBottom: 0 }}>
                         <div className="section-head">
                             <div>
                                 <h2 className="section-title">Distribution Details</h2>
@@ -1876,7 +1850,7 @@ const Dashboard = () => {
                     </article>
 
                     {/* Donut Snapshot Chart */}
-                    <article className="card animate-slide-in" id="distributionPanel">
+                    <article className="card flex-1 flex flex-col justify-between animate-slide-in" id="distributionPanel" style={{ marginBottom: 0 }}>
                         <div className="section-head">
                             <div>
                                 <h2 className="section-title">Distribution Snapshot</h2>
@@ -1898,16 +1872,46 @@ const Dashboard = () => {
                         </div>
 
                         <div className="donut-layout flex flex-col items-center gap-4 w-full">
-                            <div 
-                                className="donut cursor-pointer hover:opacity-90" 
-                                style={donutStyle}
-                                onClick={() => {
-                                    setDetailModal({ isOpen: true, title: `Snapshot — All Active Activities`, activities: activeActivities });
-                                }}
-                            >
-                                <div className="donut-center">
-                                    <span>{donutFormat(donutTotal)}</span>
-                                    <small className="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5" style={{ display: 'block' }}>{metricLabel()}</small>
+                            <div className="relative w-48 h-48 flex items-center justify-center">
+                                <svg viewBox="0 0 42 42" className="w-full h-full transform -rotate-90">
+                                    {processedDonutSlices.map((slice, i) => (
+                                        <circle
+                                            key={i}
+                                            cx="21"
+                                            cy="21"
+                                            r="15.91549430918954"
+                                            fill="transparent"
+                                            stroke={slice.color}
+                                            strokeWidth={hoveredDonutIndex === i ? 6.5 : 5.0}
+                                            strokeDasharray={`${slice.percent} ${100 - slice.percent}`}
+                                            strokeDashoffset={slice.offset}
+                                            style={{
+                                                cursor: 'pointer',
+                                                transition: 'stroke-width 0.15s ease',
+                                            }}
+                                            onPointerOver={(e) => {
+                                                setHoveredDonutIndex(i);
+                                                showTooltip(e, slice.label, donutFormat(slice.value), slice.share, slice.color);
+                                            }}
+                                            onPointerMove={updateTooltipPosition}
+                                            onPointerLeave={() => {
+                                                setHoveredDonutIndex(null);
+                                                hideTooltip();
+                                            }}
+                                            onClick={() => {
+                                                const filtered = getFilteredActivities(activeActivities, snapshotSplitBy, slice.label);
+                                                setDetailModal({ isOpen: true, title: `${slice.label} Activities (${snapshotSplitBy})`, activities: filtered });
+                                            }}
+                                        />
+                                    ))}
+                                </svg>
+                                <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
+                                    <span className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                                        {hoveredDonutIndex !== null ? donutFormat(processedDonutSlices[hoveredDonutIndex].value) : donutFormat(donutTotal)}
+                                    </span>
+                                    <span className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">
+                                        {hoveredDonutIndex !== null ? `${processedDonutSlices[hoveredDonutIndex].label} (${processedDonutSlices[hoveredDonutIndex].share}%)` : metricLabel()}
+                                    </span>
                                 </div>
                             </div>
                             <div id="distributionDonutTable" className="w-full text-xs">
@@ -1930,9 +1934,15 @@ const Dashboard = () => {
                                                         const filtered = getFilteredActivities(activeActivities, snapshotSplitBy, d.label);
                                                         setDetailModal({ isOpen: true, title: `${d.label} Activities (${snapshotSplitBy})`, activities: filtered });
                                                     }}
-                                                    onPointerOver={(e) => showTooltip(e, d.label, donutFormat(d.value), share, d.color)}
+                                                    onPointerOver={(e) => {
+                                                        setHoveredDonutIndex(i);
+                                                        showTooltip(e, d.label, donutFormat(d.value), share, d.color);
+                                                    }}
                                                     onPointerMove={updateTooltipPosition}
-                                                    onPointerLeave={hideTooltip}
+                                                    onPointerLeave={() => {
+                                                        setHoveredDonutIndex(null);
+                                                        hideTooltip();
+                                                    }}
                                                 >
                                                     <td>
                                                         <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
@@ -1949,6 +1959,7 @@ const Dashboard = () => {
                         </div>
                     </article>
                 </div>
+            </div>
 
                 {/* Compliance progress splits */}
                 {distributionMode !== 'fund' && (

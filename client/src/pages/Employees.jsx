@@ -301,7 +301,7 @@ const Employees = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200">
-                                <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercasetracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('fullName')}>
+                                <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('fullName')}>
                                     <div className="flex items-center gap-2">
                                         Name {getSortIcon('fullName')}
                                     </div>
@@ -317,6 +317,51 @@ const Employees = () => {
                                     </div>
                                 </th>
                                 <th className="px-6 py-4 font-semibold text-slate-600 text-sm uppercase tracking-wider text-right">Actions</th>
+                            </tr>
+                            <tr className="bg-slate-50/50 border-b border-slate-200">
+                                <th className="px-4 py-2">
+                                    <div className="relative flex items-center">
+                                        <Search size={12} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+                                        <input
+                                            type="search"
+                                            placeholder="Filter name..."
+                                            value={filters.fullName}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, fullName: e.target.value }))}
+                                            className="column-filter w-full text-xs font-normal py-1"
+                                            style={{ paddingLeft: '26px' }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-2">
+                                    <div className="relative flex items-center">
+                                        <Search size={12} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+                                        <input
+                                            type="search"
+                                            placeholder="Filter position..."
+                                            value={filters.position}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, position: e.target.value }))}
+                                            className="column-filter w-full text-xs font-normal py-1"
+                                            style={{ paddingLeft: '26px' }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-2">
+                                    <div className="relative flex items-center">
+                                        <Search size={12} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+                                        <input
+                                            type="search"
+                                            placeholder="Filter division..."
+                                            value={filters.divisionName}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, divisionName: e.target.value }))}
+                                            className="column-filter w-full text-xs font-normal py-1"
+                                            style={{ paddingLeft: '26px' }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-2"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">

@@ -38,7 +38,9 @@ const getDivisionStyles = (divisionName) => {
     if (name.includes('personnel')) return 'division-badge division-personnel';
     if (name.includes('employee welfare')) return 'division-badge division-welfare';
     if (name.includes('human resource') || name.includes('hrod')) return 'division-badge division-hrod';
-    if (name.includes('school effectiveness') || name.includes('effectiveness')) return 'division-badge division-effectiveness';
+    if (name.includes('school effectiveness')) return 'division-badge division-school-eff';
+    if (name.includes('organization effectiveness') || name.includes('org')) return 'division-badge division-org-eff';
+    if (name.includes('education')) return 'division-badge division-education';
     return 'division-badge division-default';
 };
 
@@ -68,6 +70,8 @@ const Projects = () => {
     const [utilizationFilter, setUtilizationFilter] = useState('all');
     const [isAdvancedMode, setIsAdvancedMode] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState(null);
+    const [hoveredActivityDonutIndex, setHoveredActivityDonutIndex] = useState(null);
+    const [hoveredFinancialDonutIndex, setHoveredFinancialDonutIndex] = useState(null);
     const [tooltip, setTooltip] = useState({
         visible: false,
         x: 0,
@@ -219,11 +223,14 @@ const Projects = () => {
                     const pMilestones = loadedMilestones.filter(m => m.project_id === p.id).length;
                     const activityCount = pTasks.length;
                     const subtaskCount = pTasks.reduce((acc, curr) => acc + (curr.subtasks?.length || 0), 0);
+                    const accomplishedCount = pTasks.filter(t => t.status === 'Completed' || t.status === 'Accomplished' || t.status === 'Done').length;
+                    const accomplishmentRate = activityCount > 0 ? (accomplishedCount / activityCount) * 100 : 0;
 
                     newStats[p.id] = {
                         milestones: pMilestones,
                         activities: activityCount,
-                        tasks: subtaskCount
+                        tasks: subtaskCount,
+                        accomplishmentRate: accomplishmentRate
                     };
 
                     return { ...p, tasks: pTasks };
@@ -458,17 +465,19 @@ const Projects = () => {
 
     const activityDonutTotal = useMemo(() => activityDonutData.reduce((s, r) => s + r.value, 0) || 1, [activityDonutData]);
 
-    const activityDonutStyle = useMemo(() => {
-        let start = 0;
-        const stops = activityDonutData.map(r => {
+    const processedActivityDonutSlices = useMemo(() => {
+        let currentStart = 0;
+        return activityDonutData.map(r => {
             const p = (r.value / activityDonutTotal) * 100;
-            const s = `${r.color} ${start.toFixed(2)}% ${(start + p).toFixed(2)}%`;
-            start += p;
-            return s;
+            const offset = 100 - currentStart;
+            currentStart += p;
+            return {
+                ...r,
+                percent: p,
+                offset: offset,
+                share: Math.round(p)
+            };
         });
-        return {
-            background: `conic-gradient(${stops.join(",")})`
-        };
     }, [activityDonutData, activityDonutTotal]);
 
     const financialDonutData = useMemo(() => {
@@ -480,17 +489,19 @@ const Projects = () => {
 
     const financialDonutTotal = useMemo(() => financialDonutData.reduce((s, r) => s + r.value, 0) || 1, [financialDonutData]);
 
-    const financialDonutStyle = useMemo(() => {
-        let start = 0;
-        const stops = financialDonutData.map(r => {
+    const processedFinancialDonutSlices = useMemo(() => {
+        let currentStart = 0;
+        return financialDonutData.map(r => {
             const p = (r.value / financialDonutTotal) * 100;
-            const s = `${r.color} ${start.toFixed(2)}% ${(start + p).toFixed(2)}%`;
-            start += p;
-            return s;
+            const offset = 100 - currentStart;
+            currentStart += p;
+            return {
+                ...r,
+                percent: p,
+                offset: offset,
+                share: Math.round(p)
+            };
         });
-        return {
-            background: `conic-gradient(${stops.join(",")})`
-        };
     }, [financialDonutData, financialDonutTotal]);
 
     const getBadgeStyle = (mode = distributionMode) => {
@@ -576,20 +587,76 @@ const Projects = () => {
         return matchesDivision && matchesFund && matchesExpenditure && matchesUtilization && matchesSearch;
     });
 
-    const [sortBy, setSortBy] = useState('latest');
+    const [sortColumn, setSortColumn] = useState('created_at');
+    const [sortDirection, setSortDirection] = useState('desc');
 
-    const sortedProjects = [...filteredProjects].sort((a, b) => {
-        if (sortBy === 'latest') {
-            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-        } else if (sortBy === 'oldest') {
-            return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-        } else if (sortBy === 'name_asc') {
-            return (a.name || '').localeCompare(b.name || '');
-        } else if (sortBy === 'name_desc') {
-            return (b.name || '').localeCompare(a.name || '');
+    const handleSort = (column) => {
+        if (sortColumn === column) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
         }
-        return 0;
-    });
+    };
+
+    const sortedProjects = useMemo(() => {
+        let result = [...filteredProjects];
+        result.sort((a, b) => {
+            let valA, valB;
+            if (sortColumn === 'created_at') {
+                valA = new Date(a.created_at || 0);
+                valB = new Date(b.created_at || 0);
+            } else if (sortColumn === 'name') {
+                valA = a.name || '';
+                valB = b.name || '';
+            } else if (sortColumn === 'division') {
+                valA = a.division || '';
+                valB = b.division || '';
+            } else if (sortColumn === 'lead_personnel') {
+                valA = a.lead_personnel || '';
+                valB = b.lead_personnel || '';
+            } else if (sortColumn === 'allocation') {
+                const aSof = Number(a.sof_allocation || a.total_budget || 0);
+                const aTasks = a.tasks ? a.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
+                valA = aSof > 0 ? aSof : aTasks;
+
+                const bSof = Number(b.sof_allocation || b.total_budget || 0);
+                const bTasks = b.tasks ? b.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
+                valB = bSof > 0 ? bSof : bTasks;
+            } else if (sortColumn === 'obligated') {
+                valA = a.tasks ? a.tasks.reduce((sum, t) => sum + Number(t.obligated_amount || 0), 0) : 0;
+                valB = b.tasks ? b.tasks.reduce((sum, t) => sum + Number(t.obligated_amount || 0), 0) : 0;
+            } else if (sortColumn === 'utilization') {
+                const aSof = Number(a.sof_allocation || a.total_budget || 0);
+                const aTasks = a.tasks ? a.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
+                const aTotal = aSof > 0 ? aSof : aTasks;
+                const aObligated = a.tasks ? a.tasks.reduce((sum, t) => sum + Number(t.obligated_amount || 0), 0) : 0;
+                valA = aTotal > 0 ? (aObligated / aTotal) * 100 : 0;
+
+                const bSof = Number(b.sof_allocation || b.total_budget || 0);
+                const bTasks = b.tasks ? b.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
+                const bTotal = bSof > 0 ? bSof : bTasks;
+                const bObligated = b.tasks ? b.tasks.reduce((sum, t) => sum + Number(t.obligated_amount || 0), 0) : 0;
+                valB = bTotal > 0 ? (bObligated / bTotal) * 100 : 0;
+            } else if (sortColumn === 'accomplishment') {
+                const aStats = projectStats[a.id] || { accomplishmentRate: 0 };
+                valA = aStats.accomplishmentRate || 0;
+                const bStats = projectStats[b.id] || { accomplishmentRate: 0 };
+                valB = bStats.accomplishmentRate || 0;
+            }
+
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return sortDirection === 'asc' ? valA - valB : valB - valA;
+            } else if (valA instanceof Date && valB instanceof Date) {
+                return sortDirection === 'asc' ? valA - valB : valB - valA;
+            } else {
+                return sortDirection === 'asc'
+                    ? String(valA).localeCompare(String(valB))
+                    : String(valB).localeCompare(String(valA));
+            }
+        });
+        return result;
+    }, [filteredProjects, sortColumn, sortDirection, projectStats]);
 
     // View Mode State
     const [viewMode, setViewMode] = useState('table'); // 'grid' | 'table'
@@ -601,15 +668,22 @@ const Projects = () => {
         allocation: '', 
         obligated: '', 
         utilization: '', 
-        milestones: '', 
-        activities: '', 
-        tasks: '' 
+        accomplishment: ''
     });
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState('10');
+
+    // Reset page on filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [tableFilters, selectedDivision, rowsPerPage]);
 
     const tableFilteredProjects = useMemo(() => {
         const showDivisionCol = !selectedDivision;
         return sortedProjects.filter(project => {
-            const stats = projectStats[project.id] || { milestones: 0, activities: 0, tasks: 0 };
+            const stats = projectStats[project.id] || { milestones: 0, activities: 0, tasks: 0, accomplishmentRate: 0 };
+            const accomplishmentRate = stats.accomplishmentRate || 0;
             
             // Calculate budget metrics
             const projectSofAllocation = Number(project.sof_allocation || project.total_budget || 0);
@@ -626,13 +700,18 @@ const Projects = () => {
             const obligMatch = !tableFilters.obligated || String(projectObligated).includes(tableFilters.obligated) || peso(projectObligated).toLowerCase().includes(tableFilters.obligated.toLowerCase());
             const utilMatch = !tableFilters.utilization || String(Math.round(projectUtilizationPct)).includes(tableFilters.utilization) || pct(projectUtilizationPct).toLowerCase().includes(tableFilters.utilization.toLowerCase());
             
-            const milestoneMatch = !tableFilters.milestones || String(stats.milestones).includes(tableFilters.milestones);
-            const activityMatch = !tableFilters.activities || String(stats.activities).includes(tableFilters.activities);
-            const taskMatch = !tableFilters.tasks || String(stats.tasks).includes(tableFilters.tasks);
+            const accomplishmentMatch = !tableFilters.accomplishment || String(Math.round(accomplishmentRate)).includes(tableFilters.accomplishment) || pct(accomplishmentRate).toLowerCase().includes(tableFilters.accomplishment.toLowerCase());
 
-            return nameMatch && divisionMatch && leadMatch && allocMatch && obligMatch && utilMatch && milestoneMatch && activityMatch && taskMatch;
+            return nameMatch && divisionMatch && leadMatch && allocMatch && obligMatch && utilMatch && accomplishmentMatch;
         });
     }, [sortedProjects, tableFilters, projectStats, selectedDivision]);
+
+    const paginatedProjects = useMemo(() => {
+        if (rowsPerPage === 'all') return tableFilteredProjects;
+        const start = (currentPage - 1) * Number(rowsPerPage);
+        const end = start + Number(rowsPerPage);
+        return tableFilteredProjects.slice(start, end);
+    }, [tableFilteredProjects, currentPage, rowsPerPage]);
 
     return (
         <div>
@@ -670,18 +749,6 @@ const Projects = () => {
                                     <List size={18} />
                                 </button>
                             </div>
-
-                            <select 
-                                value={sortBy} 
-                                onChange={(e) => setSortBy(e.target.value)} 
-                                className="select" 
-                                style={{ minWidth: '200px', margin: 0 }}
-                            >
-                                <option value="latest">Created Date (Newest First)</option>
-                                <option value="oldest">Created Date (Oldest First)</option>
-                                <option value="name_asc">Project Name (A - Z)</option>
-                                <option value="name_desc">Project Name (Z - A)</option>
-                            </select>
                         </>
                     )}
 
@@ -742,8 +809,7 @@ const Projects = () => {
 
                     {/* Basic Filters Subcard */}
                     <div className="bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 rounded-xl p-4 mb-4">
-                        {/* First Row: Division filter */}
-                        <div className="grid grid-cols-1 gap-4 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                             <label className="flex flex-col gap-1.5 w-full">
                                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Division</span>
                                 <select 
@@ -758,10 +824,7 @@ const Projects = () => {
                                     ))}
                                 </select>
                             </label>
-                        </div>
 
-                        {/* Second Row: Fund, Expenditure Framework, Budget Utilization */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <label className="flex flex-col gap-1.5">
                                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Source of Fund</span>
                                 <select
@@ -1370,10 +1433,42 @@ const Projects = () => {
                                 <div className="flex flex-col items-center">
                                     <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Activities Accomplishment</h3>
                                     <div className="donut-layout flex flex-col items-center gap-4 w-full">
-                                        <div className="donut" style={activityDonutStyle}>
-                                            <div className="donut-center">
-                                                <span>{activityDonutTotal}</span>
-                                                <small className="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5" style={{ display: 'block' }}>activities</small>
+                                        <div className="relative w-40 h-40 flex items-center justify-center">
+                                            <svg viewBox="0 0 42 42" className="w-full h-full transform -rotate-90">
+                                                {processedActivityDonutSlices.map((slice, i) => (
+                                                    <circle
+                                                        key={i}
+                                                        cx="21"
+                                                        cy="21"
+                                                        r="15.91549430918954"
+                                                        fill="transparent"
+                                                        stroke={slice.color}
+                                                        strokeWidth={hoveredActivityDonutIndex === i ? 6.5 : 5.0}
+                                                        strokeDasharray={`${slice.percent} ${100 - slice.percent}`}
+                                                        strokeDashoffset={slice.offset}
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            transition: 'stroke-width 0.15s ease',
+                                                        }}
+                                                        onPointerOver={(e) => {
+                                                            setHoveredActivityDonutIndex(i);
+                                                            showTooltip(e, slice.label, fmt(slice.value), slice.share, slice.color);
+                                                        }}
+                                                        onPointerMove={updateTooltipPosition}
+                                                        onPointerLeave={() => {
+                                                            setHoveredActivityDonutIndex(null);
+                                                            hideTooltip();
+                                                        }}
+                                                    />
+                                                ))}
+                                            </svg>
+                                            <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
+                                                <span className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                                                    {hoveredActivityDonutIndex !== null ? fmt(processedActivityDonutSlices[hoveredActivityDonutIndex].value) : fmt(activityDonutTotal)}
+                                                </span>
+                                                <span className="text-[9px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">
+                                                    {hoveredActivityDonutIndex !== null ? `${processedActivityDonutSlices[hoveredActivityDonutIndex].label} (${processedActivityDonutSlices[hoveredActivityDonutIndex].share}%)` : "activities"}
+                                                </span>
                                             </div>
                                         </div>
                                         <div id="activityDonutTable" className="w-full text-xs">
@@ -1386,15 +1481,21 @@ const Projects = () => {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {activityDonutData.map((d, i) => {
-                                                        const share = Math.round((d.value / activityDonutTotal) * 100);
+                                                    {processedActivityDonutSlices.map((d, i) => {
+                                                        const share = d.share;
                                                         return (
                                                             <tr 
                                                                 key={i}
                                                                 className="transition-colors hover:bg-slate-50 cursor-pointer"
-                                                                onPointerOver={(e) => showTooltip(e, d.label, fmt(d.value), share, d.color)}
+                                                                onPointerOver={(e) => {
+                                                                    setHoveredActivityDonutIndex(i);
+                                                                    showTooltip(e, d.label, fmt(d.value), share, d.color);
+                                                                }}
                                                                 onPointerMove={updateTooltipPosition}
-                                                                onPointerLeave={hideTooltip}
+                                                                onPointerLeave={() => {
+                                                                    setHoveredActivityDonutIndex(null);
+                                                                    hideTooltip();
+                                                                }}
                                                             >
                                                                 <td>
                                                                     <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
@@ -1415,10 +1516,42 @@ const Projects = () => {
                                 <div className="flex flex-col items-center border-t sm:border-t-0 sm:border-l border-slate-100 pt-4 sm:pt-0 sm:pl-6">
                                     <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Financial Accomplishment</h3>
                                     <div className="donut-layout flex flex-col items-center gap-4 w-full">
-                                        <div className="donut" style={financialDonutStyle}>
-                                            <div className="donut-center">
-                                                <span style={{ fontSize: '10px' }}>{peso(totals.budget)}</span>
-                                                <small className="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5" style={{ display: 'block' }}>budget</small>
+                                        <div className="relative w-40 h-40 flex items-center justify-center">
+                                            <svg viewBox="0 0 42 42" className="w-full h-full transform -rotate-90">
+                                                {processedFinancialDonutSlices.map((slice, i) => (
+                                                    <circle
+                                                        key={i}
+                                                        cx="21"
+                                                        cy="21"
+                                                        r="15.91549430918954"
+                                                        fill="transparent"
+                                                        stroke={slice.color}
+                                                        strokeWidth={hoveredFinancialDonutIndex === i ? 6.5 : 5.0}
+                                                        strokeDasharray={`${slice.percent} ${100 - slice.percent}`}
+                                                        strokeDashoffset={slice.offset}
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            transition: 'stroke-width 0.15s ease',
+                                                        }}
+                                                        onPointerOver={(e) => {
+                                                            setHoveredFinancialDonutIndex(i);
+                                                            showTooltip(e, slice.label, peso(slice.value), slice.share, slice.color);
+                                                        }}
+                                                        onPointerMove={updateTooltipPosition}
+                                                        onPointerLeave={() => {
+                                                            setHoveredFinancialDonutIndex(null);
+                                                            hideTooltip();
+                                                        }}
+                                                    />
+                                                ))}
+                                            </svg>
+                                            <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
+                                                <span className="text-[10px] md:text-xs font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                                                    {hoveredFinancialDonutIndex !== null ? peso(processedFinancialDonutSlices[hoveredFinancialDonutIndex].value) : peso(financialDonutTotal)}
+                                                </span>
+                                                <span className="text-[9px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">
+                                                    {hoveredFinancialDonutIndex !== null ? `${processedFinancialDonutSlices[hoveredFinancialDonutIndex].label} (${processedFinancialDonutSlices[hoveredFinancialDonutIndex].share}%)` : "budget"}
+                                                </span>
                                             </div>
                                         </div>
                                         <div id="financialDonutTable" className="w-full text-xs">
@@ -1431,15 +1564,21 @@ const Projects = () => {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {financialDonutData.map((d, i) => {
-                                                        const share = Math.round((d.value / financialDonutTotal) * 100);
+                                                    {processedFinancialDonutSlices.map((d, i) => {
+                                                        const share = d.share;
                                                         return (
                                                             <tr 
                                                                 key={i}
                                                                 className="transition-colors hover:bg-slate-50 cursor-pointer"
-                                                                onPointerOver={(e) => showTooltip(e, d.label, peso(d.value), share, d.color)}
+                                                                onPointerOver={(e) => {
+                                                                    setHoveredFinancialDonutIndex(i);
+                                                                    showTooltip(e, d.label, peso(d.value), share, d.color);
+                                                                }}
                                                                 onPointerMove={updateTooltipPosition}
-                                                                onPointerLeave={hideTooltip}
+                                                                onPointerLeave={() => {
+                                                                    setHoveredFinancialDonutIndex(null);
+                                                                    hideTooltip();
+                                                                }}
                                                             >
                                                                 <td>
                                                                     <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
@@ -1550,6 +1689,24 @@ const Projects = () => {
                             <p className="text-[10px] text-slate-400 dark:text-slate-500">All Projects per Division</p>
                         </div>
                         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap w-full sm:w-auto justify-start sm:justify-end">
+                            <div className="flex items-center gap-1.5 shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2" style={{ height: '38px' }}>
+                                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Rows</span>
+                                <select
+                                    value={rowsPerPage}
+                                    onChange={(e) => {
+                                        setRowsPerPage(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="text-xs bg-transparent text-slate-700 dark:text-slate-200 border-none outline-none focus:ring-0 py-0 cursor-pointer"
+                                    style={{ width: 'auto', minWidth: '40px', paddingRight: '16px', margin: 0 }}
+                                >
+                                    <option value="5">5</option>
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </div>
                             <div className="relative flex items-center w-full sm:w-auto">
                                 <Search size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
                                 <input
@@ -1579,40 +1736,41 @@ const Projects = () => {
                                 </button>
                             </div>
 
-                            <select 
-                                value={sortBy} 
-                                onChange={(e) => setSortBy(e.target.value)} 
-                                className="select text-xs w-full sm:w-[200px]" 
-                                style={{ height: '38px', margin: 0 }}
-                            >
-                                <option value="latest">Created Date (Newest First)</option>
-                                <option value="oldest">Created Date (Oldest First)</option>
-                                <option value="name_asc">Project Name (A - Z)</option>
-                                <option value="name_desc">Project Name (Z - A)</option>
-                            </select>
+                            
                         </div>
                     </div>
                     <div className="overflow-x-auto w-full">
-                        <table className="w-full text-left border-collapse" style={{ minWidth: !selectedDivision ? '1250px' : '1100px' }}>
+                        <table className="w-full text-left border-collapse" style={{ minWidth: !selectedDivision ? '1000px' : '850px' }}>
                             <thead>
-                                <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                                    <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider min-w-[240px] max-w-[240px] w-[240px]">Project Name</th>
+                                <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 select-none">
+                                    <th onClick={() => handleSort('name')} className="sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider min-w-[240px] max-w-[240px] w-[240px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+                                        Project Name {sortColumn === 'name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                    </th>
                                     {!selectedDivision && (
-                                        <th className="sticky left-[240px] bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider min-w-[150px] max-w-[150px] w-[150px]">Division</th>
+                                        <th onClick={() => handleSort('division')} className="sticky left-[240px] bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider min-w-[150px] max-w-[150px] w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+                                            Division {sortColumn === 'division' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                        </th>
                                     )}
                                     <th 
-                                        className="sticky bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider min-w-[150px] max-w-[150px] w-[150px]"
+                                        onClick={() => handleSort('lead_personnel')}
+                                        className="sticky bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider min-w-[150px] max-w-[150px] w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors"
                                         style={{ left: !selectedDivision ? '390px' : '240px' }}
                                     >
-                                        Lead Personnel
+                                        Lead Personnel {sortColumn === 'lead_personnel' && (sortDirection === 'asc' ? '▲' : '▼')}
                                     </th>
-                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right">Allocation</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right">Obligated</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right">Utilization Rate</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-center" title="Milestones">Milestone</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-center" title="Activities">Activity</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-center" title="Tasks">Task</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right">Actions</th>
+                                    <th onClick={() => handleSort('allocation')} className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors w-[130px] max-w-[130px] min-w-[130px]">
+                                        Allocation {sortColumn === 'allocation' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                    </th>
+                                    <th onClick={() => handleSort('obligated')} className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors w-[130px] max-w-[130px] min-w-[130px]">
+                                        Obligated {sortColumn === 'obligated' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                    </th>
+                                    <th onClick={() => handleSort('utilization')} className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors w-[120px] max-w-[120px] min-w-[120px]">
+                                        Utilization Rate {sortColumn === 'utilization' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                    </th>
+                                    <th onClick={() => handleSort('accomplishment')} className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors w-[150px] max-w-[150px] min-w-[150px]">
+                                        Accomplishment Rate {sortColumn === 'accomplishment' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                    </th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right w-[80px] max-w-[80px] min-w-[80px]">Actions</th>
                                 </tr>
                                 <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                                     <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-2">
@@ -1647,7 +1805,7 @@ const Projects = () => {
                                             onChange={(e) => setTableFilters(prev => ({ ...prev, lead: e.target.value }))}
                                         />
                                     </th>
-                                    <th className="px-4 py-2">
+                                    <th className="px-4 py-2 w-[130px] max-w-[130px] min-w-[130px]">
                                         <input
                                             className="column-filter w-full text-xs font-normal text-right"
                                             type="search"
@@ -1656,7 +1814,7 @@ const Projects = () => {
                                             onChange={(e) => setTableFilters(prev => ({ ...prev, allocation: e.target.value }))}
                                         />
                                     </th>
-                                    <th className="px-4 py-2">
+                                    <th className="px-4 py-2 w-[130px] max-w-[130px] min-w-[130px]">
                                         <input
                                             className="column-filter w-full text-xs font-normal text-right"
                                             type="search"
@@ -1665,7 +1823,7 @@ const Projects = () => {
                                             onChange={(e) => setTableFilters(prev => ({ ...prev, obligated: e.target.value }))}
                                         />
                                     </th>
-                                    <th className="px-4 py-2">
+                                    <th className="px-4 py-2 w-[120px] max-w-[120px] min-w-[120px]">
                                         <input
                                             className="column-filter w-full text-xs font-normal text-right"
                                             type="search"
@@ -1674,45 +1832,27 @@ const Projects = () => {
                                             onChange={(e) => setTableFilters(prev => ({ ...prev, utilization: e.target.value }))}
                                         />
                                     </th>
-                                    <th className="px-4 py-2">
+                                    <th className="px-4 py-2 w-[150px] max-w-[150px] min-w-[150px]">
                                         <input
-                                            className="column-filter w-full text-xs font-normal text-center"
+                                            className="column-filter w-full text-xs font-normal text-right"
                                             type="search"
                                             placeholder="Filter..."
-                                            value={tableFilters.milestones}
-                                            onChange={(e) => setTableFilters(prev => ({ ...prev, milestones: e.target.value }))}
+                                            value={tableFilters.accomplishment}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, accomplishment: e.target.value }))}
                                         />
                                     </th>
-                                    <th className="px-4 py-2">
-                                        <input
-                                            className="column-filter w-full text-xs font-normal text-center"
-                                            type="search"
-                                            placeholder="Filter..."
-                                            value={tableFilters.activities}
-                                            onChange={(e) => setTableFilters(prev => ({ ...prev, activities: e.target.value }))}
-                                        />
-                                    </th>
-                                    <th className="px-4 py-2">
-                                        <input
-                                            className="column-filter w-full text-xs font-normal text-center"
-                                            type="search"
-                                            placeholder="Filter..."
-                                            value={tableFilters.tasks}
-                                            onChange={(e) => setTableFilters(prev => ({ ...prev, tasks: e.target.value }))}
-                                        />
-                                    </th>
-                                    <th className="px-4 py-2"></th>
+                                    <th className="px-4 py-2 w-[80px] max-w-[80px] min-w-[80px]"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {tableFilteredProjects.length === 0 ? (
                                     <tr>
-                                        <td colSpan={!selectedDivision ? 10 : 9} className="px-6 py-8 text-center text-slate-500">
+                                        <td colSpan={!selectedDivision ? 8 : 7} className="px-6 py-8 text-center text-slate-500">
                                             No projects found matching the criteria.
                                         </td>
                                     </tr>
                                 ) : (
-                                    tableFilteredProjects.map(project => {
+                                    paginatedProjects.map(project => {
                                         const stats = projectStats[project.id] || { milestones: 0, activities: 0, tasks: 0 };
                                         
                                         // Calculate budget metrics
@@ -1755,14 +1895,8 @@ const Projects = () => {
                                                 <td className="px-4 py-3 text-xs text-right font-mono font-extrabold text-blue-600 dark:text-blue-400">
                                                     {pct(projectUtilizationPct)}
                                                 </td>
-                                                <td className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400">
-                                                    {stats.milestones}
-                                                </td>
-                                                <td className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400">
-                                                    {stats.activities}
-                                                </td>
-                                                <td className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400">
-                                                    {stats.tasks}
+                                                <td className="px-4 py-3 text-right text-xs font-mono font-extrabold text-blue-600 dark:text-blue-400">
+                                                    {pct(stats.accomplishmentRate || 0)}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
@@ -1788,6 +1922,44 @@ const Projects = () => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs">
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-500 dark:text-slate-400">
+                                {tableFilteredProjects.length > 0 ? (
+                                    `Showing ${rowsPerPage === 'all' ? 1 : (currentPage - 1) * Number(rowsPerPage) + 1} to ${
+                                        rowsPerPage === 'all' 
+                                            ? tableFilteredProjects.length 
+                                            : Math.min(currentPage * Number(rowsPerPage), tableFilteredProjects.length)
+                                    } of ${tableFilteredProjects.length} entries`
+                                ) : (
+                                    'Showing 0 to 0 of 0 entries'
+                                )}
+                            </span>
+                        </div>
+                        {rowsPerPage !== 'all' && tableFilteredProjects.length > Number(rowsPerPage) && (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                                >
+                                    Previous
+                                </button>
+                                <span className="text-slate-600 dark:text-slate-300 font-semibold px-2">
+                                    Page {currentPage} of {Math.ceil(tableFilteredProjects.length / Number(rowsPerPage))}
+                                </span>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(tableFilteredProjects.length / Number(rowsPerPage))))}
+                                    disabled={currentPage === Math.ceil(tableFilteredProjects.length / Number(rowsPerPage))}
+                                    className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

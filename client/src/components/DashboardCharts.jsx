@@ -337,39 +337,6 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0">
-                        {/* Search Input */}
-                        <input
-                            type="search"
-                            placeholder="Search records..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-normal bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-                            style={{ width: '160px', height: '34px', margin: 0 }}
-                        />
-
-                        {/* Sort Dropdown */}
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            className="select text-xs"
-                            style={{ width: '160px', height: '34px', padding: '0 8px', margin: 0 }}
-                        >
-                            <option value="name_asc">Name (A - Z)</option>
-                            <option value="name_desc">Name (Z - A)</option>
-                            {(type === 'financial' || type === 'task') && (
-                                <>
-                                    <option value="budget_desc">Budget (High - Low)</option>
-                                    <option value="budget_asc">Budget (Low - High)</option>
-                                </>
-                            )}
-                            {(type === 'task' || type === 'milestone') && (
-                                <>
-                                    <option value="date_desc">Date (Newest - Oldest)</option>
-                                    <option value="date_asc">Date (Oldest - Newest)</option>
-                                </>
-                            )}
-                        </select>
-
                         <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
                             <button
                                 onClick={() => setViewMode('list')}
@@ -510,10 +477,10 @@ const SimplePieChart = ({ data, onSliceClick }) => {
                     ))}
                 </svg>
                 <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
-                    <span className="text-xl font-bold text-slate-800">
+                    <span className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
                         {hoveredIndex !== null ? formatVal(slices[hoveredIndex].value, slices[hoveredIndex].isCurrency) : formatVal(total, slices[0]?.isCurrency)}
                     </span>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    <span className="text-xs uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">
                         {hoveredIndex !== null ? slices[hoveredIndex].label : "Total"}
                     </span>
                 </div>
@@ -525,7 +492,7 @@ const SimplePieChart = ({ data, onSliceClick }) => {
                         {slices.map((item, i) => (
                             <tr 
                                 key={i} 
-                                className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 cursor-pointer"
+                                className="border-b border-slate-50 dark:border-slate-800/60 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 cursor-pointer"
                                 onClick={() => onSliceClick && onSliceClick(item)}
                                 onPointerOver={(e) => {
                                     setHoveredIndex(i);
@@ -553,12 +520,12 @@ const SimplePieChart = ({ data, onSliceClick }) => {
                             >
                                 <td className="py-2 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                                    <span className="text-slate-600 font-medium">{item.label}</span>
+                                    <span className="text-slate-650 dark:text-slate-300 font-medium">{item.label}</span>
                                 </td>
-                                <td className="py-2 text-right font-bold text-slate-800">
+                                <td className="py-2 text-right font-bold text-slate-800 dark:text-slate-200">
                                     {formatVal(item.value, item.isCurrency)}
                                 </td>
-                                <td className="py-2 text-right font-black text-slate-400 w-12">
+                                <td className="py-2 text-right font-black text-slate-400 dark:text-slate-500 w-12">
                                     {item.share}%
                                 </td>
                             </tr>
