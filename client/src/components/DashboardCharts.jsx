@@ -38,18 +38,66 @@ const PesoIcon = ({ size = 20, className }) => (
 const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
     const [selectedItem, setSelectedItem] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState('name_asc');
 
-    // Reset selected item when modal closes or opens with new data
+    // Reset selected item and filters when modal closes or opens with new data
     useEffect(() => {
         setSelectedItem(null);
+        setSearchQuery('');
+        setSortBy('name_asc');
     }, [isOpen, data]);
 
-    if (!isOpen) return null;
+    const filteredAndSortedData = React.useMemo(() => {
+        let result = [...data];
 
-    // For milestones, filter to show ONLY Completed/Done/Accomplished and sort by ID (fallback) or Date
-    const displayData = type === 'milestone'
-        ? [...data] // .filter(item => ['Completed', 'Accomplished'].includes(item.status)) // Status removed
-        : data;
+        // 1. Filter by search query (match name, title, project, division, status, etc.)
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(item => {
+                const name = (item.name || item.title || `${item.first_name || ''} ${item.last_name || ''}`).toLowerCase();
+                const project = (item.project_name || '').toLowerCase();
+                const division = (item.division_name || item.division || '').toLowerCase();
+                const status = (item.status || '').toLowerCase();
+                const position = (item.position || '').toLowerCase();
+                const fund = (item.fund || item.sourceOfFund || '').toLowerCase();
+                return name.includes(q) || project.includes(q) || division.includes(q) || status.includes(q) || position.includes(q) || fund.includes(q);
+            });
+        }
+
+        // 2. Sort by active sort key
+        result.sort((a, b) => {
+            const nameA = (a.name || a.title || `${a.first_name || ''} ${a.last_name || ''}`).toLowerCase();
+            const nameB = (b.name || b.title || `${b.first_name || ''} ${b.last_name || ''}`).toLowerCase();
+
+            if (sortBy === 'name_asc') {
+                return nameA.localeCompare(nameB);
+            } else if (sortBy === 'name_desc') {
+                return nameB.localeCompare(nameA);
+            } else if (sortBy === 'budget_desc') {
+                const bA = Number(a.total_budget || a.allocation || a.gms_allocation || a.cost || a.actual_cost || 0);
+                const bB = Number(b.total_budget || b.allocation || b.gms_allocation || b.cost || b.actual_cost || 0);
+                return bB - bA;
+            } else if (sortBy === 'budget_asc') {
+                const bA = Number(a.total_budget || a.allocation || a.gms_allocation || a.cost || a.actual_cost || 0);
+                const bB = Number(b.total_budget || b.allocation || b.gms_allocation || b.cost || b.actual_cost || 0);
+                return bA - bB;
+            } else if (sortBy === 'date_desc') {
+                const dA = new Date(a.due_date || a.target_date || a.start_date || 0);
+                const dB = new Date(b.due_date || b.target_date || b.start_date || 0);
+                return dB - dA;
+            } else if (sortBy === 'date_asc') {
+                const dA = new Date(a.due_date || a.target_date || a.start_date || 0);
+                const dB = new Date(b.due_date || b.target_date || b.start_date || 0);
+                return dA - dB;
+            }
+            return 0;
+        });
+
+        return result;
+    }, [data, searchQuery, sortBy]);
+
+    if (!isOpen) return null;
 
     if (selectedItem) {
         return (
@@ -94,8 +142,8 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
     }
 
     const renderContent = () => {
-        if (displayData.length === 0) {
-            return <div className="p-8 text-center text-slate-500">No records found.</div>;
+        if (filteredAndSortedData.length === 0) {
+            return <div className="p-8 text-center text-slate-500">No records found matching the query.</div>;
         }
 
         if (viewMode === 'list') {
@@ -115,8 +163,6 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                 {type === 'financial' && <th className="px-4 py-3">Spent</th>}
                                 {type === 'milestone' && (
                                     <>
-
-
                                         <th className="px-4 py-3">Target Date</th>
                                         <th className="px-4 py-3">Project</th>
                                         <th className="px-4 py-3">Division</th>
@@ -125,7 +171,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {displayData.map((item, idx) => {
+                            {filteredAndSortedData.map((item, idx) => {
                                 const getRowColor = () => {
                                     return "hover:bg-slate-50";
                                 };
@@ -175,8 +221,6 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                         )}
                                         {type === 'milestone' && (
                                             <>
-
-
                                                 <td className="px-4 py-3 text-slate-500 text-xs">
                                                     {item.target_date ? new Date(item.target_date).toLocaleDateString() : '-'}
                                                 </td>
@@ -195,7 +239,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
             // Grid View
             return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-slate-50">
-                    {displayData.map((item, idx) => (
+                    {filteredAndSortedData.map((item, idx) => (
                         <div key={item.id || idx} className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                             <div>
                                 <h4 className="font-bold text-slate-800 mb-2 truncate" title={item.name || item.title || item.first_name + ' ' + item.last_name}>
@@ -244,7 +288,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                 )}
 
                                 {type === 'financial' && (
-                                    <div className="text-xs text-slate-500 space-y-1 mt-2 pt-2 border-t border-slate-100">
+                                    <div className="text-xs text-slate-550 space-y-1 mt-2 pt-2 border-t border-slate-100">
                                         <div className="flex justify-between">
                                             <span>Allocation:</span>
                                             <span className="font-mono font-bold text-slate-700">₱{Number(item.total_budget || 0).toLocaleString()}</span>
@@ -289,15 +333,49 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                         </div>
                         <div className="min-w-0">
                             <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-tight truncate">{title}</h3>
-                            <p className="text-xs text-slate-500">{data.length} records found</p>
+                            <p className="text-xs text-slate-500">{filteredAndSortedData.length} of {data.length} records found</p>
                         </div>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0">
-                        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0">
+                        {/* Search Input */}
+                        <input
+                            type="search"
+                            placeholder="Search records..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-normal bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                            style={{ width: '160px', height: '34px', margin: 0 }}
+                        />
+
+                        {/* Sort Dropdown */}
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="select text-xs"
+                            style={{ width: '160px', height: '34px', padding: '0 8px', margin: 0 }}
+                        >
+                            <option value="name_asc">Name (A - Z)</option>
+                            <option value="name_desc">Name (Z - A)</option>
+                            {(type === 'financial' || type === 'task') && (
+                                <>
+                                    <option value="budget_desc">Budget (High - Low)</option>
+                                    <option value="budget_asc">Budget (Low - High)</option>
+                                </>
+                            )}
+                            {(type === 'task' || type === 'milestone') && (
+                                <>
+                                    <option value="date_desc">Date (Newest - Oldest)</option>
+                                    <option value="date_asc">Date (Oldest - Newest)</option>
+                                </>
+                            )}
+                        </select>
+
+                        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
                             <button
                                 onClick={() => setViewMode('list')}
                                 className={clsx("p-1.5 rounded-md transition-all", viewMode === 'list' ? "bg-white shadow text-blue-600" : "text-slate-400 hover:text-slate-600")}
                                 title="List View"
+                                type="button"
                             >
                                 <List size={18} />
                             </button>
@@ -305,6 +383,7 @@ const BreakdownModal = ({ isOpen, onClose, title, data = [], type }) => {
                                 onClick={() => setViewMode('grid')}
                                 className={clsx("p-1.5 rounded-md transition-all", viewMode === 'grid' ? "bg-white shadow text-blue-600" : "text-slate-400 hover:text-slate-600")}
                                 title="Grid View"
+                                type="button"
                             >
                                 <LayoutGrid size={18} />
                             </button>

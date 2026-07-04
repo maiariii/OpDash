@@ -11,12 +11,145 @@ import clsx from 'clsx';
 const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEditActivity }) => {
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
     const [selectedActivity, setSelectedActivity] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState('name_asc');
 
-    // Reset selected activity when modal closes or data changes
+    // Column Filters & Header Sorts
+    const [columnFilters, setColumnFilters] = useState({
+        name: '',
+        division: '',
+        project: '',
+        status: '',
+        sourceOfFund: '',
+        budget: '',
+        obligated: ''
+    });
+    const [sortColumn, setSortColumn] = useState('name');
+    const [sortDirection, setSortDirection] = useState('asc');
+
+    // Reset selected activity and filters when modal closes or data changes
     useEffect(() => {
         setSelectedActivity(null);
+        setSearchQuery('');
+        setSortBy('name_asc');
+        setColumnFilters({
+            name: '',
+            division: '',
+            project: '',
+            status: '',
+            sourceOfFund: '',
+            budget: '',
+            obligated: ''
+        });
+        setSortColumn('name');
+        setSortDirection('asc');
     }, [isOpen, activities]);
-    
+
+    const handleSort = (col) => {
+        if (sortColumn === col) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(col);
+            setSortDirection('asc');
+        }
+    };
+
+    const filteredAndSortedActivities = React.useMemo(() => {
+        let result = [...activities];
+
+        // 1. General Search Query Filter
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(item => {
+                const name = (item.name || '').toLowerCase();
+                const project = (item.project || '').toLowerCase();
+                const division = (item.division || '').toLowerCase();
+                const status = (item.status || '').toLowerCase();
+                const sourceOfFund = (item.sourceOfFund || '').toLowerCase();
+                return name.includes(q) || project.includes(q) || division.includes(q) || status.includes(q) || sourceOfFund.includes(q);
+            });
+        }
+
+        // 2. Column-specific filters
+        Object.keys(columnFilters).forEach(key => {
+            const val = columnFilters[key];
+            if (val) {
+                const q = val.toLowerCase();
+                result = result.filter(item => {
+                    let cellVal = '';
+                    if (key === 'name') cellVal = item.name || '';
+                    else if (key === 'division') cellVal = item.division || '';
+                    else if (key === 'project') cellVal = item.project || '';
+                    else if (key === 'status') cellVal = item.status || '';
+                    else if (key === 'sourceOfFund') cellVal = item.sourceOfFund || '';
+                    else if (key === 'budget') cellVal = String(item.budget || '');
+                    else if (key === 'obligated') cellVal = String(item.obligated || '');
+                    return cellVal.toLowerCase().includes(q);
+                });
+            }
+        });
+
+        // 3. Header Sort or SortBy dropdown fallback
+        result.sort((a, b) => {
+            let valA, valB;
+            if (sortColumn) {
+                // Header sort takes precedence if sortColumn is active
+                if (sortColumn === 'name') {
+                    valA = a.name || '';
+                    valB = b.name || '';
+                } else if (sortColumn === 'division') {
+                    valA = a.division || '';
+                    valB = b.division || '';
+                } else if (sortColumn === 'project') {
+                    valA = a.project || '';
+                    valB = b.project || '';
+                } else if (sortColumn === 'status') {
+                    valA = a.status || '';
+                    valB = b.status || '';
+                } else if (sortColumn === 'sourceOfFund') {
+                    valA = a.sourceOfFund || '';
+                    valB = b.sourceOfFund || '';
+                } else if (sortColumn === 'budget') {
+                    valA = Number(a.budget || 0);
+                    valB = Number(b.budget || 0);
+                } else if (sortColumn === 'obligated') {
+                    valA = Number(a.obligated || 0);
+                    valB = Number(b.obligated || 0);
+                }
+
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    return sortDirection === 'asc' ? valA - valB : valB - valA;
+                } else {
+                    return sortDirection === 'asc'
+                        ? String(valA).localeCompare(String(valB))
+                        : String(valB).localeCompare(String(valA));
+                }
+            } else {
+                // Fallback to SortBy dropdown
+                if (sortBy === 'name_asc') {
+                    return (a.name || '').localeCompare(b.name || '');
+                } else if (sortBy === 'name_desc') {
+                    return (b.name || '').localeCompare(a.name || '');
+                } else if (sortBy === 'budget_desc') {
+                    return Number(b.budget || 0) - Number(a.budget || 0);
+                } else if (sortBy === 'budget_asc') {
+                    return Number(a.budget || 0) - Number(b.budget || 0);
+                } else if (sortBy === 'date_desc') {
+                    const dA = new Date(a.due || a.lastUpdate || 0);
+                    const dB = new Date(b.due || b.lastUpdate || 0);
+                    return dB - dA;
+                } else if (sortBy === 'date_asc') {
+                    const dA = new Date(a.due || a.lastUpdate || 0);
+                    const dB = new Date(b.due || b.lastUpdate || 0);
+                    return dA - dB;
+                }
+            }
+            return 0;
+        });
+
+        return result;
+    }, [activities, searchQuery, columnFilters, sortColumn, sortDirection, sortBy]);
+
     if (!isOpen) return null;
 
     const fmt = v => Number(v || 0).toLocaleString("en-PH");
@@ -129,15 +262,41 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                         </div>
                         <div className="min-w-0">
                             <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-tight truncate">{title}</h3>
-                            <p className="text-xs text-slate-500">{activities.length} records found</p>
+                            <p className="text-xs text-slate-500">{filteredAndSortedActivities.length} of {activities.length} records found</p>
                         </div>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0">
-                        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0">
+                        {/* Search Input */}
+                        <input
+                            type="search"
+                            placeholder="Search records..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-normal bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                            style={{ width: '160px', height: '34px', margin: 0 }}
+                        />
+
+                        {/* Sort Dropdown */}
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="select text-xs"
+                            style={{ width: '160px', height: '34px', padding: '0 8px', margin: 0 }}
+                        >
+                            <option value="name_asc">Name (A - Z)</option>
+                            <option value="name_desc">Name (Z - A)</option>
+                            <option value="budget_desc">Budget (High - Low)</option>
+                            <option value="budget_asc">Budget (Low - High)</option>
+                            <option value="date_desc">Date (Newest - Oldest)</option>
+                            <option value="date_asc">Date (Oldest - Newest)</option>
+                        </select>
+
+                        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
                             <button
                                 onClick={() => setViewMode('list')}
                                 className={clsx("p-1.5 rounded-md transition-all cursor-pointer", viewMode === 'list' ? "bg-white shadow text-blue-600" : "text-slate-400 hover:text-slate-650")}
                                 title="List View"
+                                type="button"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                             </button>
@@ -145,6 +304,7 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                                 onClick={() => setViewMode('grid')}
                                 className={clsx("p-1.5 rounded-md transition-all cursor-pointer", viewMode === 'grid' ? "bg-white shadow text-blue-600" : "text-slate-400 hover:text-slate-650")}
                                 title="Grid View"
+                                type="button"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                             </button>
@@ -156,24 +316,110 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                 </div>
 
                 <div className="flex-1 overflow-y-auto bg-slate-50/50 p-4">
-                    {activities.length === 0 ? (
-                        <div className="p-8 text-center text-slate-500">No records found.</div>
+                    {filteredAndSortedActivities.length === 0 ? (
+                        <div className="p-8 text-center text-slate-500">No records found matching the query.</div>
                     ) : viewMode === 'list' ? (
                         <div className="overflow-x-auto bg-white rounded-xl border border-slate-100 shadow-xs">
                             <table className="w-full text-sm text-left border-collapse">
                                 <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-xs sticky top-0 border-b border-slate-100">
-                                    <tr>
-                                        <th className="px-4 py-3">Activity</th>
-                                        <th className="px-4 py-3">Division</th>
-                                        <th className="px-4 py-3">Project</th>
-                                        <th className="px-4 py-3">Status</th>
-                                        <th className="px-4 py-3">Fund</th>
-                                        <th className="px-4 py-3 text-right">Allocation</th>
-                                        <th className="px-4 py-3 text-right">Obligated</th>
+                                    <tr className="border-b border-slate-150">
+                                        <th onClick={() => handleSort('name')} className="px-4 py-3 cursor-pointer select-none hover:bg-slate-100 transition-colors">
+                                            Activity {sortColumn === 'name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                        </th>
+                                        <th onClick={() => handleSort('division')} className="px-4 py-3 cursor-pointer select-none hover:bg-slate-100 transition-colors">
+                                            Division {sortColumn === 'division' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                        </th>
+                                        <th onClick={() => handleSort('project')} className="px-4 py-3 cursor-pointer select-none hover:bg-slate-100 transition-colors">
+                                            Project {sortColumn === 'project' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                        </th>
+                                        <th onClick={() => handleSort('status')} className="px-4 py-3 cursor-pointer select-none hover:bg-slate-100 transition-colors">
+                                            Status {sortColumn === 'status' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                        </th>
+                                        <th onClick={() => handleSort('sourceOfFund')} className="px-4 py-3 cursor-pointer select-none hover:bg-slate-100 transition-colors">
+                                            Fund {sortColumn === 'sourceOfFund' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                        </th>
+                                        <th onClick={() => handleSort('budget')} className="px-4 py-3 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors">
+                                            Allocation {sortColumn === 'budget' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                        </th>
+                                        <th onClick={() => handleSort('obligated')} className="px-4 py-3 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors">
+                                            Obligated {sortColumn === 'obligated' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                        </th>
+                                    </tr>
+                                    <tr className="bg-slate-50 border-b border-slate-100">
+                                        <th className="px-2 py-1">
+                                            <input
+                                                type="search"
+                                                placeholder="Filter..."
+                                                value={columnFilters.name}
+                                                onChange={(e) => setColumnFilters(prev => ({ ...prev, name: e.target.value }))}
+                                                className="column-filter w-full text-xs font-normal"
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </th>
+                                        <th className="px-2 py-1">
+                                            <input
+                                                type="search"
+                                                placeholder="Filter..."
+                                                value={columnFilters.division}
+                                                onChange={(e) => setColumnFilters(prev => ({ ...prev, division: e.target.value }))}
+                                                className="column-filter w-full text-xs font-normal"
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </th>
+                                        <th className="px-2 py-1">
+                                            <input
+                                                type="search"
+                                                placeholder="Filter..."
+                                                value={columnFilters.project}
+                                                onChange={(e) => setColumnFilters(prev => ({ ...prev, project: e.target.value }))}
+                                                className="column-filter w-full text-xs font-normal"
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </th>
+                                        <th className="px-2 py-1">
+                                            <input
+                                                type="search"
+                                                placeholder="Filter..."
+                                                value={columnFilters.status}
+                                                onChange={(e) => setColumnFilters(prev => ({ ...prev, status: e.target.value }))}
+                                                className="column-filter w-full text-xs font-normal"
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </th>
+                                        <th className="px-2 py-1">
+                                            <input
+                                                type="search"
+                                                placeholder="Filter..."
+                                                value={columnFilters.sourceOfFund}
+                                                onChange={(e) => setColumnFilters(prev => ({ ...prev, sourceOfFund: e.target.value }))}
+                                                className="column-filter w-full text-xs font-normal"
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </th>
+                                        <th className="px-2 py-1 text-right">
+                                            <input
+                                                type="search"
+                                                placeholder="Filter..."
+                                                value={columnFilters.budget}
+                                                onChange={(e) => setColumnFilters(prev => ({ ...prev, budget: e.target.value }))}
+                                                className="column-filter w-full text-xs font-normal text-right"
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </th>
+                                        <th className="px-2 py-1 text-right">
+                                            <input
+                                                type="search"
+                                                placeholder="Filter..."
+                                                value={columnFilters.obligated}
+                                                onChange={(e) => setColumnFilters(prev => ({ ...prev, obligated: e.target.value }))}
+                                                className="column-filter w-full text-xs font-normal text-right"
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {activities.map((item, idx) => {
+                                    {filteredAndSortedActivities.map((item, idx) => {
                                         let statusClass = 'bg-slate-100 text-slate-600';
                                         if (item.status === 'Completed' || item.status === 'Accomplished') statusClass = 'bg-green-100 text-green-700';
                                         else if (item.status === 'In Progress') statusClass = 'bg-blue-100 text-blue-700';
@@ -206,7 +452,7 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {activities.map((item, idx) => {
+                            {filteredAndSortedActivities.map((item, idx) => {
                                 let statusClass = 'bg-slate-100 text-slate-600';
                                 if (item.status === 'Completed' || item.status === 'Accomplished') statusClass = 'bg-green-100 text-green-700';
                                 else if (item.status === 'In Progress') statusClass = 'bg-blue-100 text-blue-700';
