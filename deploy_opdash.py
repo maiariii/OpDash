@@ -14,11 +14,15 @@ ARCHIVE_NAME = "opdash-deploy.tar.gz"
 ECOSYSTEM_CONFIG = "ecosystem.opdash.config.cjs"
 PM2_NAME     = "opdash-backend"
 
-def run_ssh(command: str, timeout=60):
+def run_ssh(command: str, timeout=60, capture_output=False):
     """Run bundled commands over a single SSH connection with a timeout."""
-    ssh_cmd = f'ssh -i "{SSH_KEY_PATH}" -o ConnectTimeout=10 {REMOTE_USER}@{REMOTE_HOST} "{command}"'
+    key_opt = f'-i "{SSH_KEY_PATH}" ' if os.path.exists(SSH_KEY_PATH) else ''
+    ssh_cmd = f'ssh {key_opt}-o ConnectTimeout=10 {REMOTE_USER}@{REMOTE_HOST} "{command}"'
     try:
-        return subprocess.run(ssh_cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+        if capture_output:
+            return subprocess.run(ssh_cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+        else:
+            return subprocess.run(ssh_cmd, shell=True, timeout=timeout)
     except subprocess.TimeoutExpired:
         print(f"  [ERROR] SSH command timed out after {timeout}s")
         sys.exit(1)
@@ -62,7 +66,8 @@ def main():
     try:
         # Create directory first to ensure scp works
         run_ssh(f"mkdir -p {REMOTE_ROOT}")
-        subprocess.run(f'scp -i "{SSH_KEY_PATH}" {ARCHIVE_NAME} {REMOTE_USER}@{REMOTE_HOST}:{REMOTE_ROOT}/', shell=True, check=True)
+        key_opt = f'-i "{SSH_KEY_PATH}" ' if os.path.exists(SSH_KEY_PATH) else ''
+        subprocess.run(f'scp {key_opt}{ARCHIVE_NAME} {REMOTE_USER}@{REMOTE_HOST}:{REMOTE_ROOT}/', shell=True, check=True)
     except subprocess.CalledProcessError:
         print("  [ERROR] Upload failed! Check your SSH key and connection.")
         sys.exit(1)
@@ -102,9 +107,9 @@ def main():
 
     # 5. Final Health Check
     print("[5/5] VERIFYING remote API health...")
-    verify_cmd = "curl -s http://127.0.0.1:3001/health || curl -s http://127.0.0.1:3001/api/health || curl -s http://127.0.0.1:3001/"
-    health = run_ssh(verify_cmd)
-    if health.stdout.strip() != "":
+    verify_cmd = "curl -s -f http://127.0.0.1:3001/health || curl -s -f http://127.0.0.1:3001/api/health || curl -s -f http://127.0.0.1:3001/"
+    res = run_ssh(verify_cmd, capture_output=False)
+    if res.returncode == 0:
         print("      SUCCESS: API confirmed online on port 3001!")
     else:
         print(f"      [WARN] Health check warning: Unexpected response. Check PM2 logs.")

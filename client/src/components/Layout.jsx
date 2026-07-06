@@ -230,21 +230,15 @@ const Layout = () => {
                         Authorized Personnel
                     </Link>
 
-                    {/* Projects Tab */}
                     <div className="flex flex-col w-full">
-                        <div className="flex items-center justify-between w-full">
-                            <Link to="/projects" className={`flex-1 ${location.pathname.startsWith('/projects') ? 'active' : ''}`}>
-                                <FolderKanban size={18} className="nav-icon" />
-                                Projects
-                            </Link>
-                            <button
-                                onClick={() => setIsProjectsExpanded(!isProjectsExpanded)}
-                                className="p-2 text-white/50 hover:text-white transition-colors"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                            >
-                                <ChevronDown size={16} style={{ transform: isProjectsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-                            </button>
-                        </div>
+                        <Link 
+                            to="/projects" 
+                            className={location.pathname.startsWith('/projects') ? 'active' : ''}
+                            onClick={() => setIsProjectsExpanded(!isProjectsExpanded)}
+                        >
+                            <FolderKanban size={18} className="nav-icon" />
+                            Projects
+                        </Link>
                         {isProjectsExpanded && (
                             <div className="projects-sub-menu">
                                 {divisions.map(div => {

@@ -8,6 +8,18 @@ import CreateTaskModal from '../components/CreateTaskModal';
 import { Settings, X, Activity } from 'lucide-react';
 import clsx from 'clsx';
 
+const getRateColorClass = (val) => {
+    const v = Number(val || 0);
+    if (v <= 25) return 'text-rose-500 dark:text-rose-400';
+    if (v <= 50) return 'text-amber-500 dark:text-amber-400';
+    if (v <= 75) return 'text-blue-500 dark:text-blue-400';
+    if (v <= 90) return 'text-emerald-500 dark:text-emerald-400';
+    return 'text-green-600 dark:text-green-400';
+};
+
+const getUtilColorClass = getRateColorClass;
+const getAccomColorClass = getRateColorClass;
+
 const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEditActivity }) => {
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
     const [selectedActivity, setSelectedActivity] = useState(null);
@@ -82,8 +94,8 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                     else if (key === 'project') cellVal = item.project || '';
                     else if (key === 'status') cellVal = item.status || '';
                     else if (key === 'sourceOfFund') cellVal = item.sourceOfFund || '';
-                    else if (key === 'budget') cellVal = String(item.budget || '');
-                    else if (key === 'obligated') cellVal = String(item.obligated || '');
+                    else if (key === 'budget') cellVal = String(Math.round(item.budget > 0 ? (item.obligated / item.budget) * 100 : 0)) + '%';
+                    else if (key === 'obligated') cellVal = String((item.status === 'Completed' || item.status === 'Accomplished') ? 100 : 0) + '%';
                     return cellVal.toLowerCase().includes(q);
                 });
             }
@@ -110,11 +122,11 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                     valA = a.sourceOfFund || '';
                     valB = b.sourceOfFund || '';
                 } else if (sortColumn === 'budget') {
-                    valA = Number(a.budget || 0);
-                    valB = Number(b.budget || 0);
+                    valA = a.budget > 0 ? (a.obligated / a.budget) * 100 : 0;
+                    valB = b.budget > 0 ? (b.obligated / b.budget) * 100 : 0;
                 } else if (sortColumn === 'obligated') {
-                    valA = Number(a.obligated || 0);
-                    valB = Number(b.obligated || 0);
+                    valA = (a.status === 'Completed' || a.status === 'Accomplished') ? 100 : 0;
+                    valB = (b.status === 'Completed' || b.status === 'Accomplished') ? 100 : 0;
                 }
 
                 if (typeof valA === 'number' && typeof valB === 'number') {
@@ -154,6 +166,7 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
 
     const fmt = v => Number(v || 0).toLocaleString("en-PH");
     const peso = v => "₱" + Number(v || 0).toLocaleString("en-PH");
+    const pct = (v, dec = 0) => dec === 0 ? Math.round(v || 0) + "%" : Number(v || 0).toFixed(dec) + "%";
 
     if (selectedActivity) {
         let statusBadgeClass = 'bg-slate-100 text-slate-700';
@@ -314,10 +327,10 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                                             Fund {sortColumn === 'sourceOfFund' && (sortDirection === 'asc' ? '▲' : '▼')}
                                         </th>
                                         <th onClick={() => handleSort('budget')} className="px-4 py-3 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors">
-                                            Allocation {sortColumn === 'budget' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                            Utilization Rate {sortColumn === 'budget' && (sortDirection === 'asc' ? '▲' : '▼')}
                                         </th>
                                         <th onClick={() => handleSort('obligated')} className="px-4 py-3 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors">
-                                            Obligated {sortColumn === 'obligated' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                            Accomplishment Rate {sortColumn === 'obligated' && (sortDirection === 'asc' ? '▲' : '▼')}
                                         </th>
                                     </tr>
                                     <tr className="bg-slate-50 border-b border-slate-100">
@@ -417,8 +430,8 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-slate-500 text-xs">{item.sourceOfFund}</td>
-                                                <td className="px-4 py-3 text-right font-mono font-semibold">{peso(item.budget)}</td>
-                                                <td className="px-4 py-3 text-right font-mono font-semibold">{peso(item.obligated)}</td>
+                                                <td className={`px-4 py-3 text-right font-mono font-extrabold ${getUtilColorClass(item.budget > 0 ? (item.obligated / item.budget) * 100 : 0)}`}>{pct(item.budget > 0 ? (item.obligated / item.budget) * 100 : 0)}</td>
+                                                <td className={`px-4 py-3 text-right font-mono font-extrabold ${getAccomColorClass((item.status === 'Completed' || item.status === 'Accomplished') ? 100 : 0)}`}>{pct((item.status === 'Completed' || item.status === 'Accomplished') ? 100 : 0)}</td>
                                             </tr>
                                         );
                                     })}
@@ -464,12 +477,12 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                                         </div>
                                         <div className="text-xs text-slate-500 space-y-1 mt-3 pt-3 border-t border-slate-100">
                                             <div className="flex justify-between">
-                                                <span>Allocation:</span>
-                                                <span className="font-mono font-bold text-slate-700">{peso(item.budget)}</span>
+                                                <span>Utilization Rate:</span>
+                                                <span className={`font-mono font-extrabold ${getUtilColorClass(item.budget > 0 ? (item.obligated / item.budget) * 100 : 0)}`}>{pct(item.budget > 0 ? (item.obligated / item.budget) * 100 : 0)}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span>Obligated:</span>
-                                                <span className="font-mono font-bold text-slate-700">{peso(item.obligated)}</span>
+                                                <span>Accomplishment Rate:</span>
+                                                <span className={`font-mono font-extrabold ${getAccomColorClass((item.status === 'Completed' || item.status === 'Accomplished') ? 100 : 0)}`}>{pct((item.status === 'Completed' || item.status === 'Accomplished') ? 100 : 0)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -477,6 +490,105 @@ const ActivityBreakdownModal = ({ isOpen, onClose, title, activities = [], onEdi
                             })}
                         </div>
                     )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ActivityDetailsModal = ({ activity, onClose, onEdit }) => {
+    if (!activity) return null;
+    let statusBadgeClass = 'bg-slate-100 text-slate-700';
+    if (activity.status === 'Completed' || activity.status === 'Accomplished') {
+        statusBadgeClass = 'bg-green-100 text-green-700';
+    } else if (activity.status === 'In Progress') {
+        statusBadgeClass = 'bg-blue-100 text-blue-700';
+    } else if (activity.status === 'Delayed') {
+        statusBadgeClass = 'bg-red-100 text-red-700';
+    }
+    const peso = v => "₱" + Number(v || 0).toLocaleString("en-PH");
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl border-2 border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50 flex-shrink-0">
+                    <h3 className="text-lg font-bold text-slate-800 font-sans">Activity Details</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 bg-white rounded-full border border-slate-200 shadow-xs transition-colors cursor-pointer">
+                        <X size={18} />
+                    </button>
+                </div>
+                <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
+                    <div>
+                        <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Activity Title</label>
+                        <p className="text-lg font-bold text-slate-800 mt-1">{activity.name}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Division</label>
+                            <p className="text-sm font-semibold text-slate-700 mt-1">{activity.division || 'Unassigned'}</p>
+                        </div>
+                        <div>
+                            <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Project</label>
+                            <p className="text-sm font-semibold text-slate-700 mt-1">{activity.project}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div>
+                            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Status</label>
+                            <span className={clsx("px-2.5 py-0.5 rounded-full text-xs font-bold mt-1.5 inline-block", statusBadgeClass)}>
+                                {activity.status || 'Pending'}
+                            </span>
+                        </div>
+                        <div>
+                            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Allocation</label>
+                            <span className="text-sm font-mono font-bold text-slate-800 block mt-1.5">{peso(activity.budget)}</span>
+                        </div>
+                        <div>
+                            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Obligated</label>
+                            <span className="text-sm font-mono font-bold text-slate-800 block mt-1.5">{peso(activity.obligated)}</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Last Updated</label>
+                            <p className="text-xs text-slate-600 mt-1 font-semibold">
+                                {activity.lastUpdate ? new Date(activity.lastUpdate).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'Not available'}
+                            </p>
+                        </div>
+                        <div>
+                            <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Due Date</label>
+                            <p className="text-xs text-slate-600 mt-1 font-semibold">
+                                {activity.due ? new Date(activity.due).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'Not specified'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">Remarks / Description</label>
+                        <p className="text-sm text-slate-605 mt-1 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap min-h-[60px]">
+                            {activity.remarks || activity.description || "No remarks or description recorded."}
+                        </p>
+                    </div>
+                </div>
+                <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                    >
+                        Close
+                    </button>
+                    <button
+                        onClick={() => {
+                            onEdit(activity);
+                            onClose();
+                        }}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                    >
+                        Edit Activity
+                    </button>
                 </div>
             </div>
         </div>
@@ -511,6 +623,7 @@ const Dashboard = () => {
     });
 
     // New dashboard filters
+    const [selectedRegistryActivity, setSelectedRegistryActivity] = useState(null);
     const [fundFilter, setFundFilter] = useState('all');
     const [expenditureFilter, setExpenditureFilter] = useState('all');
     const [utilizationFilter, setUtilizationFilter] = useState('all');
@@ -522,6 +635,8 @@ const Dashboard = () => {
     const [categorySortMode, setCategorySortMode] = useState('value');
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [hoveredDonutIndex, setHoveredDonutIndex] = useState(null);
+    const [hoveredActivityDonutIndex, setHoveredActivityDonutIndex] = useState(null);
+    const [hoveredFinancialDonutIndex, setHoveredFinancialDonutIndex] = useState(null);
     const [tooltip, setTooltip] = useState({
         visible: false,
         x: 0,
@@ -619,7 +734,7 @@ const Dashboard = () => {
 
     const fmt = v => Number(v || 0).toLocaleString("en-PH");
     const peso = v => "₱" + Number(v || 0).toLocaleString("en-PH");
-    const pct = v => Math.round(v || 0) + "%";
+    const pct = (v, dec = 0) => dec === 0 ? Math.round(v || 0) + "%" : Number(v || 0).toFixed(dec) + "%";
 
     const getProjectSourceOfFund = (p) => {
         return p.source_of_fund || 'GAA-PS';
@@ -740,10 +855,13 @@ const Dashboard = () => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const isAccomplished = t.status === 'Accomplished' || t.status === 'Done' || t.status === 'Completed';
+                    const isDeferred = t.status === 'Deferred';
                     const isOverdue = t.due_date && new Date(t.due_date) < today;
                     let resolvedStatus = 'Pending';
                     if (isAccomplished) {
                         resolvedStatus = 'Accomplished';
+                    } else if (isDeferred) {
+                        resolvedStatus = 'Deferred';
                     } else if (t.status === 'Delayed' || isOverdue) {
                         resolvedStatus = 'Delayed';
                     }
@@ -838,9 +956,10 @@ const Dashboard = () => {
     const availableCategories = useMemo(() => {
         if (distributionMode === 'status') {
             return [
-                { id: 'Pending', label: 'Pending', count: activeActivities.filter(a => a.status === 'Pending').length, value: activeActivities.filter(a => a.status === 'Pending').reduce((s, a) => s + a.budget, 0) },
                 { id: 'Accomplished', label: 'Accomplished', count: activeActivities.filter(a => a.status === 'Accomplished').length, value: activeActivities.filter(a => a.status === 'Accomplished').reduce((s, a) => s + a.budget, 0) },
+                { id: 'Pending', label: 'Pending', count: activeActivities.filter(a => a.status === 'Pending').length, value: activeActivities.filter(a => a.status === 'Pending').reduce((s, a) => s + a.budget, 0) },
                 { id: 'Delayed', label: 'Delayed', count: activeActivities.filter(a => a.status === 'Delayed').length, value: activeActivities.filter(a => a.status === 'Delayed').reduce((s, a) => s + a.budget, 0) },
+                { id: 'Deferred', label: 'Deferred', count: activeActivities.filter(a => a.status === 'Deferred').length, value: activeActivities.filter(a => a.status === 'Deferred').reduce((s, a) => s + a.budget, 0) },
             ];
         } else if (distributionMode === 'budget') {
             const uCount = activeActivities.filter(a => a.used > 0).length;
@@ -926,6 +1045,7 @@ const Dashboard = () => {
         const accomplishments = activeActivities.filter(r => r.status === 'Accomplished');
         const pending = activeActivities.filter(r => r.status === 'Pending');
         const delayed = activeActivities.filter(r => r.status === 'Delayed');
+        const deferred = activeActivities.filter(r => r.status === 'Deferred');
 
         return {
             budget: tBudget,
@@ -933,9 +1053,78 @@ const Dashboard = () => {
             used: tUsed,
             accomplished: accomplishments,
             pending: pending,
-            delayed: delayed
+            delayed: delayed,
+            deferred: deferred
         };
     }, [activeActivities]);
+
+    // Accomplishment Snapshot side-by-side donuts for division view
+    const activityDonutData = useMemo(() => {
+        return [
+            { label: "Accomplished", value: totals.accomplished.length, color: colors.green },
+            { label: "Pending", value: totals.pending.length, color: colors.gold },
+            { label: "Delayed", value: totals.delayed.length, color: colors.red },
+            { label: "Deferred", value: totals.deferred.length, color: colors.slate }
+        ];
+    }, [totals]);
+
+    const activityDonutTotal = activityDonutData.reduce((s, r) => s + r.value, 0) || 1;
+
+    const processedActivityDonutSlices = (() => {
+        let currentStart = 0;
+        return activityDonutData.map((r, idx) => {
+            let p = activityDonutTotal > 0 ? (r.value / activityDonutTotal) * 100 : 0;
+            // Visual boost for very small non-zero slices so they are visible on the ring
+            if (r.value > 0 && p < 0.6) {
+                p = 0.6;
+            }
+            const offset = 100 - currentStart;
+            currentStart += p;
+            return {
+                ...r,
+                originalIndex: idx,
+                percent: p,
+                offset: offset,
+                share: Math.round(activityDonutTotal > 0 ? (r.value / activityDonutTotal) * 100 : 0)
+            };
+        });
+    })();
+
+    const financialDonutData = useMemo(() => {
+        return [
+            { label: "Utilized", value: totals.used, color: colors.blue },
+            { label: "Unutilized", value: Math.max(totals.budget - totals.used, 0), color: colors.gold }
+        ];
+    }, [totals]);
+
+    const financialDonutTotal = financialDonutData.reduce((s, r) => s + r.value, 0) || 1;
+
+    const processedFinancialDonutSlices = (() => {
+        let currentStart = 0;
+        return financialDonutData.map((r, idx) => {
+            let p = financialDonutTotal > 0 ? (r.value / financialDonutTotal) * 100 : 0;
+            // Visual boost for very small non-zero slices so they are visible on the ring
+            if (r.value > 0 && p < 0.6) {
+                p = 0.6;
+            }
+            const offset = 100 - currentStart;
+            currentStart += p;
+            return {
+                ...r,
+                originalIndex: idx,
+                percent: p,
+                offset: offset,
+                share: Math.round(financialDonutTotal > 0 ? (r.value / financialDonutTotal) * 100 : 0)
+            };
+        });
+    })();
+
+    const compactPeso = v => {
+        if (v >= 1e9) return "₱" + (v / 1e9).toFixed(2) + "B";
+        if (v >= 1e6) return "₱" + (v / 1e6).toFixed(2) + "M";
+        if (v >= 1e3) return "₱" + (v / 1e3).toFixed(2) + "K";
+        return "₱" + Number(v || 0).toLocaleString("en-PH");
+    };
 
     const allEmployees = rawData.employees;
 
@@ -1017,6 +1206,12 @@ const Dashboard = () => {
         }
 
         const getRowVal = (r, key) => {
+            if (key === 'budget') {
+                return r.budget > 0 ? (r.obligated / r.budget) * 100 : 0;
+            }
+            if (key === 'obligated') {
+                return (r.status === 'Completed' || r.status === 'Accomplished') ? 100 : 0;
+            }
             return r[key] || '';
         };
 
@@ -1029,8 +1224,8 @@ const Dashboard = () => {
                     r.name,
                     r.status,
                     r.sourceOfFund,
-                    r.budget,
-                    r.obligated
+                    Math.round(getRowVal(r, 'budget')) + '%',
+                    Math.round(getRowVal(r, 'obligated')) + '%'
                 ].some(val => String(val || '').toLowerCase().includes(searchLower));
                 if (!matchGlobal) return false;
             }
@@ -1125,9 +1320,10 @@ const Dashboard = () => {
             });
         } else {
             segments = [
-                { label: "Pending", value: metricValue(totals.pending), color: colors.gold },
                 { label: "Accomplished", value: metricValue(totals.accomplished), color: colors.green },
-                { label: "Delayed", value: metricValue(totals.delayed), color: colors.red }
+                { label: "Pending", value: metricValue(totals.pending), color: colors.gold },
+                { label: "Delayed", value: metricValue(totals.delayed), color: colors.red },
+                { label: "Deferred", value: metricValue(totals.deferred), color: colors.slate }
             ];
         }
 
@@ -1153,6 +1349,7 @@ const Dashboard = () => {
             share: Math.round(p)
         };
     });
+
 
     // Max limits for bar charts
     const maxTotal = Math.max(...Object.values(groupedActivities).map(r => metricValue(r)), 1);
@@ -1361,7 +1558,7 @@ const Dashboard = () => {
                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Budget Utilization Rate</span>
                     <div className="mt-2 flex items-baseline gap-2">
                         <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
-                            {pct(totals.budget > 0 ? (totals.obligated / totals.budget) * 100 : 0)}
+                            {pct(totals.budget > 0 ? (totals.obligated / totals.budget) * 100 : 0, 2)}
                         </span>
                     </div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-405 font-medium">
@@ -1459,14 +1656,17 @@ const Dashboard = () => {
                         })}
                         {mainSplitBy === 'status' && (
                             <>
-                                {(!isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Pending')) && (
-                                    <span className="legend-item"><i className="dot bg-[#FBBF24]" />Pending</span>
-                                )}
                                 {(!isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Accomplished')) && (
                                     <span className="legend-item"><i className="dot bg-[#16A34A]" />Accomplished</span>
                                 )}
+                                {(!isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Pending')) && (
+                                    <span className="legend-item"><i className="dot bg-[#FBBF24]" />Pending</span>
+                                )}
                                 {(!isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Delayed')) && (
                                     <span className="legend-item"><i className="dot bg-[#B91C1C]" />Delayed</span>
+                                )}
+                                {(!isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Deferred')) && (
+                                    <span className="legend-item"><i className="dot bg-[#475569]" />Deferred</span>
                                 )}
                             </>
                         )}
@@ -1475,8 +1675,14 @@ const Dashboard = () => {
                     {/* Bars or Heatmap View */}
                     {distributionView === 'bar' ? (
                         <div className="bars space-y-3">
-                            {Object.entries(groupedActivities).map(([d, r]) => {
-                                const totalVal = metricValue(r);
+                            {Object.entries(groupedActivities)
+                                .sort((a, b) => {
+                                    const aAcc = a[1].filter(act => act.status === 'Accomplished').length;
+                                    const bAcc = b[1].filter(act => act.status === 'Accomplished').length;
+                                    return bAcc - aAcc;
+                                })
+                                .map(([d, r]) => {
+                                    const totalVal = metricValue(r);
                                 return (
                                     <div 
                                         key={d} 
@@ -1530,17 +1736,19 @@ const Dashboard = () => {
                                                 const p = metricValue(r.filter(a => a.status === 'Pending'));
                                                 const acc = metricValue(r.filter(a => a.status === 'Accomplished'));
                                                 const del = metricValue(r.filter(a => a.status === 'Delayed'));
+                                                const def = metricValue(r.filter(a => a.status === 'Deferred'));
 
                                                 const isFilterActive = isAdvancedMode && distributionMode === 'status';
                                                 const pVal = (!isFilterActive || activeCategoryIds.includes('Pending')) ? p : 0;
                                                 const accVal = (!isFilterActive || activeCategoryIds.includes('Accomplished')) ? acc : 0;
                                                 const delVal = (!isFilterActive || activeCategoryIds.includes('Delayed')) ? del : 0;
+                                                const defVal = (!isFilterActive || activeCategoryIds.includes('Deferred')) ? def : 0;
 
                                                 return renderStackedSegments(
-                                                    [pVal, accVal, delVal],
+                                                    [accVal, pVal, delVal, defVal],
                                                     maxTotal,
-                                                    ["seg-gold", "seg-green", "seg-red"],
-                                                    ["Pending", "Accomplished", "Delayed"],
+                                                    ["seg-green", "seg-gold", "seg-red", "seg-slate"],
+                                                    ["Accomplished", "Pending", "Delayed", "Deferred"],
                                                     metricFormat,
                                                     (label) => {
                                                         const filtered = getFilteredActivities(r, 'status', label);
@@ -1569,6 +1777,7 @@ const Dashboard = () => {
                         const isStatusPendingVisible = !isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Pending');
                         const isStatusAccomplishedVisible = !isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Accomplished');
                         const isStatusDelayedVisible = !isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Delayed');
+                        const isStatusDeferredVisible = !isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Deferred');
 
                         let colCount = 0;
                         if (isBudget) {
@@ -1578,6 +1787,7 @@ const Dashboard = () => {
                             if (isStatusPendingVisible) colCount++;
                             if (isStatusAccomplishedVisible) colCount++;
                             if (isStatusDelayedVisible) colCount++;
+                            if (isStatusDeferredVisible) colCount++;
                         } else {
                             colCount = visibleFundSources.length;
                         }
@@ -1599,16 +1809,23 @@ const Dashboard = () => {
                                 ))}
                                 {isStatus && (
                                     <>
-                                        {isStatusPendingVisible && <div className="heat-cell heat-head">Pending</div>}
                                         {isStatusAccomplishedVisible && <div className="heat-cell heat-head">Accomplished</div>}
+                                        {isStatusPendingVisible && <div className="heat-cell heat-head">Pending</div>}
                                         {isStatusDelayedVisible && <div className="heat-cell heat-head">Delayed</div>}
+                                        {isStatusDeferredVisible && <div className="heat-cell heat-head">Deferred</div>}
                                     </>
                                 )}
                                 <div className="heat-cell heat-head">Total</div>
 
                                 {/* Group rows */}
-                                {Object.entries(groupedActivities).map(([d, r]) => {
-                                    const totalVal = metricValue(r);
+                                {Object.entries(groupedActivities)
+                                    .sort((a, b) => {
+                                        const aAcc = a[1].filter(act => act.status === 'Accomplished').length;
+                                        const bAcc = b[1].filter(act => act.status === 'Accomplished').length;
+                                        return bAcc - aAcc;
+                                    })
+                                    .map(([d, r]) => {
+                                        const totalVal = metricValue(r);
                                     const cells = [];
 
                                     if (isBudget) {
@@ -1675,31 +1892,21 @@ const Dashboard = () => {
                                         const p = metricValue(r.filter(a => a.status === 'Pending'));
                                         const acc = metricValue(r.filter(a => a.status === 'Accomplished'));
                                         const del = metricValue(r.filter(a => a.status === 'Delayed'));
+                                        const def = metricValue(r.filter(a => a.status === 'Deferred'));
 
                                         const maxVal = Math.max(...Object.values(groupedActivities).flatMap(g => {
                                             const gp = metricValue(g.filter(a => a.status === 'Pending'));
                                             const gacc = metricValue(g.filter(a => a.status === 'Accomplished'));
                                             const gdel = metricValue(g.filter(a => a.status === 'Delayed'));
-                                            return [gp, gacc, gdel];
+                                            const gdef = metricValue(g.filter(a => a.status === 'Deferred'));
+                                            return [gp, gacc, gdel, gdef];
                                         }), 1);
 
                                         const pIntensity = p / maxVal;
                                         const accIntensity = acc / maxVal;
                                         const delIntensity = del / maxVal;
+                                        const defIntensity = def / maxVal;
 
-                                        if (isStatusPendingVisible) {
-                                            const share = Math.round(p / Math.max(totalVal, 1) * 100);
-                                            cells.push(
-                                                <div key="p" onClick={() => {
-                                                    const filtered = getFilteredActivities(r, 'status', 'Pending');
-                                                    setDetailModal({ isOpen: true, title: `${d} — Pending Activities`, activities: filtered });
-                                                }} 
-                                                onPointerOver={(e) => showTooltip(e, 'Pending', metricFormat(p), share)}
-                                                onPointerMove={updateTooltipPosition}
-                                                onPointerLeave={hideTooltip}
-                                                className={`heat-cell cursor-pointer hover:opacity-80 ${p === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + pIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: pIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(p)}</div>
-                                            );
-                                        }
                                         if (isStatusAccomplishedVisible) {
                                             const share = Math.round(acc / Math.max(totalVal, 1) * 100);
                                             cells.push(
@@ -1713,6 +1920,19 @@ const Dashboard = () => {
                                                 className={`heat-cell cursor-pointer hover:opacity-80 ${acc === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.green} ${Math.round(16 + accIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.green} 48%, #DBEAFE)`, color: accIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(acc)}</div>
                                             );
                                         }
+                                        if (isStatusPendingVisible) {
+                                            const share = Math.round(p / Math.max(totalVal, 1) * 100);
+                                            cells.push(
+                                                <div key="p" onClick={() => {
+                                                    const filtered = getFilteredActivities(r, 'status', 'Pending');
+                                                    setDetailModal({ isOpen: true, title: `${d} — Pending Activities`, activities: filtered });
+                                                }} 
+                                                onPointerOver={(e) => showTooltip(e, 'Pending', metricFormat(p), share)}
+                                                onPointerMove={updateTooltipPosition}
+                                                onPointerLeave={hideTooltip}
+                                                className={`heat-cell cursor-pointer hover:opacity-80 ${p === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + pIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: pIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(p)}</div>
+                                            );
+                                        }
                                         if (isStatusDelayedVisible) {
                                             const share = Math.round(del / Math.max(totalVal, 1) * 100);
                                             cells.push(
@@ -1724,6 +1944,19 @@ const Dashboard = () => {
                                                 onPointerMove={updateTooltipPosition}
                                                 onPointerLeave={hideTooltip}
                                                 className={`heat-cell cursor-pointer hover:opacity-80 ${del === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.red} ${Math.round(16 + delIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.red} 48%, #DBEAFE)`, color: delIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(del)}</div>
+                                            );
+                                        }
+                                        if (isStatusDeferredVisible) {
+                                            const share = Math.round(def / Math.max(totalVal, 1) * 100);
+                                            cells.push(
+                                                <div key="def" onClick={() => {
+                                                    const filtered = getFilteredActivities(r, 'status', 'Deferred');
+                                                    setDetailModal({ isOpen: true, title: `${d} — Deferred Activities`, activities: filtered });
+                                                }} 
+                                                onPointerOver={(e) => showTooltip(e, 'Deferred', metricFormat(def), share)}
+                                                onPointerMove={updateTooltipPosition}
+                                                onPointerLeave={hideTooltip}
+                                                className={`heat-cell cursor-pointer hover:opacity-80 ${def === 0 ? 'heat-zero' : ''}`} style={{ background: `color-mix(in srgb, ${colors.slate} ${Math.round(16 + defIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.slate} 48%, #DBEAFE)`, color: defIntensity > 0.58 ? 'white' : 'var(--navy)' }}>{metricFormat(def)}</div>
                                             );
                                         }
                                     }
@@ -1792,9 +2025,10 @@ const Dashboard = () => {
                                     });
                                 } else {
                                     segments = [
-                                        { label: "Pending", value: metricValue(totals.pending), color: colors.gold },
                                         { label: "Accomplished", value: metricValue(totals.accomplished), color: colors.green },
-                                        { label: "Delayed", value: metricValue(totals.delayed), color: colors.red }
+                                        { label: "Pending", value: metricValue(totals.pending), color: colors.gold },
+                                        { label: "Delayed", value: metricValue(totals.delayed), color: colors.red },
+                                        { label: "Deferred", value: metricValue(totals.deferred), color: colors.slate }
                                     ];
                                 }
                                 if (detailsSplitBy === distributionMode && isAdvancedMode) {
@@ -1853,108 +2087,208 @@ const Dashboard = () => {
                     <article className="card flex-1 flex flex-col justify-between animate-slide-in" id="distributionPanel" style={{ marginBottom: 0 }}>
                         <div className="section-head">
                             <div>
-                                <h2 className="section-title">Distribution Snapshot</h2>
-                                <p className="subtext text-xs text-slate-500 font-bold">Overview breakdown and percentage shares.</p>
-                            </div>
-                            <div className="flex gap-2 items-center flex-wrap">
-                                <select
-                                    value={snapshotSplitBy}
-                                    onChange={(e) => setSnapshotSplitBy(e.target.value)}
-                                    className="select py-1 px-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900"
-                                    style={{ width: 'auto', minWidth: '120px', margin: 0 }}
-                                >
-                                    <option value="status">Split by Status</option>
-                                    <option value="budget">Split by Budget</option>
-                                    <option value="fund">Split by Fund</option>
-                                </select>
-                                <span className={getBadgeStyle(snapshotSplitBy)}>{getBadgeText(snapshotSplitBy)}</span>
+                                <h2 className="section-title">Accomplishment Snapshot</h2>
+                                <p className="subtext text-xs text-slate-500 font-bold">Activity and Financial breakdowns side-by-side.</p>
                             </div>
                         </div>
 
-                        <div className="donut-layout flex flex-col items-center gap-4 w-full">
-                            <div className="relative w-48 h-48 flex items-center justify-center">
-                                <svg viewBox="0 0 42 42" className="w-full h-full transform -rotate-90">
-                                    {processedDonutSlices.map((slice, i) => (
-                                        <circle
-                                            key={i}
-                                            cx="21"
-                                            cy="21"
-                                            r="15.91549430918954"
-                                            fill="transparent"
-                                            stroke={slice.color}
-                                            strokeWidth={hoveredDonutIndex === i ? 6.5 : 5.0}
-                                            strokeDasharray={`${slice.percent} ${100 - slice.percent}`}
-                                            strokeDashoffset={slice.offset}
-                                            style={{
-                                                cursor: 'pointer',
-                                                transition: 'stroke-width 0.15s ease',
-                                            }}
-                                            onPointerOver={(e) => {
-                                                setHoveredDonutIndex(i);
-                                                showTooltip(e, slice.label, donutFormat(slice.value), slice.share, slice.color);
-                                            }}
-                                            onPointerMove={updateTooltipPosition}
-                                            onPointerLeave={() => {
-                                                setHoveredDonutIndex(null);
-                                                hideTooltip();
-                                            }}
-                                            onClick={() => {
-                                                const filtered = getFilteredActivities(activeActivities, snapshotSplitBy, slice.label);
-                                                setDetailModal({ isOpen: true, title: `${slice.label} Activities (${snapshotSplitBy})`, activities: filtered });
-                                            }}
-                                        />
-                                    ))}
-                                </svg>
-                                <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
-                                    <span className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
-                                        {hoveredDonutIndex !== null ? donutFormat(processedDonutSlices[hoveredDonutIndex].value) : donutFormat(donutTotal)}
-                                    </span>
-                                    <span className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">
-                                        {hoveredDonutIndex !== null ? `${processedDonutSlices[hoveredDonutIndex].label} (${processedDonutSlices[hoveredDonutIndex].share}%)` : metricLabel()}
-                                    </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4">
+                            {/* Activities Accomplishment */}
+                            <div className="flex flex-col items-center">
+                                <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Activities Accomplishment</h3>
+                                <div className="donut-layout flex flex-col items-center gap-4 w-full">
+                                    <div className="relative w-40 h-40 flex items-center justify-center">
+                                        <svg viewBox="0 0 42 42" className="w-full h-full transform -rotate-90">
+                                            {[...processedActivityDonutSlices].sort((a, b) => b.value - a.value).map((slice) => {
+                                                const isHovered = hoveredActivityDonutIndex === slice.originalIndex;
+                                                const baseWidth = isHovered ? 6.5 : 5.0;
+                                                const maskWidth = baseWidth + 1.2;
+                                                return (
+                                                    <React.Fragment key={slice.originalIndex}>
+                                                        <circle
+                                                            cx="21"
+                                                            cy="21"
+                                                            r="15.91549430918954"
+                                                            fill="transparent"
+                                                            stroke="white"
+                                                            strokeWidth={maskWidth}
+                                                            strokeDasharray={`${slice.percent} ${100 - slice.percent}`}
+                                                            strokeDashoffset={slice.offset}
+                                                        />
+                                                        <circle
+                                                            cx="21"
+                                                            cy="21"
+                                                            r="15.91549430918954"
+                                                            fill="transparent"
+                                                            stroke={slice.color}
+                                                            strokeWidth={baseWidth}
+                                                            strokeDasharray={`${slice.percent} ${100 - slice.percent}`}
+                                                            strokeDashoffset={slice.offset}
+                                                            style={{
+                                                                cursor: 'pointer',
+                                                                transition: 'stroke-width 0.15s ease',
+                                                            }}
+                                                            onPointerOver={(e) => {
+                                                                setHoveredActivityDonutIndex(slice.originalIndex);
+                                                                showTooltip(e, slice.label, fmt(slice.value), slice.share, slice.color);
+                                                            }}
+                                                            onPointerMove={updateTooltipPosition}
+                                                            onPointerLeave={() => {
+                                                                setHoveredActivityDonutIndex(null);
+                                                                hideTooltip();
+                                                            }}
+                                                        />
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </svg>
+                                        <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
+                                            <span className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                                                {hoveredActivityDonutIndex !== null ? fmt(processedActivityDonutSlices[hoveredActivityDonutIndex].value) : fmt(activityDonutTotal)}
+                                            </span>
+                                            <span className="text-[9px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">
+                                                {hoveredActivityDonutIndex !== null ? `${processedActivityDonutSlices[hoveredActivityDonutIndex].label} (${processedActivityDonutSlices[hoveredActivityDonutIndex].share}%)` : "activities"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div id="activityDonutTable" className="w-full text-xs">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr>
+                                                    <th>Status</th>
+                                                    <th className="text-right">Count</th>
+                                                    <th className="text-right">Share</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {processedActivityDonutSlices.map((d, i) => {
+                                                    const share = d.share;
+                                                    return (
+                                                        <tr
+                                                            key={i}
+                                                            className="transition-colors hover:bg-slate-50 cursor-pointer"
+                                                            onPointerOver={(e) => {
+                                                                setHoveredActivityDonutIndex(i);
+                                                                showTooltip(e, d.label, fmt(d.value), share, d.color);
+                                                            }}
+                                                            onPointerMove={updateTooltipPosition}
+                                                            onPointerLeave={() => {
+                                                                setHoveredActivityDonutIndex(null);
+                                                                hideTooltip();
+                                                            }}
+                                                        >
+                                                            <td>
+                                                                <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
+                                                                {d.label}
+                                                            </td>
+                                                            <td className="text-right"><b>{fmt(d.value)}</b></td>
+                                                            <td className="text-right"><b>{pct(share)}</b></td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
-                            <div id="distributionDonutTable" className="w-full text-xs">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Segment</th>
-                                            <th>Value</th>
-                                            <th>Share</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {donutData.map((d, i) => {
-                                            const share = Math.round((d.value / donutTotal) * 100);
-                                            return (
-                                                <tr 
-                                                    key={i} 
-                                                    className="hover:bg-slate-50 cursor-pointer"
-                                                    onClick={() => {
-                                                        const filtered = getFilteredActivities(activeActivities, snapshotSplitBy, d.label);
-                                                        setDetailModal({ isOpen: true, title: `${d.label} Activities (${snapshotSplitBy})`, activities: filtered });
-                                                    }}
-                                                    onPointerOver={(e) => {
-                                                        setHoveredDonutIndex(i);
-                                                        showTooltip(e, d.label, donutFormat(d.value), share, d.color);
-                                                    }}
-                                                    onPointerMove={updateTooltipPosition}
-                                                    onPointerLeave={() => {
-                                                        setHoveredDonutIndex(null);
-                                                        hideTooltip();
-                                                    }}
-                                                >
-                                                    <td>
-                                                        <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
-                                                        {d.label}
-                                                    </td>
-                                                    <td><b>{donutFormat(d.value)}</b></td>
-                                                    <td><b>{pct((d.value / donutTotal) * 100)}</b></td>
+
+                            {/* Financial Accomplishment */}
+                            <div className="flex flex-col items-center border-t sm:border-t-0 sm:border-l border-slate-100 pt-4 sm:pt-0 sm:pl-6">
+                                <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Financial Accomplishment</h3>
+                                <div className="donut-layout flex flex-col items-center gap-4 w-full">
+                                    <div className="relative w-40 h-40 flex items-center justify-center">
+                                        <svg viewBox="0 0 42 42" className="w-full h-full transform -rotate-90">
+                                            {[...processedFinancialDonutSlices].sort((a, b) => b.value - a.value).map((slice) => {
+                                                const isHovered = hoveredFinancialDonutIndex === slice.originalIndex;
+                                                const baseWidth = isHovered ? 6.5 : 5.0;
+                                                const maskWidth = baseWidth + 1.2;
+                                                return (
+                                                    <React.Fragment key={slice.originalIndex}>
+                                                        <circle
+                                                            cx="21"
+                                                            cy="21"
+                                                            r="15.91549430918954"
+                                                            fill="transparent"
+                                                            stroke="white"
+                                                            strokeWidth={maskWidth}
+                                                            strokeDasharray={`${slice.percent} ${100 - slice.percent}`}
+                                                            strokeDashoffset={slice.offset}
+                                                        />
+                                                        <circle
+                                                            cx="21"
+                                                            cy="21"
+                                                            r="15.91549430918954"
+                                                            fill="transparent"
+                                                            stroke={slice.color}
+                                                            strokeWidth={baseWidth}
+                                                            strokeDasharray={`${slice.percent} ${100 - slice.percent}`}
+                                                            strokeDashoffset={slice.offset}
+                                                            style={{
+                                                                cursor: 'pointer',
+                                                                transition: 'stroke-width 0.15s ease',
+                                                            }}
+                                                            onPointerOver={(e) => {
+                                                                setHoveredFinancialDonutIndex(slice.originalIndex);
+                                                                showTooltip(e, slice.label, peso(slice.value), slice.share, slice.color);
+                                                            }}
+                                                            onPointerMove={updateTooltipPosition}
+                                                            onPointerLeave={() => {
+                                                                setHoveredFinancialDonutIndex(null);
+                                                                hideTooltip();
+                                                            }}
+                                                        />
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </svg>
+                                        <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
+                                            <span className="text-[10px] md:text-xs font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                                                {hoveredFinancialDonutIndex !== null ? peso(processedFinancialDonutSlices[hoveredFinancialDonutIndex].value) : peso(financialDonutTotal)}
+                                            </span>
+                                            <span className="text-[9px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">
+                                                {hoveredFinancialDonutIndex !== null ? `${processedFinancialDonutSlices[hoveredFinancialDonutIndex].label} (${processedFinancialDonutSlices[hoveredFinancialDonutIndex].share}%)` : "budget"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div id="financialDonutTable" className="w-full text-xs">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr>
+                                                    <th>Type</th>
+                                                    <th className="text-right">Amount</th>
+                                                    <th className="text-right">Share</th>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                            </thead>
+                                            <tbody>
+                                                {processedFinancialDonutSlices.map((d, i) => {
+                                                    const share = d.share;
+                                                    return (
+                                                        <tr
+                                                            key={i}
+                                                            className="transition-colors hover:bg-slate-50 cursor-pointer"
+                                                            onPointerOver={(e) => {
+                                                                setHoveredFinancialDonutIndex(i);
+                                                                showTooltip(e, d.label, peso(d.value), share, d.color);
+                                                            }}
+                                                            onPointerMove={updateTooltipPosition}
+                                                            onPointerLeave={() => {
+                                                                setHoveredFinancialDonutIndex(null);
+                                                                hideTooltip();
+                                                            }}
+                                                        >
+                                                            <td>
+                                                                <span className="dot" style={{ backgroundColor: d.color, marginRight: '7px' }} />
+                                                                {d.label}
+                                                            </td>
+                                                            <td className="text-right"><b>{peso(d.value)}</b></td>
+                                                            <td className="text-right"><b>{pct(share)}</b></td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </article>
@@ -1978,10 +2312,16 @@ const Dashboard = () => {
                                         {distributionMode === 'budget' ? 'Unutilized (Left)' : 'Pending (Left)'}
                                     </span>
                                     {distributionMode !== 'budget' && (
-                                        <span className="flex items-center gap-1.5">
-                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#B91C1C' }} />
-                                            Delayed (Left)
-                                        </span>
+                                        <>
+                                            <span className="flex items-center gap-1.5">
+                                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#B91C1C' }} />
+                                                Delayed (Left)
+                                            </span>
+                                            <span className="flex items-center gap-1.5">
+                                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#475569' }} />
+                                                Deferred (Left)
+                                            </span>
+                                        </>
                                     )}
                                     <span className="flex items-center gap-1.5">
                                         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: distributionMode === 'budget' ? '#0284C7' : '#16A34A' }} />
@@ -1993,8 +2333,14 @@ const Dashboard = () => {
                         </div>
 
                         <div className="bars space-y-4 mt-4">
-                            {Object.entries(groupedActivities).map(([d, r]) => {
-                                const totalVal = metricValue(r) || 1;
+                            {Object.entries(groupedActivities)
+                                .sort((a, b) => {
+                                    const aAcc = a[1].filter(act => act.status === 'Accomplished').length;
+                                    const bAcc = b[1].filter(act => act.status === 'Accomplished').length;
+                                    return bAcc - aAcc;
+                                })
+                                .map(([d, r]) => {
+                                    const totalVal = metricValue(r) || 1;
                                 let leftVals, rightVals, leftClasses, rightClasses, leftLabels, rightLabels, summaryText;
 
                                 if (distributionMode === 'budget') {
@@ -2013,21 +2359,22 @@ const Dashboard = () => {
                                     const p = metricValue(r.filter(a => a.status === 'Pending'));
                                     const acc = metricValue(r.filter(a => a.status === 'Accomplished'));
                                     const del = metricValue(r.filter(a => a.status === 'Delayed'));
+                                    const def = metricValue(r.filter(a => a.status === 'Deferred'));
 
-                                    leftVals = [p, del];
+                                    leftVals = [p, del, def];
                                     rightVals = [acc];
-                                    leftClasses = ["seg-gold", "seg-red"];
+                                    leftClasses = ["seg-gold", "seg-red", "seg-slate"];
                                     rightClasses = ["seg-green"];
-                                    leftLabels = ["Pending", "Delayed"];
+                                    leftLabels = ["Pending", "Delayed", "Deferred"];
                                     rightLabels = ["Accomplished"];
                                     summaryText = `${fmt(acc)} done`;
                                 }
 
                                 const leftTotal = leftVals.reduce((s, v) => s + v, 0);
                                 const rightTotal = rightVals.reduce((s, v) => s + v, 0);
-                                const safeVal = Math.max(totalVal, leftTotal + rightTotal, 1);
-                                const lWidth = (leftTotal / safeVal) * 100;
-                                const rWidth = (rightTotal / safeVal) * 100;
+                                const globalMaxScale = distributionMode === 'budget' ? maxBudgetTotal : maxTotal;
+                                const lWidth = (leftTotal / globalMaxScale) * 100;
+                                const rWidth = (rightTotal / globalMaxScale) * 100;
 
                                 return (
                                     <div key={d} className="split-row">
@@ -2223,7 +2570,7 @@ const Dashboard = () => {
                                             setTableSortDir(nextDir);
                                         }}
                                     >
-                                        Allocation <span className="sort-icon">{tableSortKey === 'budget' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                        Utilization Rate <span className="sort-icon">{tableSortKey === 'budget' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                                     </button>
                                 </th>
                                 <th style={{ width: '150px' }}>
@@ -2235,7 +2582,7 @@ const Dashboard = () => {
                                             setTableSortDir(nextDir);
                                         }}
                                     >
-                                        Obligated <span className="sort-icon">{tableSortKey === 'obligated' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                        Accomplishment Rate <span className="sort-icon">{tableSortKey === 'obligated' ? (tableSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                                     </button>
                                 </th>
                             </tr>
@@ -2339,11 +2686,7 @@ const Dashboard = () => {
                                             key={r.id || i}
                                             className="record-row hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
                                             onClick={() => {
-                                                setEditingTask({
-                                                    ...r,
-                                                    title: r.name,
-                                                    project_id: r.id
-                                                });
+                                                setSelectedRegistryActivity(r);
                                             }}
                                         >
                                             <td className="col-freeze col-freeze-1 font-semibold text-slate-900 dark:text-slate-100">{r.division || 'Unassigned'}</td>
@@ -2355,8 +2698,8 @@ const Dashboard = () => {
                                                 </span>
                                             </td>
                                             <td>{r.sourceOfFund || 'Not Specified'}</td>
-                                            <td className="font-semibold">{peso(r.budget)}</td>
-                                            <td className="font-semibold">{peso(r.obligated)}</td>
+                                            <td className={`font-mono font-extrabold text-right w-[150px] ${getUtilColorClass(r.budget > 0 ? (r.obligated / r.budget) * 100 : 0)}`}>{pct(r.budget > 0 ? (r.obligated / r.budget) * 100 : 0)}</td>
+                                            <td className={`font-mono font-extrabold text-right w-[150px] ${getAccomColorClass((r.status === 'Completed' || r.status === 'Accomplished') ? 100 : 0)}`}>{pct((r.status === 'Completed' || r.status === 'Accomplished') ? 100 : 0)}</td>
                                         </tr>
                                     );
                                 })
@@ -2552,6 +2895,19 @@ const Dashboard = () => {
                             ...r,
                             title: r.name,
                             project_id: r.id
+                        });
+                    }}
+                />
+            )}
+            {selectedRegistryActivity && (
+                <ActivityDetailsModal
+                    activity={selectedRegistryActivity}
+                    onClose={() => setSelectedRegistryActivity(null)}
+                    onEdit={(act) => {
+                        setEditingTask({
+                            ...act,
+                            title: act.name,
+                            project_id: act.id
                         });
                     }}
                 />

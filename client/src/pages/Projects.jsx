@@ -31,7 +31,19 @@ const fundSources = [
 
 const fmt = v => Number(v || 0).toLocaleString("en-PH");
 const peso = v => "₱" + Number(v || 0).toLocaleString("en-PH");
-const pct = v => v.toFixed(0) + "%";
+const pct = (v, dec = 0) => Number(v || 0).toFixed(dec) + "%";
+
+const getRateColorClass = (val) => {
+    const v = Number(val || 0);
+    if (v <= 25) return 'text-rose-500 dark:text-rose-400';
+    if (v <= 50) return 'text-amber-500 dark:text-amber-400';
+    if (v <= 75) return 'text-blue-500 dark:text-blue-400';
+    if (v <= 90) return 'text-emerald-500 dark:text-emerald-400';
+    return 'text-green-600 dark:text-green-400';
+};
+
+const getUtilColorClass = getRateColorClass;
+const getAccomColorClass = getRateColorClass;
 
 const getDivisionStyles = (divisionName) => {
     const name = (divisionName || '').toLowerCase();
@@ -272,10 +284,13 @@ const Projects = () => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const isAccomplished = t.status === 'Accomplished' || t.status === 'Done' || t.status === 'Completed';
+                    const isDeferred = t.status === 'Deferred';
                     const isOverdue = t.due_date && new Date(t.due_date) < today;
                     let resolvedStatus = 'Pending';
                     if (isAccomplished) {
                         resolvedStatus = 'Accomplished';
+                    } else if (isDeferred) {
+                        resolvedStatus = 'Deferred';
                     } else if (t.status === 'Delayed' || isOverdue) {
                         resolvedStatus = 'Delayed';
                     }
@@ -343,9 +358,10 @@ const Projects = () => {
     const availableCategories = useMemo(() => {
         if (distributionMode === 'status') {
             return [
-                { id: 'Pending', label: 'Pending', count: activeActivities.filter(a => a.status === 'Pending').length, value: activeActivities.filter(a => a.status === 'Pending').reduce((s, a) => s + a.budget, 0) },
                 { id: 'Accomplished', label: 'Accomplished', count: activeActivities.filter(a => a.status === 'Accomplished').length, value: activeActivities.filter(a => a.status === 'Accomplished').reduce((s, a) => s + a.budget, 0) },
+                { id: 'Pending', label: 'Pending', count: activeActivities.filter(a => a.status === 'Pending').length, value: activeActivities.filter(a => a.status === 'Pending').reduce((s, a) => s + a.budget, 0) },
                 { id: 'Delayed', label: 'Delayed', count: activeActivities.filter(a => a.status === 'Delayed').length, value: activeActivities.filter(a => a.status === 'Delayed').reduce((s, a) => s + a.budget, 0) },
+                { id: 'Deferred', label: 'Deferred', count: activeActivities.filter(a => a.status === 'Deferred').length, value: activeActivities.filter(a => a.status === 'Deferred').reduce((s, a) => s + a.budget, 0) },
             ];
         } else if (distributionMode === 'budget') {
             const uCount = activeActivities.filter(a => a.used > 0).length;
@@ -444,6 +460,7 @@ const Projects = () => {
         const accomplishments = activeActivities.filter(r => r.status === 'Accomplished');
         const pending = activeActivities.filter(r => r.status === 'Pending');
         const delayed = activeActivities.filter(r => r.status === 'Delayed');
+        const deferred = activeActivities.filter(r => r.status === 'Deferred');
 
         return {
             budget: tBudget,
@@ -451,15 +468,17 @@ const Projects = () => {
             used: tUsed,
             accomplished: accomplishments,
             pending: pending,
-            delayed: delayed
+            delayed: delayed,
+            deferred: deferred
         };
     }, [activeActivities]);
 
     const activityDonutData = useMemo(() => {
         return [
-            { label: "Pending", value: totals.pending.length, color: colors.gold },
             { label: "Accomplished", value: totals.accomplished.length, color: colors.green },
-            { label: "Delayed", value: totals.delayed.length, color: colors.red }
+            { label: "Pending", value: totals.pending.length, color: colors.gold },
+            { label: "Delayed", value: totals.delayed.length, color: colors.red },
+            { label: "Deferred", value: totals.deferred.length, color: colors.slate }
         ];
     }, [totals]);
 
@@ -947,7 +966,7 @@ const Projects = () => {
                         <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Budget Utilization Rate</span>
                         <div className="mt-2 flex items-baseline gap-2">
                             <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
-                                {pct(totals.budget > 0 ? (totals.obligated / totals.budget) * 100 : 0)}
+                                {pct(totals.budget > 0 ? (totals.obligated / totals.budget) * 100 : 0, 2)}
                             </span>
                         </div>
                         <div className="mt-1 text-xs text-slate-500 dark:text-slate-405 font-medium">
@@ -1758,12 +1777,6 @@ const Projects = () => {
                                     >
                                         Lead Personnel {sortColumn === 'lead_personnel' && (sortDirection === 'asc' ? '▲' : '▼')}
                                     </th>
-                                    <th onClick={() => handleSort('allocation')} className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors w-[130px] max-w-[130px] min-w-[130px]">
-                                        Allocation {sortColumn === 'allocation' && (sortDirection === 'asc' ? '▲' : '▼')}
-                                    </th>
-                                    <th onClick={() => handleSort('obligated')} className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors w-[130px] max-w-[130px] min-w-[130px]">
-                                        Obligated {sortColumn === 'obligated' && (sortDirection === 'asc' ? '▲' : '▼')}
-                                    </th>
                                     <th onClick={() => handleSort('utilization')} className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors w-[120px] max-w-[120px] min-w-[120px]">
                                         Utilization Rate {sortColumn === 'utilization' && (sortDirection === 'asc' ? '▲' : '▼')}
                                     </th>
@@ -1805,24 +1818,7 @@ const Projects = () => {
                                             onChange={(e) => setTableFilters(prev => ({ ...prev, lead: e.target.value }))}
                                         />
                                     </th>
-                                    <th className="px-4 py-2 w-[130px] max-w-[130px] min-w-[130px]">
-                                        <input
-                                            className="column-filter w-full text-xs font-normal text-right"
-                                            type="search"
-                                            placeholder="Filter..."
-                                            value={tableFilters.allocation}
-                                            onChange={(e) => setTableFilters(prev => ({ ...prev, allocation: e.target.value }))}
-                                        />
-                                    </th>
-                                    <th className="px-4 py-2 w-[130px] max-w-[130px] min-w-[130px]">
-                                        <input
-                                            className="column-filter w-full text-xs font-normal text-right"
-                                            type="search"
-                                            placeholder="Filter..."
-                                            value={tableFilters.obligated}
-                                            onChange={(e) => setTableFilters(prev => ({ ...prev, obligated: e.target.value }))}
-                                        />
-                                    </th>
+
                                     <th className="px-4 py-2 w-[120px] max-w-[120px] min-w-[120px]">
                                         <input
                                             className="column-filter w-full text-xs font-normal text-right"
@@ -1886,16 +1882,11 @@ const Projects = () => {
                                                 >
                                                     {project.lead_personnel || '-'}
                                                 </td>
-                                                <td className="px-4 py-3 text-xs text-slate-700 dark:text-slate-300 text-right font-mono font-bold">
-                                                    {projectTotalBudget > 0 ? peso(projectTotalBudget) : '-'}
-                                                </td>
-                                                <td className="px-4 py-3 text-xs text-slate-700 dark:text-slate-300 text-right font-mono font-bold">
-                                                    {projectObligated > 0 ? peso(projectObligated) : '-'}
-                                                </td>
-                                                <td className="px-4 py-3 text-xs text-right font-mono font-extrabold text-blue-600 dark:text-blue-400">
+
+                                                <td className={`px-4 py-3 text-xs text-right font-mono font-extrabold ${getUtilColorClass(projectUtilizationPct)}`}>
                                                     {pct(projectUtilizationPct)}
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-xs font-mono font-extrabold text-blue-600 dark:text-blue-400">
+                                                <td className={`px-4 py-3 text-right text-xs font-mono font-extrabold ${getAccomColorClass(stats.accomplishmentRate || 0)}`}>
                                                     {pct(stats.accomplishmentRate || 0)}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
