@@ -1407,7 +1407,7 @@ const Dashboard = () => {
                                 {effectiveDivision ? 'Project-level distribution for the selected division.' : 'Primary comparison view. Click a division to view projects.'}
                             </p>
                         </div>
-                        <div className="flex gap-2 items-center flex-wrap">
+                        <div className="flex gap-2 items-center flex-nowrap whitespace-nowrap">
                             <select
                                 value={mainSplitBy}
                                 onChange={(e) => setMainSplitBy(e.target.value)}

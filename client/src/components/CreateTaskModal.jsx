@@ -261,314 +261,345 @@ const CreateTaskModal = ({ projectId, task, members = [], milestones: initialMil
     return (
         <>
             {/* Main Activity Modal */}
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-                    <div className="flex justify-between items-center p-4 border-b border-slate-100 flex-shrink-0">
-                        <h2 className="text-lg font-bold text-slate-800">{isEditMode ? 'Edit Activity' : 'Add New Activity'}</h2>
-                        <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+                <div className="bg-slate-50 rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col my-8 animate-in zoom-in duration-200">
+                    <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-100 flex-shrink-0">
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <span className="w-2.5 h-6 bg-blue-600 rounded-full"></span>
+                            {isEditMode ? 'Edit Activity' : 'Add New Activity'}
+                        </h2>
+                        <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
                             <X size={20} />
                         </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1">Parent Milestone <span className="text-red-500">*</span></label>
-                            <select
-                                className={`w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white focus:ring-2 focus:ring-blue-500 ${formData.milestone_id === "" ? "text-slate-400" : "text-slate-800"}`}
-                                value={formData.milestone_id}
-                                onChange={e => setFormData({ ...formData, milestone_id: e.target.value })}
-                                required
-                            >
-                                <option value="" disabled hidden>Select a Milestone...</option>
-                                {milestones.map(m => (
-                                    <option key={m.id} value={m.id} className="text-slate-800">{m.title}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1">Key Result Area <span className="text-red-500">*</span></label>
-                            <select
-                                className={`w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white focus:ring-2 focus:ring-blue-500 ${formData.key_result_area === "" ? "text-slate-400" : "text-slate-800"}`}
-                                value={formData.key_result_area}
-                                onChange={e => setFormData({ ...formData, key_result_area: e.target.value })}
-                                required
-                            >
-                                <option value="" disabled hidden>Select Key Result Area...</option>
-                                <option value="Management Support" className="text-slate-800">Management Support</option>
-                                <option value="Policy and Direction Setting" className="text-slate-800">Policy and Direction Setting</option>
-                                <option value="Strategic Leadership and Performance Management" className="text-slate-800">Strategic Leadership and Performance Management</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <div className="flex justify-between">
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Activity Title <span className="text-red-500">*</span></label>
-                                <span className="text-xs text-slate-400">{formData.title.length}/50</span>
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="e.g. Data Analysis"
-                                className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors text-slate-800 placeholder-slate-400"
-                                value={formData.title}
-                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                maxLength={50}
-                            />
-                        </div>
-
-                        {/* Activity Type Dropdown */}
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                                Activity Type <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                className={`w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors appearance-none bg-no-repeat bg-[right_1rem_center] ${formData.activity_type === "" ? "text-slate-400" : "text-slate-800"}`}
-                                value={formData.activity_type}
-                                onChange={(e) => setFormData({ ...formData, activity_type: e.target.value })}
-                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1.25rem' }}
-                                required
-                            >
-                                <option value="" disabled hidden>Select Activity Type</option>
-                                <option value="Deskwork" className="text-slate-800">Deskwork</option>
-                                <option value="Communications" className="text-slate-800">Communications</option>
-                                <option value="Workshop" className="text-slate-800">Workshop</option>
-                                <option value="Field Visit" className="text-slate-800">Field Visit</option>
-                            </select>
-                        </div>
-
-                        {/* Nature of Activity Dropdown */}
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                                Nature of Activity <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                className={`w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors appearance-none bg-no-repeat bg-[right_1rem_center] ${formData.nature_of_activity === "" ? "text-slate-400" : "text-slate-800"}`}
-                                value={formData.nature_of_activity}
-                                onChange={(e) => setFormData({ ...formData, nature_of_activity: e.target.value })}
-                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1.25rem' }}
-                                required
-                            >
-                                <option value="" disabled hidden>Select Nature of Activity</option>
-                                <option value="Policy Development" className="text-slate-800">Policy Development</option>
-                                <option value="Program Implementation" className="text-slate-800">Program Implementation</option>
-                                <option value="Technical Assistance" className="text-slate-800">Technical Assistance</option>
-                                <option value="Monitoring and Evaluation" className="text-slate-800">Monitoring and Evaluation</option>
-                                <option value="Tools/System Development" className="text-slate-800">Tools/System Development</option>
-                                <option value="Office Management" className="text-slate-800">Office Management</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <div className="flex justify-between">
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Objective</label>
-                                <span className="text-xs text-slate-400">{formData.objective.length}/100</span>
-                            </div>
-                            <textarea
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                placeholder="Brief objective..."
-                                rows="2"
-                                value={formData.objective}
-                                onChange={e => e.target.value.length <= 100 && setFormData({ ...formData, objective: e.target.value })}
-                            />
-                        </div>
-
-                        <div>
-                            <div className="flex justify-between">
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Output</label>
-                                <span className="text-xs text-slate-400">{(formData.output || '').length}/100</span>
-                            </div>
-                            <textarea
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                placeholder="Expected output..."
-                                rows="2"
-                                value={formData.output || ''}
-                                onChange={e => e.target.value.length <= 100 && setFormData({ ...formData, output: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Status</label>
-                                <select
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white"
-                                    value={formData.status}
-                                    onChange={e => setFormData({ ...formData, status: e.target.value })}
-                                >
-                                    {statusOptions.map(opt => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Start Date</label>
-                                <div className="relative">
-                                    <Calendar size={16} className="absolute left-3 top-3 text-slate-400" />
-                                    <input
-                                        type="date"
-                                        className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg outline-none"
-                                        value={formData.start_date}
-                                        onChange={e => {
-                                            const newStart = e.target.value;
-                                            const updates = { start_date: newStart };
-                                            if (formData.due_date && newStart > formData.due_date) {
-                                                updates.due_date = newStart;
-                                            }
-                                            setFormData({ ...formData, ...updates });
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">End Date</label>
-                                <div className="relative">
-                                    <Calendar size={16} className="absolute left-3 top-3 text-slate-400" />
-                                    <input
-                                        type="date"
-                                        className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg outline-none"
-                                        value={formData.due_date}
-                                        min={formData.start_date}
-                                        onChange={e => setFormData({ ...formData, due_date: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Budget & Expenses - Conditionally Hidden if Deskwork or Communications */}
-                        {
-                            !['Deskwork', 'Communications'].includes(formData.activity_type) && (
-                                <div className="grid grid-cols-2 gap-4 mt-2">
+                    <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                        <div className="p-6 overflow-y-auto max-h-[calc(85vh-120px)]">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                
+                                {/* Sub-Card 1: General Details */}
+                                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                    <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                        <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </div>
+                                        <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">General Info</h3>
+                                    </div>
+                                    
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-1">Allocation</label>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Parent Milestone <span className="text-red-500">*</span></label>
+                                        <select
+                                            className={`w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white focus:ring-2 focus:ring-blue-500 ${formData.milestone_id === "" ? "text-slate-400" : "text-slate-800"}`}
+                                            value={formData.milestone_id}
+                                            onChange={e => setFormData({ ...formData, milestone_id: e.target.value })}
+                                            required
+                                        >
+                                            <option value="" disabled hidden>Select a Milestone...</option>
+                                            {milestones.map(m => (
+                                                <option key={m.id} value={m.id} className="text-slate-800">{m.title}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Key Result Area <span className="text-red-500">*</span></label>
+                                        <select
+                                            className={`w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white focus:ring-2 focus:ring-blue-500 ${formData.key_result_area === "" ? "text-slate-400" : "text-slate-800"}`}
+                                            value={formData.key_result_area}
+                                            onChange={e => setFormData({ ...formData, key_result_area: e.target.value })}
+                                            required
+                                        >
+                                            <option value="" disabled hidden>Select Key Result Area...</option>
+                                            <option value="Management Support" className="text-slate-800">Management Support</option>
+                                            <option value="Policy and Direction Setting" className="text-slate-800">Policy and Direction Setting</option>
+                                            <option value="Strategic Leadership and Performance Management" className="text-slate-800">Strategic Leadership and Performance Management</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex justify-between">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Activity Title <span className="text-red-500">*</span></label>
+                                            <span className="text-xs text-slate-400">{formData.title.length}/50</span>
+                                        </div>
                                         <input
                                             type="text"
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="0.00"
-                                            value={formData.allocation ? Number(formData.allocation).toLocaleString() : ''}
-                                            onChange={e => {
-                                                const val = e.target.value.replace(/,/g, '');
-                                                if (!isNaN(val)) {
-                                                    setFormData({ ...formData, allocation: val });
-                                                }
-                                            }}
+                                            placeholder="e.g. Data Analysis"
+                                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors text-slate-800 placeholder-slate-400"
+                                            value={formData.title}
+                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                            maxLength={50}
+                                            required
                                         />
                                     </div>
+
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-1">Obligated Amount</label>
-                                        <div className="flex gap-2">
-                                            <div className="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-700 font-mono">
-                                                ₱{(formData.expenses || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toLocaleString()}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowExpenses(true)}
-                                                className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm border border-slate-200"
-                                            >
-                                                Manage
-                                            </button>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
+                                        <select
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none bg-white focus:ring-2 focus:ring-blue-500"
+                                            value={formData.status}
+                                            onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                        >
+                                            {statusOptions.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex justify-between">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Objective</label>
+                                            <span className="text-xs text-slate-400">{formData.objective.length}/100</span>
                                         </div>
+                                        <textarea
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                            placeholder="Brief objective..."
+                                            rows="2"
+                                            value={formData.objective}
+                                            onChange={e => e.target.value.length <= 100 && setFormData({ ...formData, objective: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <div className="flex justify-between">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Output</label>
+                                            <span className="text-xs text-slate-400">{(formData.output || '').length}/100</span>
+                                        </div>
+                                        <textarea
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                            placeholder="Expected output..."
+                                            rows="2"
+                                            value={formData.output || ''}
+                                            onChange={e => e.target.value.length <= 100 && setFormData({ ...formData, output: e.target.value })}
+                                        />
                                     </div>
                                 </div>
-                            )
-                        }
 
-                        {/* Tasks / Sub-Activities Section */}
-                        <div className="mt-4 border-t border-slate-100 pt-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <label className="block text-sm font-bold text-slate-700">Tasks</label>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowTasks(true)}
-                                    className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                                >
-                                    + Manage Tasks ({(formData.subtasks || []).length})
-                                </button>
-                            </div>
-                            {(formData.subtasks || []).length > 0 && (
-                                <div className="space-y-1">
-                                    {(formData.subtasks || []).slice(0, 3).map(st => (
-                                        <div key={st.id} className="text-xs text-slate-500 flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
-                                            <span className="truncate">{st.title}</span>
+                                {/* Sub-Card 2: Schedule & Financials */}
+                                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                    <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                        <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                         </div>
-                                    ))}
-                                    {(formData.subtasks || []).length > 3 && (
-                                        <p className="text-xs text-slate-400 pl-3">...and {(formData.subtasks || []).length - 3} more</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                                        <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Schedule & Budget</h3>
+                                    </div>
 
-                        {/* File Attachments Section */}
-                        <div className="mt-4 border-t border-slate-100 pt-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <label className="block text-sm font-bold text-slate-700">Attachments</label>
-                                <label className="cursor-pointer text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
-                                    <input
-                                        type="file"
-                                        className="hidden"
-                                        onChange={handleFileChange}
-                                        disabled={uploading}
-                                    />
-                                    {uploading ? (
-                                        <><Loader2 size={16} className="animate-spin" /> Uploading...</>
-                                    ) : (
-                                        <><Paperclip size={16} /> Attach File</>
-                                    )}
-                                </label>
-                            </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Activity Type <span className="text-red-500">*</span></label>
+                                        <select
+                                            className={`w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors appearance-none bg-no-repeat bg-[right_1rem_center] ${formData.activity_type === "" ? "text-slate-400" : "text-slate-800"}`}
+                                            value={formData.activity_type}
+                                            onChange={(e) => setFormData({ ...formData, activity_type: e.target.value })}
+                                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1.25rem' }}
+                                            required
+                                        >
+                                            <option value="" disabled hidden>Select Activity Type</option>
+                                            <option value="Deskwork" className="text-slate-800">Deskwork</option>
+                                            <option value="Communications" className="text-slate-800">Communications</option>
+                                            <option value="Workshop" className="text-slate-800">Workshop</option>
+                                            <option value="Field Visit" className="text-slate-800">Field Visit</option>
+                                        </select>
+                                    </div>
 
-                            {(formData.file_attachments || []).length > 0 ? (
-                                <div className="space-y-2">
-                                    {formData.file_attachments.map((file, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-200 group">
-                                            <div className="flex items-center gap-2 overflow-hidden">
-                                                <Paperclip size={14} className="text-slate-400 flex-shrink-0" />
-                                                <span className="text-xs text-slate-600 truncate">{file.name}</span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <a
-                                                    href={file.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
-                                                    title="Download"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <Download size={14} />
-                                                </a>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeFile(idx)}
-                                                    className="p-1 text-slate-400 hover:text-red-500 transition-colors"
-                                                    title="Remove"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Nature of Activity <span className="text-red-500">*</span></label>
+                                        <select
+                                            className={`w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors appearance-none bg-no-repeat bg-[right_1rem_center] ${formData.nature_of_activity === "" ? "text-slate-400" : "text-slate-800"}`}
+                                            value={formData.nature_of_activity}
+                                            onChange={(e) => setFormData({ ...formData, nature_of_activity: e.target.value })}
+                                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1.25rem' }}
+                                            required
+                                        >
+                                            <option value="" disabled hidden>Select Nature of Activity</option>
+                                            <option value="Policy Development" className="text-slate-800">Policy Development</option>
+                                            <option value="Program Implementation" className="text-slate-800">Program Implementation</option>
+                                            <option value="Technical Assistance" className="text-slate-800">Technical Assistance</option>
+                                            <option value="Monitoring and Evaluation" className="text-slate-800">Monitoring and Evaluation</option>
+                                            <option value="Tools/System Development" className="text-slate-800">Tools/System Development</option>
+                                            <option value="Office Management" className="text-slate-800">Office Management</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Start Date</label>
+                                            <div className="relative">
+                                                <Calendar size={16} className="absolute left-3 top-3 text-slate-400" />
+                                                <input
+                                                    type="date"
+                                                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={formData.start_date}
+                                                    onChange={e => {
+                                                        const newStart = e.target.value;
+                                                        const updates = { start_date: newStart };
+                                                        if (formData.due_date && newStart > formData.due_date) {
+                                                            updates.due_date = newStart;
+                                                        }
+                                                        setFormData({ ...formData, ...updates });
+                                                    }}
+                                                />
                                             </div>
                                         </div>
-                                    ))}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">End Date</label>
+                                            <div className="relative">
+                                                <Calendar size={16} className="absolute left-3 top-3 text-slate-400" />
+                                                <input
+                                                    type="date"
+                                                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={formData.due_date}
+                                                    min={formData.start_date}
+                                                    onChange={e => setFormData({ ...formData, due_date: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Budget & Expenses - Conditionally Hidden if Deskwork or Communications */}
+                                    {
+                                        !['Deskwork', 'Communications'].includes(formData.activity_type) && (
+                                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 mt-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Allocation (₱)</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                                        placeholder="0.00"
+                                                        value={formData.allocation ? Number(formData.allocation).toLocaleString() : ''}
+                                                        onChange={e => {
+                                                            const val = e.target.value.replace(/,/g, '');
+                                                            if (!isNaN(val)) {
+                                                                setFormData({ ...formData, allocation: val });
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Obligated Amount</label>
+                                                    <div className="flex gap-2">
+                                                        <div className="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-700 font-mono text-sm">
+                                                            ₱{(formData.expenses || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toLocaleString()}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowExpenses(true)}
+                                                            className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-bold text-xs border border-slate-200 transition-colors uppercase tracking-wider"
+                                                        >
+                                                            Manage
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    }
                                 </div>
-                            ) : (
-                                <p className="text-xs text-slate-400 italic">No files attached yet.</p>
-                            )}
+
+                                {/* Sub-Card 3: Tasks & Attachments */}
+                                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                    <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                        <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 00-2 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                                        </div>
+                                        <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Tasks & Files</h3>
+                                    </div>
+
+                                    {/* Tasks / Sub-Activities Section */}
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase">Tasks</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowTasks(true)}
+                                                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded transition-colors"
+                                            >
+                                                + Manage Tasks ({(formData.subtasks || []).length})
+                                            </button>
+                                        </div>
+                                        {(formData.subtasks || []).length > 0 ? (
+                                            <div className="space-y-1.5 max-h-40 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                                {(formData.subtasks || []).map(st => (
+                                                    <div key={st.id} className="text-xs text-slate-600 flex items-center gap-2">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0"></div>
+                                                        <span className="truncate">{st.title}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-slate-400 italic p-3 bg-slate-50 border border-slate-200 rounded-lg text-center">No tasks added yet.</p>
+                                        )}
+                                    </div>
+
+                                    {/* File Attachments Section */}
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase">Attachments</label>
+                                            <label className="cursor-pointer text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded transition-colors">
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    onChange={handleFileChange}
+                                                    disabled={uploading}
+                                                />
+                                                {uploading ? (
+                                                    <><Loader2 size={14} className="animate-spin" /> Uploading...</>
+                                                ) : (
+                                                    <><Paperclip size={14} /> Attach File</>
+                                                )}
+                                            </label>
+                                        </div>
+
+                                        {(formData.file_attachments || []).length > 0 ? (
+                                            <div className="space-y-2 max-h-44 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                                {formData.file_attachments.map((file, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200 group">
+                                                        <div className="flex items-center gap-2 overflow-hidden">
+                                                            <Paperclip size={14} className="text-slate-400 flex-shrink-0" />
+                                                            <span className="text-xs text-slate-600 truncate">{file.name}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <a
+                                                                href={file.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                                                title="Download"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <Download size={14} />
+                                                            </a>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeFile(idx)}
+                                                                className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                                title="Remove"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-slate-400 italic p-3 bg-slate-50 border border-slate-200 rounded-lg text-center">No files attached yet.</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                            </div>
                         </div>
 
-                        <div className="flex gap-3 pt-4">
+                        {/* Modal Action Buttons Footer */}
+                        <div className="flex justify-end gap-3 p-4 bg-white border-t border-slate-100 flex-shrink-0">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="flex-1 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
+                                className="px-5 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium transition-colors text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+                                className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 transition-colors text-sm shadow-sm"
                             >
                                 {loading ? 'Saving...' : (isEditMode ? 'Update Activity' : 'Create Activity')}
                             </button>

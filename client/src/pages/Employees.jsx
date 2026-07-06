@@ -211,8 +211,8 @@ const Employees = () => {
 
                 {showAddForm && (
                     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <div className="w-full max-w-2xl bg-white p-8 rounded-2xl border border-slate-200 shadow-2xl animate-in zoom-in duration-200">
-                            <div className="flex justify-between items-center mb-6">
+                        <div className="w-full max-w-4xl bg-slate-50 rounded-2xl border border-slate-200 shadow-2xl animate-in zoom-in duration-200 overflow-hidden flex flex-col">
+                            <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-100 flex-shrink-0">
                                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                     <Plus size={20} className="text-[#075985]" /> Add New Staff
                                 </h3>
@@ -225,72 +225,90 @@ const Employees = () => {
                                     </svg>
                                 </button>
                             </div>
-                            <form onSubmit={handleAddEmployee} className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">First Name</label>
-                                        <input
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                                            placeholder="First Name"
-                                            value={newEmp.first_name}
-                                            onChange={e => setNewEmp({ ...newEmp, first_name: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Middle Name</label>
-                                        <input
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                                            placeholder="Middle Name"
-                                            value={newEmp.middle_name}
-                                            onChange={e => setNewEmp({ ...newEmp, middle_name: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Last Name</label>
-                                        <input
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                                            placeholder="Last Name"
-                                            value={newEmp.last_name}
-                                            onChange={e => setNewEmp({ ...newEmp, last_name: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                </div>
+                            <form onSubmit={handleAddEmployee} className="flex flex-col flex-1">
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Card 1: Personal Profile */}
+                                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                            </div>
+                                            <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Personal Profile</h4>
+                                        </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Division</label>
-                                        <select
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                                            value={newEmp.division_id}
-                                            onChange={e => setNewEmp({ ...newEmp, division_id: e.target.value })}
-                                            required
-                                        >
-                                            <option value="">Select Division</option>
-                                            {divisions.map(d => (
-                                                <option key={d.id} value={d.id}>{d.name}</option>
-                                            ))}
-                                        </select>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">First Name <span className="text-red-500">*</span></label>
+                                            <input
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                                                placeholder="First Name"
+                                                value={newEmp.first_name}
+                                                onChange={e => setNewEmp({ ...newEmp, first_name: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Middle Name</label>
+                                            <input
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                                                placeholder="Middle Name"
+                                                value={newEmp.middle_name}
+                                                onChange={e => setNewEmp({ ...newEmp, middle_name: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Last Name <span className="text-red-500">*</span></label>
+                                            <input
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                                                placeholder="Last Name"
+                                                value={newEmp.last_name}
+                                                onChange={e => setNewEmp({ ...newEmp, last_name: e.target.value })}
+                                                required
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Position</label>
-                                        <select
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                                            value={newEmp.position}
-                                            onChange={e => setNewEmp({ ...newEmp, position: e.target.value })}
-                                            required
-                                        >
-                                            <option value="">Select Position</option>
-                                            {POSITIONS.map(pos => (
-                                                <option key={pos} value={pos}>{pos}</option>
-                                            ))}
-                                        </select>
+
+                                    {/* Card 2: Assignment Details */}
+                                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                            <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                            </div>
+                                            <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Work Assignment</h4>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Division <span className="text-red-500">*</span></label>
+                                            <select
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                                                value={newEmp.division_id}
+                                                onChange={e => setNewEmp({ ...newEmp, division_id: e.target.value })}
+                                                required
+                                            >
+                                                <option value="">Select Division</option>
+                                                {divisions.map(d => (
+                                                    <option key={d.id} value={d.id}>{d.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Position <span className="text-red-500">*</span></label>
+                                            <select
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                                                value={newEmp.position}
+                                                onChange={e => setNewEmp({ ...newEmp, position: e.target.value })}
+                                                required
+                                            >
+                                                <option value="">Select Position</option>
+                                                {POSITIONS.map(pos => (
+                                                    <option key={pos} value={pos}>{pos}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex gap-3 pt-4">
-                                    <button type="submit" className="flex-1 bg-[#075985] text-white py-2.5 rounded-lg hover:bg-[#0284C7] font-medium transition-colors">Add Personnel</button>
-                                    <button type="button" onClick={() => setShowAddForm(false)} className="px-6 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 font-medium transition-colors">Cancel</button>
+                                <div className="flex gap-3 p-6 bg-white border-t border-slate-100 flex-shrink-0">
+                                    <button type="submit" className="flex-1 bg-[#075985] text-white py-2.5 rounded-lg hover:bg-[#0284C7] font-medium transition-colors text-sm shadow-sm">Add Personnel</button>
+                                    <button type="button" onClick={() => setShowAddForm(false)} className="px-6 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 font-medium transition-colors text-sm">Cancel</button>
                                 </div>
                             </form>
                         </div>
@@ -416,8 +434,8 @@ const Employees = () => {
                 {/* Edit Modal (Fixed Center Overlay) */}
                 {editingEmp && (
                     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                        <div className="w-full max-w-2xl bg-white p-8 rounded-2xl border border-slate-200 shadow-xl">
-                            <div className="flex justify-between items-center mb-6">
+                        <div className="w-full max-w-4xl bg-slate-50 rounded-2xl border border-slate-200 shadow-xl overflow-hidden flex flex-col">
+                            <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-100 flex-shrink-0">
                                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                     <Edit2 size={20} className="text-blue-600" /> Edit Staff Information
                                 </h3>
@@ -430,68 +448,87 @@ const Employees = () => {
                                     </svg>
                                 </button>
                             </div>
-                            <form onSubmit={handleUpdateEmployee} className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-slate-500 uppercase">First Name</label>
-                                        <input
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                            value={editEmpForm.first_name}
-                                            onChange={e => setEditEmpForm({ ...editEmpForm, first_name: e.target.value })}
-                                            required
-                                        />
+                            <form onSubmit={handleUpdateEmployee} className="flex flex-col flex-1">
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Card 1: Personal Profile */}
+                                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                            </div>
+                                            <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Personal Profile</h4>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">First Name <span className="text-red-500">*</span></label>
+                                            <input
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                                                value={editEmpForm.first_name}
+                                                onChange={e => setEditEmpForm({ ...editEmpForm, first_name: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Middle Name</label>
+                                            <input
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                                                value={editEmpForm.middle_name}
+                                                onChange={e => setEditEmpForm({ ...editEmpForm, middle_name: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Last Name <span className="text-red-500">*</span></label>
+                                            <input
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                                                value={editEmpForm.last_name}
+                                                onChange={e => setEditEmpForm({ ...editEmpForm, last_name: e.target.value })}
+                                                required
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-slate-500 uppercase">Middle Name</label>
-                                        <input
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                            value={editEmpForm.middle_name}
-                                            onChange={e => setEditEmpForm({ ...editEmpForm, middle_name: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-slate-500 uppercase">Last Name</label>
-                                        <input
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                            value={editEmpForm.last_name}
-                                            onChange={e => setEditEmpForm({ ...editEmpForm, last_name: e.target.value })}
-                                            required
-                                        />
+
+                                    {/* Card 2: Assignment Details */}
+                                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                            <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                            </div>
+                                            <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Work Assignment</h4>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Division <span className="text-red-500">*</span></label>
+                                            <select
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                                                value={editEmpForm.division_id}
+                                                onChange={e => setEditEmpForm({ ...editEmpForm, division_id: e.target.value })}
+                                                required
+                                            >
+                                                <option value="">Select Division</option>
+                                                {divisions.map(d => (
+                                                    <option key={d.id} value={d.id}>{d.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Position <span className="text-red-500">*</span></label>
+                                            <select
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                                                value={editEmpForm.position}
+                                                onChange={e => setEditEmpForm({ ...editEmpForm, position: e.target.value })}
+                                                required
+                                            >
+                                                <option value="">Select Position</option>
+                                                {POSITIONS.map(pos => (
+                                                    <option key={pos} value={pos}>{pos}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-slate-500 uppercase">Division</label>
-                                        <select
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                            value={editEmpForm.division_id}
-                                            onChange={e => setEditEmpForm({ ...editEmpForm, division_id: e.target.value })}
-                                            required
-                                        >
-                                            <option value="">Select Division</option>
-                                            {divisions.map(d => (
-                                                <option key={d.id} value={d.id}>{d.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-slate-500 uppercase">Position</label>
-                                        <select
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                            value={editEmpForm.position}
-                                            onChange={e => setEditEmpForm({ ...editEmpForm, position: e.target.value })}
-                                            required
-                                        >
-                                            <option value="">Select Position</option>
-                                            {POSITIONS.map(pos => (
-                                                <option key={pos} value={pos}>{pos}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="flex gap-3 pt-4">
-                                    <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium transition-colors">Save Changes</button>
-                                    <button type="button" onClick={() => setEditingEmp(null)} className="px-6 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 font-medium transition-colors">Cancel</button>
+                                <div className="flex gap-3 p-6 bg-white border-t border-slate-100 flex-shrink-0">
+                                    <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium transition-colors text-sm shadow-sm">Save Changes</button>
+                                    <button type="button" onClick={() => setEditingEmp(null)} className="px-6 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 font-medium transition-colors text-sm">Cancel</button>
                                 </div>
                             </form>
                         </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getProjects, getDivisions, getAllMilestones, getProjectTasks, getBulkActivities } from '../api';
+import { getProjects, getDivisions, getAllMilestones, getProjectTasks, getBulkActivities, getEmployees } from '../api';
 import { Folder, ArrowRight, Filter, ArrowUpDown, Flag, Layers, CheckSquare, LayoutGrid, List, Search } from 'lucide-react';
 import CreateProjectModal from '../components/CreateProjectModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
@@ -48,6 +48,7 @@ const getDivisionStyles = (divisionName) => {
 const Projects = () => {
     const [projects, setProjects] = useState([]);
     const [divisions, setDivisions] = useState([]);
+    const [employees, setEmployees] = useState([]);
     const [projectStats, setProjectStats] = useState({}); // { projectId: { milestones: 0, activities: 0, tasks: 0 } }
     const [projectsWithTasks, setProjectsWithTasks] = useState([]);
 
@@ -200,14 +201,16 @@ const Projects = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [loadedProjects, loadedDivisions, loadedMilestones, bulkData] = await Promise.all([
+                const [loadedProjects, loadedDivisions, loadedMilestones, bulkData, loadedEmployees] = await Promise.all([
                     getProjects(),
                     getDivisions(),
                     getAllMilestones(),
-                    getBulkActivities()
+                    getBulkActivities(),
+                    getEmployees()
                 ]);
 
                 setDivisions(loadedDivisions);
+                setEmployees(loadedEmployees);
 
                 const allActivities = bulkData?.activities || [];
                 const allSubtasks = bulkData?.subtasks || [];
@@ -1969,6 +1972,8 @@ const Projects = () => {
                     <CreateProjectModal
                         onClose={() => setIsModalOpen(false)}
                         onProjectCreated={handleProjectCreated}
+                        divisions={divisions}
+                        employees={employees}
                     />
                 )
             }

@@ -875,388 +875,413 @@ const ProjectDetails = () => {
                             className="fixed inset-0 bg-black/40 z-40 animate-fade-in backdrop-blur-sm"
                             onClick={() => setIsSidebarOpen(false)}
                         />
-                        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-lg max-h-[85vh] bg-white border border-slate-200 p-6 overflow-y-auto shadow-2xl rounded-xl transition-all duration-300 flex-shrink-0">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                    <Layers size={18} /> Project Details
+                        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-6xl max-h-[90vh] bg-slate-50 border border-slate-200 overflow-hidden shadow-2xl rounded-2xl transition-all duration-300 flex flex-col">
+                            <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-100 flex-shrink-0">
+                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <Layers size={20} className="text-blue-600" /> Project Details
                                 </h3>
                                 <button
-                                    onClick={() => setIsSidebarOpen(false)}
-                                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500"
+                                    onClick={() => { setIsSidebarOpen(false); setIsEditing(false); }}
+                                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
                                     title="Close"
                                 >
-                                    <X size={18} />
+                                    <X size={20} />
                                 </button>
                             </div>
 
-                        <div className="space-y-6">
-                            {isEditing && (
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Name<span className="text-red-500"> *</span></label>
-                                        <input
-                                            type="text"
-                                            className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
-                                            value={editForm.name || ''}
-                                            onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                            <div className="flex-1 overflow-y-auto p-6 max-h-[calc(90vh-140px)]">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    
+                                    {/* Card 1: Project Identity */}
+                                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            </div>
+                                            <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Project Identity</h4>
+                                        </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description{isEditing && <span className="text-red-500"> *</span>}</label>
-                                {isEditing ? (
-                                    <textarea
-                                        className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                        rows="4"
-                                        value={editForm.description}
-                                        onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                                    />
-                                ) : (
-                                    <p className="text-sm text-slate-600 leading-relaxed">
-                                        {project.description || "No description provided."}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Division{isEditing && <span className="text-red-500"> *</span>}</label>
-                                {isEditing ? (
-                                    <select
-                                        className="w-full border border-slate-300 rounded-lg p-2 text-sm"
-                                        value={editForm.division}
-                                        onChange={e => setEditForm({ ...editForm, division: e.target.value })}
-                                    >
-                                        <option value="">Select Division</option>
-                                        {divisions.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-                                    </select>
-                                ) : (
-                                    <div className={`flex items-center gap-2 p-3 rounded-lg border ${getDivisionStyles(project.division)}`}>
-                                        <div className={`w-2 h-2 rounded-full ${getDivisionDotColor(project.division)}`}></div>
-                                        <span className="text-sm font-medium">{project.division || 'No Division'}</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Funding{isEditing && <span className="text-red-500"> *</span>}</label>
-                                {isEditing ? (
-                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
                                         <div>
-                                            <label className="block text-xs font-medium text-slate-500 mb-1">Source of Fund<span className="text-red-500"> *</span></label>
-                                            <select
-                                                required
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
-                                                value={selectedFundingSource}
-                                                onChange={e => setSelectedFundingSource(e.target.value)}
-                                            >
-                                                <option value="">Select Source of Fund</option>
-                                                <option value="GAA-PS">GAA-PS</option>
-                                                <option value="GAA-MOOE">GAA-MOOE</option>
-                                                <option value="GMS">GMS</option>
-                                                <option value="APB">APB</option>
-                                                <option value="HRD">HRD</option>
-                                                <option value="HRDP">HRDP</option>
-                                                <option value="Basic Education Inputs Program">Basic Education Inputs Program</option>
-                                            </select>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Project Name{isEditing && <span className="text-red-500"> *</span>}</label>
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800 bg-white"
+                                                    value={editForm.name || ''}
+                                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                                />
+                                            ) : (
+                                                <p className="text-sm font-bold text-slate-800 bg-slate-50 p-2.5 rounded-lg border border-slate-100">{project.name}</p>
+                                            )}
                                         </div>
 
-                                        {selectedFundingSource && (
-                                            <div>
-                                                <label className="block text-xs font-medium text-slate-500 mb-1">{selectedFundingSource} Allocation (₱)<span className="text-red-500"> *</span></label>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    required
-                                                    className="w-full border border-slate-300 rounded p-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                                    placeholder="0.00"
-                                                    value={allocationAmount}
-                                                    onChange={e => setAllocationAmount(e.target.value)}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description{isEditing && <span className="text-red-500"> *</span>}</label>
+                                            {isEditing ? (
+                                                <textarea
+                                                    className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                                    rows="4"
+                                                    value={editForm.description}
+                                                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
                                                 />
-                                            </div>
-                                        )}
-
-                                        {selectedFundingSource && (
-                                            <div className="text-right text-xs font-bold text-slate-700 border-t border-slate-200 pt-2">
-                                                Total: ₱{(Number(allocationAmount) || 0).toLocaleString()}
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {project.source_of_fund ? (
-                                            <div className="text-sm space-y-1">
-                                                <div className="flex justify-between">
-                                                    <span className="text-slate-500">Source of Fund:</span>
-                                                    <span className="text-slate-700 font-medium">{project.source_of_fund}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-slate-500">SOF Allocation:</span>
-                                                    <span className="font-mono text-slate-700 font-medium">₱{Number(project.sof_allocation || project.total_budget || 0).toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex justify-between border-t border-slate-100 pt-1 mt-1 font-bold">
-                                                    <span className="text-slate-800">Total Budget:</span>
-                                                    <span className="font-mono text-slate-800">₱{Number(project.total_budget || 0).toLocaleString()}</span>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-1">
-                                                <p className="text-sm font-medium text-slate-800">
-                                                    ₱{Number(project.total_budget || 0).toLocaleString()}
+                                            ) : (
+                                                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 min-h-[100px] leading-relaxed">
+                                                    {project.description || "No description provided."}
                                                 </p>
-                                                <p className="text-xs text-slate-400 italic">No source of fund specified</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                            )}
+                                        </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Expenditure Framework{isEditing && <span className="text-red-500"> *</span>}</label>
-                                {isEditing ? (
-                                    <div className="flex gap-4 p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="expenditure_framework_edit"
-                                                value="PREXC"
-                                                checked={editForm.expenditure_framework === 'PREXC'}
-                                                onChange={e => setEditForm({ ...editForm, expenditure_framework: e.target.value })}
-                                                className="text-blue-600 focus:ring-blue-500"
-                                            />
-                                            <span className="text-sm text-slate-700 font-medium">PREXC</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="expenditure_framework_edit"
-                                                value="WFP"
-                                                checked={editForm.expenditure_framework === 'WFP'}
-                                                onChange={e => setEditForm({ ...editForm, expenditure_framework: e.target.value })}
-                                                className="text-blue-600 focus:ring-blue-500"
-                                            />
-                                            <span className="text-sm text-slate-700 font-medium">WFP</span>
-                                        </label>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100 font-normal">
-                                        <span className="text-sm font-semibold text-slate-700">
-                                            {project.expenditure_framework || "Not Specified"}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="pt-4 border-t border-slate-100">
-                                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <Users size={18} /> Team
-                                </h4>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Lead Personnel{isEditing && <span className="text-red-500"> *</span>}</label>
-                                        {isEditing ? (
-                                            <div className="border border-slate-300 rounded-lg p-2 bg-white space-y-2">
-                                                {filteredEmployees.length > 0 && (
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Search lead personnel..."
-                                                        value={leadSearch}
-                                                        onChange={e => setLeadSearch(e.target.value)}
-                                                        className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none font-normal"
-                                                    />
-                                                )}
-                                                <div className="max-h-32 overflow-y-auto space-y-1">
-                                                    {filteredEmployees.length === 0 ? (
-                                                        <span className="text-xs text-slate-400">No employees found in this division.</span>
-                                                    ) : searchFilteredLeads.length === 0 ? (
-                                                        <span className="text-xs text-slate-400">No matching employees found.</span>
-                                                    ) : searchFilteredLeads.map(e => {
-                                                        const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
-                                                        const isSelected = editForm.lead_personnel?.includes(name);
-                                                        return (
-                                                            <div key={e.id} onClick={() => toggleLead(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1 rounded">
-                                                                {isSelected ?
-                                                                    <CheckSquare size={16} className="text-blue-600" /> :
-                                                                    <Square size={16} className="text-slate-300" />
-                                                                }
-                                                                <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
-                                                                    {name}
-                                                                </span>
-                                                            </div>
-                                                        )
-                                                    })}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Division{isEditing && <span className="text-red-500"> *</span>}</label>
+                                            {isEditing ? (
+                                                <select
+                                                    className="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white"
+                                                    value={editForm.division}
+                                                    onChange={e => setEditForm({ ...editForm, division: e.target.value })}
+                                                >
+                                                    <option value="">Select Division</option>
+                                                    {divisions.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                                </select>
+                                            ) : (
+                                                <div className={`flex items-center gap-2 p-2.5 rounded-lg border ${getDivisionStyles(project.division)}`}>
+                                                    <div className={`w-2 h-2 rounded-full ${getDivisionDotColor(project.division)}`}></div>
+                                                    <span className="text-sm font-semibold">{project.division || 'No Division'}</span>
                                                 </div>
-                                            </div>
-                                        ) : (
-                                            <p className="text-sm text-slate-600 leading-relaxed">{project.lead_personnel}</p>
-                                        )}
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Expenditure Framework{isEditing && <span className="text-red-500"> *</span>}</label>
+                                            {isEditing ? (
+                                                <div className="flex gap-6 p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="expenditure_framework_edit"
+                                                            value="PREXC"
+                                                            checked={editForm.expenditure_framework === 'PREXC'}
+                                                            onChange={e => setEditForm({ ...editForm, expenditure_framework: e.target.value })}
+                                                            className="text-blue-600 focus:ring-blue-500 rounded-full"
+                                                        />
+                                                        <span className="text-sm text-slate-700 font-medium">PREXC</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="expenditure_framework_edit"
+                                                            value="WFP"
+                                                            checked={editForm.expenditure_framework === 'WFP'}
+                                                            onChange={e => setEditForm({ ...editForm, expenditure_framework: e.target.value })}
+                                                            className="text-blue-600 focus:ring-blue-500 rounded-full"
+                                                        />
+                                                        <span className="text-sm text-slate-700 font-medium">WFP</span>
+                                                    </label>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border border-slate-100 font-semibold text-slate-700 text-sm">
+                                                    {project.expenditure_framework || "Not Specified"}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Supervising Officer{isEditing && <span className="text-red-500"> *</span>}</label>
-                                        {isEditing ? (
-                                            <div className="border border-slate-300 rounded-lg p-2 bg-white space-y-2">
-                                                {filteredEmployees.length > 0 && (
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Search supervising officer..."
-                                                        value={supervisorSearch}
-                                                        onChange={e => setSupervisorSearch(e.target.value)}
-                                                        className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none font-normal"
-                                                    />
-                                                )}
-                                                <div className="max-h-32 overflow-y-auto space-y-1">
-                                                    {filteredEmployees.length === 0 ? (
-                                                        <span className="text-xs text-slate-400">No employees found in this division.</span>
-                                                    ) : searchFilteredSupervisors.length === 0 ? (
-                                                        <span className="text-xs text-slate-400">No matching employees found.</span>
-                                                    ) : searchFilteredSupervisors.map(e => {
-                                                        const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
-                                                        const isSelected = editForm.supervising_officer?.includes(name);
-                                                        return (
-                                                            <div key={e.id} onClick={() => toggleSupervisor(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1 rounded">
-                                                                {isSelected ?
-                                                                    <CheckSquare size={16} className="text-blue-600" /> :
-                                                                    <Square size={16} className="text-slate-300" />
-                                                                }
-                                                                <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
-                                                                    {name}
-                                                                </span>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>
+                                    {/* Card 2: Project Team */}
+                                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                            <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                                             </div>
-                                        ) : (
-                                            <p className="text-sm text-slate-600 leading-relaxed">{project.supervising_officer}</p>
-                                        )}
+                                            <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Project Team</h4>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Lead Personnel{isEditing && <span className="text-red-500"> *</span>}</label>
+                                            {isEditing ? (
+                                                <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+                                                    {filteredEmployees.length > 0 && (
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search lead personnel..."
+                                                            value={leadSearch}
+                                                            onChange={e => setLeadSearch(e.target.value)}
+                                                            className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
+                                                        />
+                                                    )}
+                                                    <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1">
+                                                        {filteredEmployees.length === 0 ? (
+                                                            <span className="text-xs text-slate-400">No employees found in this division.</span>
+                                                        ) : searchFilteredLeads.length === 0 ? (
+                                                            <span className="text-xs text-slate-400">No matching employees found.</span>
+                                                        ) : searchFilteredLeads.map(e => {
+                                                            const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+                                                            const isSelected = editForm.lead_personnel?.includes(name);
+                                                            return (
+                                                                <div key={e.id} onClick={() => toggleLead(name)} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-lg border transition-all ${isSelected ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
+                                                                    {isSelected ?
+                                                                        <CheckSquare size={16} className="text-blue-600" /> :
+                                                                        <Square size={16} className="text-slate-300" />
+                                                                    }
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        <span className="text-xs font-semibold truncate select-none">{name}</span>
+                                                                        <span className="text-[10px] text-slate-500 truncate select-none">{e.position}</span>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm font-semibold text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100">{project.lead_personnel}</p>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Supervising Officer{isEditing && <span className="text-red-500"> *</span>}</label>
+                                            {isEditing ? (
+                                                <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+                                                    {filteredEmployees.length > 0 && (
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search supervising officer..."
+                                                            value={supervisorSearch}
+                                                            onChange={e => setSupervisorSearch(e.target.value)}
+                                                            className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
+                                                        />
+                                                    )}
+                                                    <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1">
+                                                        {filteredEmployees.length === 0 ? (
+                                                            <span className="text-xs text-slate-400">No employees found in this division.</span>
+                                                        ) : searchFilteredSupervisors.length === 0 ? (
+                                                            <span className="text-xs text-slate-400">No matching employees found.</span>
+                                                        ) : searchFilteredSupervisors.map(e => {
+                                                            const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+                                                            const isSelected = editForm.supervising_officer?.includes(name);
+                                                            return (
+                                                                <div key={e.id} onClick={() => toggleSupervisor(name)} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-lg border transition-all ${isSelected ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
+                                                                    {isSelected ?
+                                                                        <CheckSquare size={16} className="text-blue-600" /> :
+                                                                        <Square size={16} className="text-slate-300" />
+                                                                    }
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        <span className="text-xs font-semibold truncate select-none">{name}</span>
+                                                                        <span className="text-[10px] text-slate-500 truncate select-none">{e.position}</span>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm font-semibold text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100">{project.supervising_officer}</p>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Members{isEditing && <span className="text-red-500"> *</span>}</label>
+                                            {isEditing ? (
+                                                <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+                                                    {filteredEmployees.length > 0 && (
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search members..."
+                                                            value={memberSearch}
+                                                            onChange={e => setMemberSearch(e.target.value)}
+                                                            className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
+                                                        />
+                                                    )}
+                                                    <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1">
+                                                        {filteredEmployees.length === 0 ? (
+                                                            <span className="text-xs text-slate-400">No employees found in this division.</span>
+                                                        ) : searchFilteredMembers.length === 0 ? (
+                                                            <span className="text-xs text-slate-400">No matching employees found.</span>
+                                                        ) : searchFilteredMembers.map(e => {
+                                                            const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
+                                                            const isSelected = editForm.assisting_personnel?.includes(name);
+                                                            return (
+                                                                <div key={e.id} onClick={() => toggleMember(name)} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-lg border transition-all ${isSelected ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
+                                                                    {isSelected ?
+                                                                        <CheckSquare size={16} className="text-blue-600" /> :
+                                                                        <Square size={16} className="text-slate-300" />
+                                                                    }
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        <span className="text-xs font-semibold truncate select-none">{name}</span>
+                                                                        <span className="text-[10px] text-slate-500 truncate select-none">{e.position}</span>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm font-semibold text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100">{project.assisting_personnel}</p>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Members{isEditing && <span className="text-red-500"> *</span>}</label>
-                                        {isEditing ? (
-                                            <div className="border border-slate-300 rounded-lg p-2 bg-white space-y-2">
-                                                {filteredEmployees.length > 0 && (
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Search members..."
-                                                        value={memberSearch}
-                                                        onChange={e => setMemberSearch(e.target.value)}
-                                                        className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none font-normal"
-                                                    />
-                                                )}
-                                                <div className="max-h-32 overflow-y-auto space-y-1">
-                                                    {filteredEmployees.length === 0 ? (
-                                                        <span className="text-xs text-slate-400">No employees found in this division.</span>
-                                                    ) : searchFilteredMembers.length === 0 ? (
-                                                        <span className="text-xs text-slate-400">No matching employees found.</span>
-                                                    ) : searchFilteredMembers.map(e => {
-                                                        const name = e.name || `${e.first_name} ${e.middle_name || ''} ${e.last_name}`;
-                                                        const isSelected = editForm.assisting_personnel?.includes(name);
-                                                        return (
-                                                            <div key={e.id} onClick={() => toggleMember(name)} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1 rounded">
-                                                                {isSelected ?
-                                                                    <CheckSquare size={16} className="text-blue-600" /> :
-                                                                    <Square size={16} className="text-slate-300" />
-                                                                }
-                                                                <span className={clsx("text-sm select-none", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
-                                                                    {name}
-                                                                </span>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>
+                                    {/* Card 3: Financials & Targets */}
+                                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                            <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-20c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2z" /></svg>
                                             </div>
-                                        ) : (
-                                            <p className="text-sm text-slate-600 leading-relaxed">{project.assisting_personnel}</p>
-                                        )}
+                                            <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Financials & Targets</h4>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Project Funding{isEditing && <span className="text-red-500"> *</span>}</label>
+                                            {isEditing ? (
+                                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Source of Fund<span className="text-red-500"> *</span></label>
+                                                        <select
+                                                            required
+                                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+                                                            value={selectedFundingSource}
+                                                            onChange={e => setSelectedFundingSource(e.target.value)}
+                                                        >
+                                                            <option value="">Select Source of Fund</option>
+                                                            <option value="GAA-PS">GAA-PS</option>
+                                                            <option value="GAA-MOOE">GAA-MOOE</option>
+                                                            <option value="GMS">GMS</option>
+                                                            <option value="APB">APB</option>
+                                                            <option value="HRD">HRD</option>
+                                                            <option value="HRDP">HRDP</option>
+                                                            <option value="Basic Education Inputs Program">Basic Education Inputs Program</option>
+                                                        </select>
+                                                    </div>
+
+                                                    {selectedFundingSource && (
+                                                        <div className="animate-slide-in">
+                                                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{selectedFundingSource} Allocation (₱)<span className="text-red-500"> *</span></label>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.01"
+                                                                required
+                                                                className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                                                placeholder="0.00"
+                                                                value={allocationAmount}
+                                                                onChange={e => setAllocationAmount(e.target.value)}
+                                                            />
+                                                        </div>
+                                                    )}
+
+                                                    {selectedFundingSource && (
+                                                        <div className="text-right text-xs font-bold text-slate-700 border-t border-slate-200 pt-2">
+                                                            Total: ₱{(Number(allocationAmount) || 0).toLocaleString()}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                    {project.source_of_fund ? (
+                                                        <div className="text-sm space-y-1">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-500 text-xs font-medium uppercase">Source of Fund:</span>
+                                                                <span className="text-slate-700 font-bold">{project.source_of_fund}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-500 text-xs font-medium uppercase">SOF Allocation:</span>
+                                                                <span className="font-mono text-slate-700 font-semibold">₱{Number(project.sof_allocation || project.total_budget || 0).toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1.5 font-bold">
+                                                                <span className="text-slate-800 text-xs font-bold uppercase">Total Budget:</span>
+                                                                <span className="font-mono text-blue-600">₱{Number(project.total_budget || 0).toLocaleString()}</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-1">
+                                                            <p className="text-sm font-bold text-slate-800">
+                                                                ₱{Number(project.total_budget || 0).toLocaleString()}
+                                                            </p>
+                                                            <p className="text-xs text-slate-400 italic">No source of fund specified</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Basecamp Target{isEditing && <span className="text-red-500"> *</span>}</label>
+                                            {isEditing ? (
+                                                <div className="border border-slate-200 rounded-xl p-3 max-h-60 overflow-y-auto bg-slate-50 space-y-2 pr-1">
+                                                    {basecampOptions.map((option, idx) => {
+                                                        const isSelected = editForm.basecamp_target?.split(',').map(s => s.trim()).includes(option);
+                                                        return (
+                                                            <div key={idx} onClick={() => toggleBasecamp(option)} className={`flex items-start gap-2.5 px-3 py-2 cursor-pointer rounded-lg border transition-all ${isSelected ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
+                                                                {isSelected ?
+                                                                    <CheckSquare size={16} className="text-blue-600 mt-0.5 flex-shrink-0" /> :
+                                                                    <Square size={16} className="text-slate-300 mt-0.5 flex-shrink-0" />
+                                                                }
+                                                                <span className="text-xs font-medium leading-snug select-none">{option}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {/* Others Option */}
+                                                    {(() => {
+                                                        const hasCustom = editForm.basecamp_target?.split(',').map(s => s.trim()).some(opt => opt && !basecampOptions.includes(opt));
+                                                        return (
+                                                            <>
+                                                                <div
+                                                                    className={`flex items-start gap-2.5 px-3 py-2.5 cursor-pointer rounded-lg border transition-all ${hasCustom ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}
+                                                                    onClick={() => {
+                                                                        let current = editForm.basecamp_target ? editForm.basecamp_target.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                                                        const alreadyHas = current.some(opt => !basecampOptions.includes(opt));
+                                                                        if (alreadyHas) {
+                                                                            current = current.filter(opt => basecampOptions.includes(opt));
+                                                                        } else {
+                                                                            current.push("Others: ");
+                                                                        }
+                                                                        setEditForm({ ...editForm, basecamp_target: current.join(', ') });
+                                                                    }}
+                                                                >
+                                                                    {hasCustom ?
+                                                                        <CheckSquare size={16} className="text-blue-600 mt-0.5 flex-shrink-0" /> :
+                                                                        <Square size={16} className="text-slate-300 mt-0.5 flex-shrink-0" />
+                                                                    }
+                                                                    <span className="text-xs font-semibold leading-snug select-none text-slate-700">Others</span>
+                                                                </div>
+                                                                {hasCustom && (
+                                                                    <input
+                                                                        type="text"
+                                                                        className="w-full mt-1.5 px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-blue-500 bg-white"
+                                                                        placeholder="Specify other target..."
+                                                                        value={editForm.basecamp_target.split(',').map(s => s.trim()).find(opt => !basecampOptions.includes(opt))?.replace("Others: ", "") || ""}
+                                                                        onChange={(e) => {
+                                                                            const customVal = "Others: " + e.target.value;
+                                                                            let current = editForm.basecamp_target.split(',').map(s => s.trim()).filter(Boolean);
+                                                                            current = current.filter(opt => basecampOptions.includes(opt));
+                                                                            current.push(customVal);
+                                                                            setEditForm({ ...editForm, basecamp_target: current.join(', ') });
+                                                                        }}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    />
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-1.5">
+                                                    {project.basecamp_target ? (
+                                                        project.basecamp_target.split(',').map((target, i) => (
+                                                            <div key={i} className="text-xs bg-blue-50 text-blue-700 px-3 py-2 rounded-lg border border-blue-100 font-medium leading-snug">
+                                                                {target.trim()}
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-sm text-slate-400 italic">No targets selected</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
+
                                 </div>
                             </div>
 
-                            <div className="pt-4 border-t border-slate-100">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Basecamp Target{isEditing && <span className="text-red-500"> *</span>}</label>
-                                {isEditing ? (
-                                    <div className="border border-slate-300 rounded-lg p-2 max-h-60 overflow-y-auto space-y-2">
-                                        {basecampOptions.map((option, idx) => {
-                                            const isSelected = editForm.basecamp_target?.split(',').map(s => s.trim()).includes(option);
-                                            return (
-                                                <div key={idx} onClick={() => toggleBasecamp(option)} className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1 rounded">
-                                                    {isSelected ?
-                                                        <CheckSquare size={16} className="text-blue-600 mt-0.5 flex-shrink-0" /> :
-                                                        <Square size={16} className="text-slate-300 mt-0.5 flex-shrink-0" />
-                                                    }
-                                                    <span className={clsx("text-sm select-none leading-tight", isSelected ? "text-slate-900 font-medium" : "text-slate-500")}>
-                                                        {option}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                        {/* Others Option */}
-                                        <div
-                                            className="flex items-start gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 p-1 rounded"
-                                            onClick={() => {
-                                                let current = editForm.basecamp_target ? editForm.basecamp_target.split(',').map(s => s.trim()).filter(Boolean) : [];
-                                                // Check if any custom value exists
-                                                const hasCustom = current.some(opt => !basecampOptions.includes(opt));
-
-                                                if (hasCustom) {
-                                                    // Remove custom
-                                                    current = current.filter(opt => basecampOptions.includes(opt));
-                                                } else {
-                                                    // Add placeholder
-                                                    current.push("Others: ");
-                                                }
-                                                setEditForm({ ...editForm, basecamp_target: current.join(', ') });
-                                            }}
-                                        >
-                                            {(editForm.basecamp_target?.split(',').map(s => s.trim()).some(opt => opt && !basecampOptions.includes(opt))) ?
-                                                <CheckSquare size={16} className="text-blue-600 mt-0.5 flex-shrink-0" /> :
-                                                <Square size={16} className="text-slate-300 mt-0.5 flex-shrink-0" />
-                                            }
-                                            <span className="text-sm select-none leading-tight text-slate-500">
-                                                Others
-                                            </span>
-                                        </div>
-                                        {/* Input for Others */}
-                                        {(editForm.basecamp_target?.split(',').map(s => s.trim()).some(opt => opt && !basecampOptions.includes(opt))) && (
-                                            <input
-                                                type="text"
-                                                className="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm outline-none focus:border-blue-500"
-                                                placeholder="Specify other target..."
-                                                value={editForm.basecamp_target.split(',').map(s => s.trim()).find(opt => !basecampOptions.includes(opt))?.replace("Others: ", "") || ""}
-                                                onChange={(e) => {
-                                                    const customVal = "Others: " + e.target.value;
-                                                    let current = editForm.basecamp_target.split(',').map(s => s.trim()).filter(Boolean);
-                                                    // Remove old custom and add new
-                                                    current = current.filter(opt => basecampOptions.includes(opt));
-                                                    current.push(customVal);
-                                                    setEditForm({ ...editForm, basecamp_target: current.join(', ') });
-                                                }}
-                                                onClick={(e) => e.stopPropagation()}
-                                            />
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {project.basecamp_target ? (
-                                            project.basecamp_target.split(',').map((target, i) => (
-                                                <div key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-1.5 rounded-md border border-blue-100 font-medium leading-snug">
-                                                    {target.trim()}
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-sm text-slate-400 italic">No targets selected</p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Action Buttons at the bottom */}
-                            <div className="pt-6 border-t border-slate-100 flex flex-col gap-2">
+                            {/* Action Buttons Footer */}
+                            <div className="p-4 bg-white border-t border-slate-100 flex-shrink-0 flex flex-col gap-2">
                                 {!isEditing ? (
                                     <button
                                         onClick={() => setIsEditing(true)}
@@ -1266,7 +1291,7 @@ const ProjectDetails = () => {
                                         Edit Project Details
                                     </button>
                                 ) : (
-                                    <div className="flex gap-2 w-full">
+                                    <div className="flex gap-3 w-full">
                                         <button
                                             onClick={handleSaveProject}
                                             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors"
@@ -1285,7 +1310,6 @@ const ProjectDetails = () => {
                                 )}
                             </div>
                         </div>
-                    </div>
                     </>
                 )}
             </div>

@@ -1367,40 +1367,64 @@ label span, .label {
   background-color: rgba(14, 165, 233, 0.22) !important;
   border-color: rgba(14, 165, 233, 0.45) !important;
 }
+.dark .text-blue-700,
 .dark .text-blue-800 {
-  color: #7dd3fc !important; /* sky-300, extremely bright */
+  color: #38bdf8 !important; /* sky-400, high contrast */
+}
+.dark .border-blue-200 {
+  border-color: rgba(56, 189, 248, 0.4) !important;
 }
 
+.dark .bg-green-100,
 .dark .bg-emerald-100 {
   background-color: rgba(52, 211, 153, 0.15) !important;
-  border-color: rgba(52, 211, 153, 0.3) !important;
+  border-color: rgba(52, 211, 153, 0.35) !important;
 }
+.dark .text-green-700,
+.dark .text-green-800,
+.dark .text-emerald-700,
 .dark .text-emerald-800 {
-  color: #34d399 !important;
+  color: #34d399 !important; /* emerald-400 */
+}
+.dark .border-green-200,
+.dark .border-emerald-200 {
+  border-color: rgba(52, 211, 153, 0.35) !important;
 }
 
 .dark .bg-red-100 {
   background-color: rgba(248, 113, 113, 0.15) !important;
   border-color: rgba(248, 113, 113, 0.3) !important;
 }
+.dark .text-red-700,
 .dark .text-red-800 {
   color: #f87171 !important;
+}
+.dark .border-red-200 {
+  border-color: rgba(248, 113, 113, 0.3) !important;
 }
 
 .dark .bg-purple-100 {
   background-color: rgba(192, 132, 252, 0.15) !important;
   border-color: rgba(192, 132, 252, 0.3) !important;
 }
+.dark .text-purple-700,
 .dark .text-purple-800 {
   color: #c084fc !important;
+}
+.dark .border-purple-200 {
+  border-color: rgba(192, 132, 252, 0.3) !important;
 }
 
 .dark .bg-slate-100 {
   background-color: rgba(148, 163, 184, 0.15) !important;
   border-color: rgba(148, 163, 184, 0.3) !important;
 }
+.dark .text-slate-700,
 .dark .text-slate-800 {
   color: #94a3b8 !important;
+}
+.dark .border-slate-200 {
+  border-color: rgba(148, 163, 184, 0.3) !important;
 }
 
 /* Records Table & Controls Styles */

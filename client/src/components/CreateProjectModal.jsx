@@ -3,10 +3,10 @@ import { createProject, getDivisions, getEmployees } from '../api';
 import { X } from 'lucide-react';
 import { useToast } from './ToastContext';
 
-const CreateProjectModal = ({ onClose, onProjectCreated }) => {
+const CreateProjectModal = ({ onClose, onProjectCreated, divisions: initialDivisions, employees: initialEmployees }) => {
     const { showToast } = useToast();
-    const [divisions, setDivisions] = useState([]);
-    const [employees, setEmployees] = useState([]);
+    const [divisions, setDivisions] = useState(initialDivisions || []);
+    const [employees, setEmployees] = useState(initialEmployees || []);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -24,11 +24,13 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        Promise.all([getDivisions(), getEmployees()]).then(([d, e]) => {
-            setDivisions(d);
-            setEmployees(e);
-        });
-    }, []);
+        if (!initialDivisions || !initialEmployees || initialDivisions.length === 0 || initialEmployees.length === 0) {
+            Promise.all([getDivisions(), getEmployees()]).then(([d, e]) => {
+                setDivisions(d);
+                setEmployees(e);
+            });
+        }
+    }, [initialDivisions, initialEmployees]);
 
     const getEmployeesInDivision = () => {
         // Optional: Filter employees by selected division if desired.
@@ -210,307 +212,366 @@ const CreateProjectModal = ({ onClose, onProjectCreated }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-10 animate-fade-in backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative my-auto animate-scale-in transition-all">
-                <button
-                    onClick={onClose}
-                    className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
-                >
-                    <X size={20} />
-                </button>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto py-10 animate-fade-in">
+            <div className="bg-slate-50 rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col relative my-auto animate-scale-in transition-all mx-4">
+                <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-100 flex-shrink-0">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <span className="w-2.5 h-6 bg-blue-600 rounded-full"></span>
+                        New Project
+                    </h2>
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
 
-                <h2 className="text-xl font-bold text-slate-800 mb-6">New Project</h2>
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                    <div className="p-6 overflow-y-auto max-h-[calc(85vh-100px)]">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                            {/* Sub-Card 1: Project Identity */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                    <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    </div>
+                                    <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Project Identity</h3>
+                                </div>
 
-                    <div>
-                        <div className="flex justify-between">
-                            <label className="block text-sm font-bold text-slate-700 mb-1">Project Name <span className="text-red-500">*</span></label>
-                            <span className="text-xs text-slate-400">{formData.name.length}/50</span>
-                        </div>
-                        <input
-                            type="text"
-                            required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            maxLength={50}
-                            value={formData.name}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        />
-                    </div>
-
-                    <div>
-                        <div className="flex justify-between">
-                            <label className="block text-sm font-bold text-slate-700 mb-1">Description <span className="text-red-500">*</span></label>
-                            <span className="text-xs text-slate-400">{formData.description.length}/100</span>
-                        </div>
-                        <textarea
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                            rows="3"
-                            maxLength={100}
-                            placeholder="Brief project summary..."
-                            required
-                            value={formData.description}
-                            onChange={e => setFormData({ ...formData, description: e.target.value })}
-                        />
-                    </div>
-
-                    {/* Source of Funds Section */}
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3 animate-fade-in">
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1">Source of Fund <span className="text-red-500">*</span></label>
-                            <select
-                                required
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
-                                value={selectedFundingSource}
-                                onChange={e => setSelectedFundingSource(e.target.value)}
-                            >
-                                <option value="">Select Source of Fund</option>
-                                <option value="GAA-PS">GAA-PS</option>
-                                <option value="GAA-MOOE">GAA-MOOE</option>
-                                <option value="GMS">GMS</option>
-                                <option value="APB">APB</option>
-                                <option value="HRD">HRD</option>
-                                <option value="HRDP">HRDP</option>
-                                <option value="Basic Education Inputs Program">Basic Education Inputs Program</option>
-                            </select>
-                        </div>
-
-                        {selectedFundingSource && (
-                            <div className="animate-slide-in">
-                                <label className="block text-xs font-medium text-slate-500 mb-1">{selectedFundingSource} Allocation (₱)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    required
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                                    placeholder="0.00"
-                                    value={allocationAmount}
-                                    onChange={e => setAllocationAmount(e.target.value)}
-                                />
-                            </div>
-                        )}
-                        {selectedFundingSource && (
-                            <div className="text-right text-xs font-bold text-slate-600 border-t border-slate-200 pt-2">
-                                Total Budget: ₱{(Number(allocationAmount) || 0).toLocaleString()}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Expenditure Framework Section */}
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
-                        <label className="block text-sm font-bold text-slate-700">Expenditure Framework <span className="text-red-500">*</span></label>
-                        <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="expenditure_framework"
-                                    value="PREXC"
-                                    checked={formData.expenditure_framework === 'PREXC'}
-                                    onChange={e => setFormData({ ...formData, expenditure_framework: e.target.value })}
-                                    className="text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="text-sm text-slate-700 font-medium">PREXC</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="expenditure_framework"
-                                    value="WFP"
-                                    checked={formData.expenditure_framework === 'WFP'}
-                                    onChange={e => setFormData({ ...formData, expenditure_framework: e.target.value })}
-                                    className="text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="text-sm text-slate-700 font-medium">WFP</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1">Division <span className="text-red-500">*</span></label>
-                        <select
-                            required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                            value={formData.division}
-                            onChange={e => setFormData({ ...formData, division: e.target.value })}
-                        >
-                            <option value="">Select Division</option>
-                            {divisions.map(d => (
-                                <option key={d.id} value={d.name}>{d.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-
-
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1">
-                            Lead Personnel (Select Multiple) <span className="text-red-500">*</span>
-                        </label>
-                        <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 space-y-2">
-                            {availableEmployees.length > 0 && (
-                                <input
-                                    type="text"
-                                    placeholder="Search lead personnel..."
-                                    value={leadSearch}
-                                    onChange={e => setLeadSearch(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
-                                />
-                            )}
-                            <div className="max-h-32 overflow-y-auto space-y-1">
-                                {availableEmployees.length === 0 ? (
-                                    <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
-                                ) : filteredLeads.length === 0 ? (
-                                    <p className="text-xs text-slate-400">No matching employees found.</p>
-                                ) : filteredLeads.map(e => (
-                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded px-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.lead_personnel.includes(e.name)}
-                                            onChange={() => handleLeadChange(e.name)}
-                                            className="rounded text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span className="text-sm text-slate-700">{e.name}</span>
-                                        <span className="text-xs text-slate-400">({e.position})</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1">
-                            Supervising Officer (Select Multiple) <span className="text-red-500">*</span>
-                        </label>
-                        <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 space-y-2">
-                            {availableEmployees.length > 0 && (
-                                <input
-                                    type="text"
-                                    placeholder="Search supervising officer..."
-                                    value={supervisorSearch}
-                                    onChange={e => setSupervisorSearch(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
-                                />
-                            )}
-                            <div className="max-h-32 overflow-y-auto space-y-1">
-                                {availableEmployees.length === 0 ? (
-                                    <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
-                                ) : filteredSupervisors.length === 0 ? (
-                                    <p className="text-xs text-slate-400">No matching employees found.</p>
-                                ) : filteredSupervisors.map(e => (
-                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded px-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.supervising_officer.includes(e.name)}
-                                            onChange={() => handleSupervisorChange(e.name)}
-                                            className="rounded text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span className="text-sm text-slate-700">{e.name}</span>
-                                        <span className="text-xs text-slate-400">({e.position})</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1">
-                            Assisting Personnel (Select Multiple) <span className="text-red-500">*</span>
-                        </label>
-                        <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 space-y-2">
-                            {availableEmployees.length > 0 && (
-                                <input
-                                    type="text"
-                                    placeholder="Search assisting personnel..."
-                                    value={assistingSearch}
-                                    onChange={e => setAssistingSearch(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
-                                />
-                            )}
-                            <div className="max-h-32 overflow-y-auto space-y-1">
-                                {availableEmployees.length === 0 ? (
-                                    <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
-                                ) : filteredAssisting.length === 0 ? (
-                                    <p className="text-xs text-slate-400">No matching employees found.</p>
-                                ) : filteredAssisting.map(e => (
-                                    <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded px-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.assisting_personnel.includes(e.name)}
-                                            onChange={() => handleAssistingChange(e.name)}
-                                            className="rounded text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span className="text-sm text-slate-700">{e.name}</span>
-                                        <span className="text-xs text-slate-400">({e.position})</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1">
-                            Basecamp Target (Select Multiple) <span className="text-red-500">*</span>
-                        </label>
-                        <div className="border border-slate-300 rounded-lg p-3 max-h-40 overflow-y-auto bg-slate-50">
-                            {basecampOptions.map((option, idx) => (
-                                <label key={idx} className="flex items-start gap-2 py-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded px-1">
+                                <div>
+                                    <div className="flex justify-between">
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Project Name <span className="text-red-500">*</span></label>
+                                        <span className="text-xs text-slate-400">{formData.name.length}/50</span>
+                                    </div>
                                     <input
-                                        type="checkbox"
-                                        checked={selectedBasecamp.includes(option)}
-                                        onChange={() => handleBasecampChange(option)}
-                                        className="mt-1 rounded text-blue-600 focus:ring-blue-500"
+                                        type="text"
+                                        required
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+                                        maxLength={50}
+                                        value={formData.name}
+                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
                                     />
-                                    <span className="text-sm text-slate-700 leading-snug">{option}</span>
-                                </label>
-                            ))}
-                            <label className="flex items-start gap-2 py-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded px-1">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedBasecamp.some(opt => !basecampOptions.includes(opt))}
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            // Add placeholder for custom input
-                                            setSelectedBasecamp([...selectedBasecamp, "Others: "]);
-                                        } else {
-                                            // Remove custom input
-                                            setSelectedBasecamp(selectedBasecamp.filter(opt => basecampOptions.includes(opt)));
-                                        }
-                                    }}
-                                    className="mt-1 rounded text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="text-sm text-slate-700 leading-snug">Others</span>
-                            </label>
-                            {selectedBasecamp.some(opt => !basecampOptions.includes(opt)) && (
-                                <input
-                                    type="text"
-                                    className="w-full mt-2 px-2 py-1 border border-slate-300 rounded text-sm outline-none focus:border-blue-500"
-                                    placeholder="Specify other target..."
-                                    value={selectedBasecamp.find(opt => !basecampOptions.includes(opt))?.replace("Others: ", "") || ""}
-                                    onChange={(e) => {
-                                        const customVal = "Others: " + e.target.value;
-                                        setSelectedBasecamp(prev => [
-                                            ...prev.filter(opt => basecampOptions.includes(opt)),
-                                            customVal
-                                        ]);
-                                    }}
-                                />
-                            )}
+                                </div>
+
+                                <div>
+                                    <div className="flex justify-between">
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description <span className="text-red-500">*</span></label>
+                                        <span className="text-xs text-slate-400">{formData.description.length}/100</span>
+                                    </div>
+                                    <textarea
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-white text-sm"
+                                        rows="4"
+                                        maxLength={100}
+                                        placeholder="Brief project summary..."
+                                        required
+                                        value={formData.description}
+                                        onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Division <span className="text-red-500">*</span></label>
+                                    <select
+                                        required
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+                                        value={formData.division}
+                                        onChange={e => setFormData({ ...formData, division: e.target.value })}
+                                    >
+                                        <option value="">Select Division</option>
+                                        {divisions.map(d => (
+                                            <option key={d.id} value={d.name}>{d.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                                    <label className="block text-xs font-bold text-slate-700 uppercase">Expenditure Framework <span className="text-red-500">*</span></label>
+                                    <div className="flex gap-6 mt-1">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="expenditure_framework"
+                                                value="PREXC"
+                                                checked={formData.expenditure_framework === 'PREXC'}
+                                                onChange={e => setFormData({ ...formData, expenditure_framework: e.target.value })}
+                                                className="text-blue-600 focus:ring-blue-500 rounded-full"
+                                            />
+                                            <span className="text-sm text-slate-700 font-medium">PREXC</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="expenditure_framework"
+                                                value="WFP"
+                                                checked={formData.expenditure_framework === 'WFP'}
+                                                onChange={e => setFormData({ ...formData, expenditure_framework: e.target.value })}
+                                                className="text-blue-600 focus:ring-blue-500 rounded-full"
+                                            />
+                                            <span className="text-sm text-slate-700 font-medium">WFP</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Sub-Card 2: Project Team */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                    <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                    </div>
+                                    <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Project Team</h3>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-15">
+                                        Lead Personnel (Select Multiple) <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2.5">
+                                        {availableEmployees.length > 0 && (
+                                            <input
+                                                type="text"
+                                                placeholder="Search lead personnel..."
+                                                value={leadSearch}
+                                                onChange={e => setLeadSearch(e.target.value)}
+                                                className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
+                                            />
+                                        )}
+                                        <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                                            {availableEmployees.length === 0 ? (
+                                                <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
+                                            ) : filteredLeads.length === 0 ? (
+                                                <p className="text-xs text-slate-400">No matching employees found.</p>
+                                            ) : filteredLeads.map(e => {
+                                                const isSelected = formData.lead_personnel.includes(e.name);
+                                                return (
+                                                    <label key={e.id} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-lg border transition-all ${isSelected ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => handleLeadChange(e.name)}
+                                                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                                                        />
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-xs font-semibold truncate">{e.name}</span>
+                                                            <span className="text-[10px] text-slate-500 truncate">{e.position}</span>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-15">
+                                        Supervising Officer (Select Multiple) <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2.5">
+                                        {availableEmployees.length > 0 && (
+                                            <input
+                                                type="text"
+                                                placeholder="Search supervising officer..."
+                                                value={supervisorSearch}
+                                                onChange={e => setSupervisorSearch(e.target.value)}
+                                                className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
+                                            />
+                                        )}
+                                        <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                                            {availableEmployees.length === 0 ? (
+                                                <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
+                                            ) : filteredSupervisors.length === 0 ? (
+                                                <p className="text-xs text-slate-400">No matching employees found.</p>
+                                            ) : filteredSupervisors.map(e => {
+                                                const isSelected = formData.supervising_officer.includes(e.name);
+                                                return (
+                                                    <label key={e.id} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-lg border transition-all ${isSelected ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => handleSupervisorChange(e.name)}
+                                                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                                                        />
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-xs font-semibold truncate">{e.name}</span>
+                                                            <span className="text-[10px] text-slate-500 truncate">{e.position}</span>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-15">
+                                        Assisting Personnel (Select Multiple) <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2.5">
+                                        {availableEmployees.length > 0 && (
+                                            <input
+                                                type="text"
+                                                placeholder="Search assisting personnel..."
+                                                value={assistingSearch}
+                                                onChange={e => setAssistingSearch(e.target.value)}
+                                                className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white font-normal"
+                                            />
+                                        )}
+                                        <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                                            {availableEmployees.length === 0 ? (
+                                                <p className="text-xs text-slate-400">Select a Division first to see employees.</p>
+                                            ) : filteredAssisting.length === 0 ? (
+                                                <p className="text-xs text-slate-400">No matching employees found.</p>
+                                            ) : filteredAssisting.map(e => {
+                                                const isSelected = formData.assisting_personnel.includes(e.name);
+                                                return (
+                                                    <label key={e.id} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-lg border transition-all ${isSelected ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => handleAssistingChange(e.name)}
+                                                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                                                        />
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-xs font-semibold truncate">{e.name}</span>
+                                                            <span className="text-[10px] text-slate-500 truncate">{e.position}</span>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Sub-Card 3: Financials & Targets */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                    <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-20c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2z" /></svg>
+                                    </div>
+                                    <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Financials & Targets</h3>
+                                </div>
+
+                                {/* Source of Funds Section */}
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Source of Fund <span className="text-red-500">*</span></label>
+                                        <select
+                                            required
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+                                            value={selectedFundingSource}
+                                            onChange={e => setSelectedFundingSource(e.target.value)}
+                                        >
+                                            <option value="">Select Source of Fund</option>
+                                            <option value="GAA-PS">GAA-PS</option>
+                                            <option value="GAA-MOOE">GAA-MOOE</option>
+                                            <option value="GMS">GMS</option>
+                                            <option value="APB">APB</option>
+                                            <option value="HRD">HRD</option>
+                                            <option value="HRDP">HRDP</option>
+                                            <option value="Basic Education Inputs Program">Basic Education Inputs Program</option>
+                                        </select>
+                                    </div>
+
+                                    {selectedFundingSource && (
+                                        <div className="animate-slide-in">
+                                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{selectedFundingSource} Allocation (₱)</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                required
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+                                                placeholder="0.00"
+                                                value={allocationAmount}
+                                                onChange={e => setAllocationAmount(e.target.value)}
+                                            />
+                                        </div>
+                                    )}
+                                    {selectedFundingSource && (
+                                        <div className="text-right text-xs font-bold text-slate-700 border-t border-slate-200 pt-2">
+                                            Total Budget: ₱{(Number(allocationAmount) || 0).toLocaleString()}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                                        Basecamp Target (Select Multiple) <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="border border-slate-200 rounded-xl p-3 max-h-56 overflow-y-auto bg-slate-50 space-y-2 pr-1">
+                                        {basecampOptions.map((option, idx) => {
+                                            const isSelected = selectedBasecamp.includes(option);
+                                            return (
+                                                <label key={idx} className={`flex items-start gap-2.5 px-3 py-2.5 cursor-pointer rounded-lg border transition-all ${isSelected ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => handleBasecampChange(option)}
+                                                        className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 flex-shrink-0"
+                                                    />
+                                                    <span className="text-xs font-medium leading-snug">{option}</span>
+                                                </label>
+                                            );
+                                        })}
+                                        {(() => {
+                                            const isCustomSelected = selectedBasecamp.some(opt => !basecampOptions.includes(opt));
+                                            return (
+                                                <>
+                                                    <label className={`flex items-start gap-2.5 px-3 py-2.5 cursor-pointer rounded-lg border transition-all ${isCustomSelected ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isCustomSelected}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedBasecamp([...selectedBasecamp, "Others: "]);
+                                                                } else {
+                                                                    setSelectedBasecamp(selectedBasecamp.filter(opt => basecampOptions.includes(opt)));
+                                                                }
+                                                            }}
+                                                            className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 flex-shrink-0"
+                                                        />
+                                                        <span className="text-xs font-semibold leading-snug">Others</span>
+                                                    </label>
+                                                    {isCustomSelected && (
+                                                        <input
+                                                            type="text"
+                                                            className="w-full mt-1.5 px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                                                            placeholder="Specify other target..."
+                                                            value={selectedBasecamp.find(opt => !basecampOptions.includes(opt))?.replace("Others: ", "") || ""}
+                                                            onChange={(e) => {
+                                                                const customVal = "Others: " + e.target.value;
+                                                                setSelectedBasecamp(prev => [
+                                                                    ...prev.filter(opt => basecampOptions.includes(opt)),
+                                                                    customVal
+                                                                ]);
+                                                            }}
+                                                        />
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
-                    <div className="pt-4 flex justify-end gap-3">
+                    <div className="flex justify-end gap-3 p-4 bg-white border-t border-slate-100 flex-shrink-0">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg"
+                            className="px-5 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium transition-colors text-sm"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                            className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 transition-colors text-sm shadow-sm"
                         >
                             {loading ? 'Creating...' : 'Create Project'}
                         </button>
