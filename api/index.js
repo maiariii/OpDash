@@ -27,7 +27,14 @@ app.use(cors());
 app.use(express.json());
 
 // Serve Static Files from React App
-// production mode
+// Automatically redirect /opdash to /opdash/ if trailing slash is missing
+app.get('/opdash', (req, res, next) => {
+    if (req.path === '/opdash') {
+        return res.redirect(301, '/opdash/');
+    }
+    next();
+});
+
 app.use('/opdash', express.static(path.join(__dirname, '../')));
 app.use('/opdash/uploads', express.static(path.join(__dirname, 'uploads')));
 
