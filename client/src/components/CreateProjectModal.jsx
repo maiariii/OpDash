@@ -3,10 +3,10 @@ import { createProject, getDivisions, getEmployees } from '../api';
 import { X } from 'lucide-react';
 import { useToast } from './ToastContext';
 
-const CreateProjectModal = ({ onClose, onProjectCreated, divisions: initialDivisions, employees: initialEmployees }) => {
+const CreateProjectModal = ({ onClose, onProjectCreated }) => {
     const { showToast } = useToast();
-    const [divisions, setDivisions] = useState(initialDivisions || []);
-    const [employees, setEmployees] = useState(initialEmployees || []);
+    const [divisions, setDivisions] = useState([]);
+    const [employees, setEmployees] = useState([]);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -24,13 +24,11 @@ const CreateProjectModal = ({ onClose, onProjectCreated, divisions: initialDivis
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (!initialDivisions || !initialEmployees || initialDivisions.length === 0 || initialEmployees.length === 0) {
-            Promise.all([getDivisions(), getEmployees()]).then(([d, e]) => {
-                setDivisions(d);
-                setEmployees(e);
-            });
-        }
-    }, [initialDivisions, initialEmployees]);
+        Promise.all([getDivisions(), getEmployees()]).then(([d, e]) => {
+            setDivisions(d);
+            setEmployees(e);
+        });
+    }, []);
 
     const getEmployeesInDivision = () => {
         // Optional: Filter employees by selected division if desired.

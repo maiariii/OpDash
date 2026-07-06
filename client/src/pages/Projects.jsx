@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getProjects, getDivisions, getAllMilestones, getProjectTasks, getBulkActivities, getEmployees } from '../api';
+import { getProjects, getDivisions, getAllMilestones, getProjectTasks, getBulkActivities } from '../api';
 import { Folder, ArrowRight, Filter, ArrowUpDown, Flag, Layers, CheckSquare, LayoutGrid, List, Search } from 'lucide-react';
 import CreateProjectModal from '../components/CreateProjectModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
@@ -48,7 +48,6 @@ const getDivisionStyles = (divisionName) => {
 const Projects = () => {
     const [projects, setProjects] = useState([]);
     const [divisions, setDivisions] = useState([]);
-    const [employees, setEmployees] = useState([]);
     const [projectStats, setProjectStats] = useState({}); // { projectId: { milestones: 0, activities: 0, tasks: 0 } }
     const [projectsWithTasks, setProjectsWithTasks] = useState([]);
 
@@ -90,15 +89,15 @@ const Projects = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
                         {color && (
-                            <span 
-                                style={{ 
-                                    width: '8px', 
-                                    height: '8px', 
-                                    borderRadius: '50%', 
+                            <span
+                                style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
                                     backgroundColor: color,
                                     display: 'inline-block',
                                     boxShadow: `0 0 6px ${color}`
-                                }} 
+                                }}
                             />
                         )}
                         <span style={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.08em', color: '#08315F' }}>
@@ -155,18 +154,18 @@ const Projects = () => {
             if (v === 0) return null;
             const text = formatValue(v);
             const share = Math.round((v / totalSum) * 100);
-            
+
             let segColor = null;
             if (classes[i]) {
                 const name = classes[i].replace('seg-', '');
                 segColor = colors[name] || null;
             }
-            
+
             return (
-                <div 
+                <div
                     key={i}
-                    className={`segment ${classes[i]}`} 
-                    style={{ width: `${width}%`, cursor: onClickSegment ? 'pointer' : 'default' }} 
+                    className={`segment ${classes[i]}`}
+                    style={{ width: `${width}%`, cursor: onClickSegment ? 'pointer' : 'default' }}
                     title={`${labels[i]}: ${text}`}
                     onClick={(e) => {
                         if (onClickSegment) {
@@ -201,16 +200,14 @@ const Projects = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [loadedProjects, loadedDivisions, loadedMilestones, bulkData, loadedEmployees] = await Promise.all([
+                const [loadedProjects, loadedDivisions, loadedMilestones, bulkData] = await Promise.all([
                     getProjects(),
                     getDivisions(),
                     getAllMilestones(),
-                    getBulkActivities(),
-                    getEmployees()
+                    getBulkActivities()
                 ]);
 
                 setDivisions(loadedDivisions);
-                setEmployees(loadedEmployees);
 
                 const allActivities = bulkData?.activities || [];
                 const allSubtasks = bulkData?.subtasks || [];
@@ -386,7 +383,7 @@ const Projects = () => {
 
     // Filtered categories shown inside the picker modal
     const modalFilteredCategories = useMemo(() => {
-        let list = availableCategories.filter(cat => 
+        let list = availableCategories.filter(cat =>
             cat.label.toLowerCase().includes(categorySearchQuery.toLowerCase())
         );
         if (categorySortMode === 'value') {
@@ -558,11 +555,11 @@ const Projects = () => {
 
     const filteredProjects = projects.filter(p => {
         const matchesDivision = !selectedDivision || p.division === selectedDivision;
-        
+
         // fund
         const projectSourceOfFund = p.source_of_fund || 'GAA-PS';
         const matchesFund = fundFilter === 'all' || projectSourceOfFund === fundFilter;
-        
+
         // expenditure framework
         const expenditureFramework = p.expenditure_framework || 'Not Specified';
         const matchesExpenditure = expenditureFilter === 'all' || expenditureFramework === expenditureFilter;
@@ -575,7 +572,7 @@ const Projects = () => {
             const projectTotalBudget = projectSofAllocation > 0 ? projectSofAllocation : tasksBudgetSum;
             const projectObligated = p.tasks ? p.tasks.reduce((sum, t) => sum + Number(t.obligated_amount || 0), 0) : 0;
             const projectUtilizationPct = projectTotalBudget > 0 ? (projectObligated / projectTotalBudget) * 100 : 0;
-            
+
             if (utilizationFilter === 'unutilized') {
                 matchesUtilization = projectUtilizationPct === 0;
             } else if (utilizationFilter === 'utilized') {
@@ -583,7 +580,7 @@ const Projects = () => {
             }
         }
 
-        const matchesSearch = !projectSearch || 
+        const matchesSearch = !projectSearch ||
             (p.name || '').toLowerCase().includes(projectSearch.toLowerCase()) ||
             (p.description || '').toLowerCase().includes(projectSearch.toLowerCase()) ||
             (p.lead_personnel || '').toLowerCase().includes(projectSearch.toLowerCase());
@@ -664,13 +661,13 @@ const Projects = () => {
     // View Mode State
     const [viewMode, setViewMode] = useState('table'); // 'grid' | 'table'
 
-    const [tableFilters, setTableFilters] = useState({ 
-        name: '', 
+    const [tableFilters, setTableFilters] = useState({
+        name: '',
         division: '',
-        lead: '', 
-        allocation: '', 
-        obligated: '', 
-        utilization: '', 
+        lead: '',
+        allocation: '',
+        obligated: '',
+        utilization: '',
         accomplishment: ''
     });
 
@@ -687,7 +684,7 @@ const Projects = () => {
         return sortedProjects.filter(project => {
             const stats = projectStats[project.id] || { milestones: 0, activities: 0, tasks: 0, accomplishmentRate: 0 };
             const accomplishmentRate = stats.accomplishmentRate || 0;
-            
+
             // Calculate budget metrics
             const projectSofAllocation = Number(project.sof_allocation || project.total_budget || 0);
             const tasksBudgetSum = project.tasks ? project.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
@@ -698,11 +695,11 @@ const Projects = () => {
             const nameMatch = !tableFilters.name || (project.name || '').toLowerCase().includes(tableFilters.name.toLowerCase());
             const divisionMatch = !showDivisionCol || !tableFilters.division || (project.division || '').toLowerCase().includes(tableFilters.division.toLowerCase());
             const leadMatch = !tableFilters.lead || (project.lead_personnel || '').toLowerCase().includes(tableFilters.lead.toLowerCase());
-            
+
             const allocMatch = !tableFilters.allocation || String(projectTotalBudget).includes(tableFilters.allocation) || peso(projectTotalBudget).toLowerCase().includes(tableFilters.allocation.toLowerCase());
             const obligMatch = !tableFilters.obligated || String(projectObligated).includes(tableFilters.obligated) || peso(projectObligated).toLowerCase().includes(tableFilters.obligated.toLowerCase());
             const utilMatch = !tableFilters.utilization || String(Math.round(projectUtilizationPct)).includes(tableFilters.utilization) || pct(projectUtilizationPct).toLowerCase().includes(tableFilters.utilization.toLowerCase());
-            
+
             const accomplishmentMatch = !tableFilters.accomplishment || String(Math.round(accomplishmentRate)).includes(tableFilters.accomplishment) || pct(accomplishmentRate).toLowerCase().includes(tableFilters.accomplishment.toLowerCase());
 
             return nameMatch && divisionMatch && leadMatch && allocMatch && obligMatch && utilMatch && accomplishmentMatch;
@@ -800,8 +797,8 @@ const Projects = () => {
                                 onClick={() => setIsAdvancedMode(!isAdvancedMode)}
                                 className={clsx(
                                     "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer",
-                                    isAdvancedMode 
-                                        ? "bg-sky-600 hover:bg-sky-700 text-white" 
+                                    isAdvancedMode
+                                        ? "bg-sky-600 hover:bg-sky-700 text-white"
                                         : "bg-amber-400 hover:bg-amber-550 text-slate-909"
                                 )}
                             >
@@ -815,9 +812,9 @@ const Projects = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                             <label className="flex flex-col gap-1.5 w-full">
                                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Division</span>
-                                <select 
-                                    value={selectedDivision} 
-                                    onChange={(e) => handleDivisionChange(e.target.value)} 
+                                <select
+                                    value={selectedDivision}
+                                    onChange={(e) => handleDivisionChange(e.target.value)}
                                     className="select w-full"
                                     style={{ margin: 0 }}
                                 >
@@ -944,7 +941,7 @@ const Projects = () => {
                             {totals.accomplished.length} of {activeActivities.length} accomplished
                         </div>
                     </div>
-                    
+
                     {/* Budget Utilization Rate Card */}
                     <div className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-855 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
                         <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Budget Utilization Rate</span>
@@ -1008,7 +1005,7 @@ const Projects = () => {
                                     <option value="budget">Split by Budget</option>
                                     <option value="fund">Split by Fund</option>
                                 </select>
-                                <button 
+                                <button
                                     onClick={() => setDistributionView(prev => prev === 'bar' ? 'heatmap' : 'bar')}
                                     className="mini-button hover:opacity-90 px-3 py-1 bg-slate-800 text-white text-xs font-black uppercase tracking-wider rounded-lg"
                                 >
@@ -1057,8 +1054,8 @@ const Projects = () => {
                                 {Object.entries(groupedActivities).map(([d, r]) => {
                                     const totalVal = metricValue(r);
                                     return (
-                                        <div 
-                                            key={d} 
+                                        <div
+                                            key={d}
                                             onClick={() => !selectedDivision && handleDivisionChange(d)}
                                             className="bar-row"
                                             style={!selectedDivision ? { cursor: 'pointer' } : {}}
@@ -1126,13 +1123,13 @@ const Projects = () => {
                             const isFund = mainSplitBy === 'fund';
                             const isStatus = mainSplitBy === 'status';
 
-                            const visibleFundSources = fundSources.filter(f => 
+                            const visibleFundSources = fundSources.filter(f =>
                                 !isAdvancedMode || distributionMode !== 'fund' || activeCategoryIds.includes(f.label)
                             );
-                            
+
                             const isBudgetUtilizedVisible = !isAdvancedMode || distributionMode !== 'budget' || activeCategoryIds.includes('Utilized');
                             const isBudgetUnutilizedVisible = !isAdvancedMode || distributionMode !== 'budget' || activeCategoryIds.includes('Unutilized');
-                            
+
                             const isStatusPendingVisible = !isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Pending');
                             const isStatusAccomplishedVisible = !isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Accomplished');
                             const isStatusDelayedVisible = !isAdvancedMode || distributionMode !== 'status' || activeCategoryIds.includes('Delayed');
@@ -1150,7 +1147,7 @@ const Projects = () => {
                             }
 
                             return (
-                                <div 
+                                <div
                                     className="fund-heatmap overflow-x-auto grid gap-2 mt-4"
                                     style={{ '--heat-cols': colCount }}
                                 >
@@ -1195,12 +1192,12 @@ const Projects = () => {
                                             if (isBudgetUtilizedVisible) {
                                                 const share = Math.round(u / Math.max(b, 1) * 100);
                                                 cells.push(
-                                                    <div 
-                                                        key="u" 
+                                                    <div
+                                                        key="u"
                                                         onPointerOver={(e) => showTooltip(e, 'Utilized', peso(u), share, colors.blue)}
                                                         onPointerMove={updateTooltipPosition}
                                                         onPointerLeave={hideTooltip}
-                                                        className={`heat-cell ${u === 0 ? 'heat-zero' : ''}`} 
+                                                        className={`heat-cell ${u === 0 ? 'heat-zero' : ''}`}
                                                         style={{ background: `color-mix(in srgb, ${colors.blue} ${Math.round(16 + uIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.blue} 48%, #DBEAFE)`, color: uIntensity > 0.58 ? 'white' : 'var(--navy)' }}
                                                     >
                                                         {peso(u)}
@@ -1210,12 +1207,12 @@ const Projects = () => {
                                             if (isBudgetUnutilizedVisible) {
                                                 const share = Math.round(un / Math.max(b, 1) * 100);
                                                 cells.push(
-                                                    <div 
-                                                        key="un" 
+                                                    <div
+                                                        key="un"
                                                         onPointerOver={(e) => showTooltip(e, 'Unutilized', peso(un), share, colors.gold)}
                                                         onPointerMove={updateTooltipPosition}
                                                         onPointerLeave={hideTooltip}
-                                                        className={`heat-cell ${un === 0 ? 'heat-zero' : ''}`} 
+                                                        className={`heat-cell ${un === 0 ? 'heat-zero' : ''}`}
                                                         style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + unIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: unIntensity > 0.58 ? 'white' : 'var(--navy)' }}
                                                     >
                                                         {peso(un)}
@@ -1223,7 +1220,7 @@ const Projects = () => {
                                                 );
                                             }
                                         } else if (isFund) {
-                                            const maxVal = Math.max(...Object.values(groupedActivities).flatMap(g => 
+                                            const maxVal = Math.max(...Object.values(groupedActivities).flatMap(g =>
                                                 visibleFundSources.map(f => metricValue(g.filter(a => a.sourceOfFund === f.label)))
                                             ), 1);
 
@@ -1232,12 +1229,12 @@ const Projects = () => {
                                                 const intensity = v / maxVal;
                                                 const share = Math.round(v / Math.max(totalVal, 1) * 100);
                                                 cells.push(
-                                                    <div 
-                                                        key={f.label} 
+                                                    <div
+                                                        key={f.label}
                                                         onPointerOver={(e) => showTooltip(e, f.label, metricFormat(v), share, f.color)}
                                                         onPointerMove={updateTooltipPosition}
                                                         onPointerLeave={hideTooltip}
-                                                        className={`heat-cell ${v === 0 ? 'heat-zero' : ''}`} 
+                                                        className={`heat-cell ${v === 0 ? 'heat-zero' : ''}`}
                                                         style={{ background: `color-mix(in srgb, ${f.color} ${Math.round(16 + intensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${f.color} 48%, #DBEAFE)`, color: intensity > 0.58 ? 'white' : 'var(--navy)' }}
                                                     >
                                                         {metricFormat(v)}
@@ -1263,12 +1260,12 @@ const Projects = () => {
                                             if (isStatusPendingVisible) {
                                                 const share = Math.round(p / Math.max(totalVal, 1) * 100);
                                                 cells.push(
-                                                    <div 
-                                                        key="p" 
+                                                    <div
+                                                        key="p"
                                                         onPointerOver={(e) => showTooltip(e, 'Pending', metricFormat(p), share, colors.gold)}
                                                         onPointerMove={updateTooltipPosition}
                                                         onPointerLeave={hideTooltip}
-                                                        className={`heat-cell ${p === 0 ? 'heat-zero' : ''}`} 
+                                                        className={`heat-cell ${p === 0 ? 'heat-zero' : ''}`}
                                                         style={{ background: `color-mix(in srgb, ${colors.gold} ${Math.round(16 + pIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.gold} 48%, #DBEAFE)`, color: pIntensity > 0.58 ? 'white' : 'var(--navy)' }}
                                                     >
                                                         {metricFormat(p)}
@@ -1278,12 +1275,12 @@ const Projects = () => {
                                             if (isStatusAccomplishedVisible) {
                                                 const share = Math.round(acc / Math.max(totalVal, 1) * 100);
                                                 cells.push(
-                                                    <div 
-                                                        key="acc" 
+                                                    <div
+                                                        key="acc"
                                                         onPointerOver={(e) => showTooltip(e, 'Accomplished', metricFormat(acc), share, colors.green)}
                                                         onPointerMove={updateTooltipPosition}
                                                         onPointerLeave={hideTooltip}
-                                                        className={`heat-cell ${acc === 0 ? 'heat-zero' : ''}`} 
+                                                        className={`heat-cell ${acc === 0 ? 'heat-zero' : ''}`}
                                                         style={{ background: `color-mix(in srgb, ${colors.green} ${Math.round(16 + accIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.green} 48%, #DBEAFE)`, color: accIntensity > 0.58 ? 'white' : 'var(--navy)' }}
                                                     >
                                                         {metricFormat(acc)}
@@ -1293,12 +1290,12 @@ const Projects = () => {
                                             if (isStatusDelayedVisible) {
                                                 const share = Math.round(del / Math.max(totalVal, 1) * 100);
                                                 cells.push(
-                                                    <div 
-                                                        key="del" 
+                                                    <div
+                                                        key="del"
                                                         onPointerOver={(e) => showTooltip(e, 'Delayed', metricFormat(del), share, colors.red)}
                                                         onPointerMove={updateTooltipPosition}
                                                         onPointerLeave={hideTooltip}
-                                                        className={`heat-cell ${del === 0 ? 'heat-zero' : ''}`} 
+                                                        className={`heat-cell ${del === 0 ? 'heat-zero' : ''}`}
                                                         style={{ background: `color-mix(in srgb, ${colors.red} ${Math.round(16 + delIntensity * 72)}%, white)`, borderColor: `color-mix(in srgb, ${colors.red} 48%, #DBEAFE)`, color: delIntensity > 0.58 ? 'white' : 'var(--navy)' }}
                                                     >
                                                         {metricFormat(del)}
@@ -1309,13 +1306,13 @@ const Projects = () => {
 
                                         return (
                                             <React.Fragment key={d}>
-                                                <div 
+                                                <div
                                                     className="heat-cell heat-division font-bold"
                                                 >
                                                     {d}
                                                 </div>
                                                 {cells}
-                                                <div 
+                                                <div
                                                     onPointerOver={(e) => showTooltip(e, 'Total', metricFormat(totalVal))}
                                                     onPointerMove={updateTooltipPosition}
                                                     onPointerLeave={hideTooltip}
@@ -1391,8 +1388,8 @@ const Projects = () => {
                                             const hPct = Math.max((d.value / maxVal) * 100, 8);
                                             const share = Math.round(d.value / totalSum * 100);
                                             return (
-                                                <div 
-                                                    key={i} 
+                                                <div
+                                                    key={i}
                                                     className="hist-col cursor-pointer hover:opacity-90"
                                                     onPointerOver={(e) => showTooltip(e, d.label, detailsFormat(d.value), share, d.color)}
                                                     onPointerMove={updateTooltipPosition}
@@ -1401,13 +1398,13 @@ const Projects = () => {
                                                     <div className="hist-area">
                                                         <div className="hist-bar-wrap" style={{ height: `${hPct}%` }}>
                                                             <div className="hist-value">{detailsFormat(d.value)}</div>
-                                                            <div 
-                                                                className="hist-bar" 
-                                                                style={{ 
-                                                                    height: d.value === 0 ? '8px' : 'calc(100% - 22px)', 
+                                                            <div
+                                                                className="hist-bar"
+                                                                style={{
+                                                                    height: d.value === 0 ? '8px' : 'calc(100% - 22px)',
                                                                     minHeight: d.value === 0 ? '8px' : '16px',
-                                                                    backgroundColor: d.color 
-                                                                }} 
+                                                                    backgroundColor: d.color
+                                                                }}
                                                             />
                                                         </div>
                                                     </div>
@@ -1487,7 +1484,7 @@ const Projects = () => {
                                                     {processedActivityDonutSlices.map((d, i) => {
                                                         const share = d.share;
                                                         return (
-                                                            <tr 
+                                                            <tr
                                                                 key={i}
                                                                 className="transition-colors hover:bg-slate-50 cursor-pointer"
                                                                 onPointerOver={(e) => {
@@ -1570,7 +1567,7 @@ const Projects = () => {
                                                     {processedFinancialDonutSlices.map((d, i) => {
                                                         const share = d.share;
                                                         return (
-                                                            <tr 
+                                                            <tr
                                                                 key={i}
                                                                 className="transition-colors hover:bg-slate-50 cursor-pointer"
                                                                 onPointerOver={(e) => {
@@ -1739,7 +1736,7 @@ const Projects = () => {
                                 </button>
                             </div>
 
-                            
+
                         </div>
                     </div>
                     <div className="overflow-x-auto w-full">
@@ -1754,7 +1751,7 @@ const Projects = () => {
                                             Division {sortColumn === 'division' && (sortDirection === 'asc' ? '▲' : '▼')}
                                         </th>
                                     )}
-                                    <th 
+                                    <th
                                         onClick={() => handleSort('lead_personnel')}
                                         className="sticky bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider min-w-[150px] max-w-[150px] w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors"
                                         style={{ left: !selectedDivision ? '390px' : '240px' }}
@@ -1796,7 +1793,7 @@ const Projects = () => {
                                             />
                                         </th>
                                     )}
-                                    <th 
+                                    <th
                                         className="sticky bg-slate-50 dark:bg-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-2"
                                         style={{ left: !selectedDivision ? '390px' : '240px' }}
                                     >
@@ -1857,7 +1854,7 @@ const Projects = () => {
                                 ) : (
                                     paginatedProjects.map(project => {
                                         const stats = projectStats[project.id] || { milestones: 0, activities: 0, tasks: 0 };
-                                        
+
                                         // Calculate budget metrics
                                         const projectSofAllocation = Number(project.sof_allocation || project.total_budget || 0);
                                         const tasksBudgetSum = project.tasks ? project.tasks.reduce((sum, t) => sum + (Number(t.allocation || t.gms_allocation) || 0), 0) : 0;
@@ -1882,7 +1879,7 @@ const Projects = () => {
                                                         </span>
                                                     </td>
                                                 )}
-                                                <td 
+                                                <td
                                                     className="sticky bg-white dark:bg-slate-900 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] px-4 py-3 text-xs text-slate-600 dark:text-slate-300 font-semibold min-w-[150px] max-w-[150px] w-[150px] truncate"
                                                     style={{ left: !selectedDivision ? '390px' : '240px' }}
                                                     title={project.lead_personnel || 'No Lead'}
@@ -1932,10 +1929,9 @@ const Projects = () => {
                         <div className="flex items-center gap-2">
                             <span className="text-slate-500 dark:text-slate-400">
                                 {tableFilteredProjects.length > 0 ? (
-                                    `Showing ${rowsPerPage === 'all' ? 1 : (currentPage - 1) * Number(rowsPerPage) + 1} to ${
-                                        rowsPerPage === 'all' 
-                                            ? tableFilteredProjects.length 
-                                            : Math.min(currentPage * Number(rowsPerPage), tableFilteredProjects.length)
+                                    `Showing ${rowsPerPage === 'all' ? 1 : (currentPage - 1) * Number(rowsPerPage) + 1} to ${rowsPerPage === 'all'
+                                        ? tableFilteredProjects.length
+                                        : Math.min(currentPage * Number(rowsPerPage), tableFilteredProjects.length)
                                     } of ${tableFilteredProjects.length} entries`
                                 ) : (
                                     'Showing 0 to 0 of 0 entries'
@@ -1972,8 +1968,6 @@ const Projects = () => {
                     <CreateProjectModal
                         onClose={() => setIsModalOpen(false)}
                         onProjectCreated={handleProjectCreated}
-                        divisions={divisions}
-                        employees={employees}
                     />
                 )
             }
@@ -2001,7 +1995,7 @@ const Projects = () => {
                                     Select which values to display across all charts
                                 </p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setIsCategoryModalOpen(false)}
                                 className="p-1 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 cursor-pointer"
                             >
@@ -2068,7 +2062,7 @@ const Projects = () => {
                             {modalFilteredCategories.map(cat => {
                                 const isChecked = activeCategoryIds.includes(cat.id);
                                 return (
-                                    <label 
+                                    <label
                                         key={cat.id}
                                         className="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg cursor-pointer"
                                     >
@@ -2120,10 +2114,10 @@ const Projects = () => {
 
             {/* Tooltip Overlay */}
             {tooltip.visible && (
-                <div 
+                <div
                     className="fixed pointer-events-none bg-white/95 dark:bg-slate-900/95 border border-blue-100 dark:border-slate-800 shadow-xl rounded-xl p-3 z-[9999] backdrop-blur-xs transition-all duration-75 ease-out"
-                    style={{ 
-                        left: `${tooltip.x + 12}px`, 
+                    style={{
+                        left: `${tooltip.x + 12}px`,
                         top: `${tooltip.y + 12}px`,
                         transform: 'translate(0, 0)'
                     }}
