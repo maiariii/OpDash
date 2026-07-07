@@ -662,6 +662,11 @@ const Projects = () => {
                 valA = aStats.accomplishmentRate || 0;
                 const bStats = projectStats[b.id] || { accomplishmentRate: 0 };
                 valB = bStats.accomplishmentRate || 0;
+            } else if (sortColumn === 'activities') {
+                const aStats = projectStats[a.id] || { activities: 0 };
+                valA = aStats.activities || 0;
+                const bStats = projectStats[b.id] || { activities: 0 };
+                valB = bStats.activities || 0;
             }
 
             if (typeof valA === 'number' && typeof valB === 'number') {
@@ -687,7 +692,8 @@ const Projects = () => {
         allocation: '',
         obligated: '',
         utilization: '',
-        accomplishment: ''
+        accomplishment: '',
+        activities: ''
     });
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -720,8 +726,9 @@ const Projects = () => {
             const utilMatch = !tableFilters.utilization || String(Math.round(projectUtilizationPct)).includes(tableFilters.utilization) || pct(projectUtilizationPct).toLowerCase().includes(tableFilters.utilization.toLowerCase());
 
             const accomplishmentMatch = !tableFilters.accomplishment || String(Math.round(accomplishmentRate)).includes(tableFilters.accomplishment) || pct(accomplishmentRate).toLowerCase().includes(tableFilters.accomplishment.toLowerCase());
+            const activitiesMatch = !tableFilters.activities || String(stats.activities || 0).includes(tableFilters.activities);
 
-            return nameMatch && divisionMatch && leadMatch && allocMatch && obligMatch && utilMatch && accomplishmentMatch;
+            return nameMatch && divisionMatch && leadMatch && allocMatch && obligMatch && utilMatch && accomplishmentMatch && activitiesMatch;
         });
     }, [sortedProjects, tableFilters, projectStats, selectedDivision]);
 
@@ -949,7 +956,7 @@ const Projects = () => {
             {selectedDivision && (
                 <div className="flex flex-wrap gap-4 w-full mb-6">
                     {/* Activities Completion Rate Card */}
-                    <div className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                    <div className="flex-grow w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(20%-13px)] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
                         <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Activities Completion Rate</span>
                         <div className="mt-2 flex items-baseline gap-2">
                             <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
@@ -962,7 +969,7 @@ const Projects = () => {
                     </div>
 
                     {/* Budget Utilization Rate Card */}
-                    <div className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-855 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                    <div className="flex-grow w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(20%-13px)] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-855 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
                         <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Budget Utilization Rate</span>
                         <div className="mt-2 flex items-baseline gap-2">
                             <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
@@ -982,7 +989,7 @@ const Projects = () => {
                             const displayLabel = cat.label;
                             const subtitle = unitMode === 'budget' ? `${fmt(cat.count)} activities` : peso(cat.value);
                             return (
-                                <div key={cat.id} className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-855 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                                <div key={cat.id} className="flex-grow w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(20%-13px)] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-855 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
                                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{displayLabel}</span>
                                     <div className="mt-2 flex items-baseline gap-2">
                                         <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
@@ -1777,6 +1784,12 @@ const Projects = () => {
                                     >
                                         Lead Personnel {sortColumn === 'lead_personnel' && (sortDirection === 'asc' ? '▲' : '▼')}
                                     </th>
+                                    <th onClick={() => handleSort('activities')} className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors w-[130px] max-w-[130px] min-w-[130px]">
+                                        Total Activities {sortColumn === 'activities' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                    </th>
+                                    <th onClick={() => handleSort('allocation')} className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors w-[150px] max-w-[150px] min-w-[150px]">
+                                        Total Allocation {sortColumn === 'allocation' && (sortDirection === 'asc' ? '▲' : '▼')}
+                                    </th>
                                     <th onClick={() => handleSort('utilization')} className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors w-[120px] max-w-[120px] min-w-[120px]">
                                         Utilization Rate {sortColumn === 'utilization' && (sortDirection === 'asc' ? '▲' : '▼')}
                                     </th>
@@ -1819,6 +1832,24 @@ const Projects = () => {
                                         />
                                     </th>
 
+                                    <th className="px-4 py-2 w-[130px] max-w-[130px] min-w-[130px]">
+                                        <input
+                                            className="column-filter w-full text-xs font-normal text-right"
+                                            type="search"
+                                            placeholder="Filter..."
+                                            value={tableFilters.activities}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, activities: e.target.value }))}
+                                        />
+                                    </th>
+                                    <th className="px-4 py-2 w-[150px] max-w-[150px] min-w-[150px]">
+                                        <input
+                                            className="column-filter w-full text-xs font-normal text-right"
+                                            type="search"
+                                            placeholder="Filter..."
+                                            value={tableFilters.allocation}
+                                            onChange={(e) => setTableFilters(prev => ({ ...prev, allocation: e.target.value }))}
+                                        />
+                                    </th>
                                     <th className="px-4 py-2 w-[120px] max-w-[120px] min-w-[120px]">
                                         <input
                                             className="column-filter w-full text-xs font-normal text-right"
@@ -1843,7 +1874,7 @@ const Projects = () => {
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {tableFilteredProjects.length === 0 ? (
                                     <tr>
-                                        <td colSpan={!selectedDivision ? 8 : 7} className="px-6 py-8 text-center text-slate-500">
+                                        <td colSpan={!selectedDivision ? 10 : 9} className="px-6 py-8 text-center text-slate-500">
                                             No projects found matching the criteria.
                                         </td>
                                     </tr>
@@ -1881,6 +1912,13 @@ const Projects = () => {
                                                     title={project.lead_personnel || 'No Lead'}
                                                 >
                                                     {project.lead_personnel || '-'}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-xs text-right font-mono font-medium text-slate-600 dark:text-slate-300">
+                                                    {stats.activities || 0}
+                                                </td>
+                                                <td className="px-4 py-3 text-xs text-right font-mono font-semibold text-slate-700 dark:text-slate-200">
+                                                    {peso(projectTotalBudget)}
                                                 </td>
 
                                                 <td className={`px-4 py-3 text-xs text-right font-mono font-extrabold ${getUtilColorClass(projectUtilizationPct)}`}>

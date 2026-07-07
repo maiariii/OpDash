@@ -1541,7 +1541,7 @@ const Dashboard = () => {
             {/* KPI Grid */}
             <div className="flex flex-wrap gap-4 w-full mb-6">
                 {/* Activities Completion Rate Card */}
-                <div className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                <div className="flex-grow w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(20%-13px)] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Activities Completion Rate</span>
                     <div className="mt-2 flex items-baseline gap-2">
                         <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
@@ -1554,7 +1554,7 @@ const Dashboard = () => {
                 </div>
                 
                 {/* Budget Utilization Rate Card */}
-                <div className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-855 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                <div className="flex-grow w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(20%-13px)] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-855 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Budget Utilization Rate</span>
                     <div className="mt-2 flex items-baseline gap-2">
                         <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
@@ -1574,7 +1574,7 @@ const Dashboard = () => {
                         const displayLabel = cat.label;
                         const subtitle = unitMode === 'budget' ? `${fmt(cat.count)} activities` : peso(cat.value);
                         return (
-                            <div key={cat.id} className="flex-1 min-w-[220px] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
+                            <div key={cat.id} className="flex-grow w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(20%-13px)] bg-white dark:bg-slate-900 border-2 border-sky-100 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs transition-transform hover:scale-[1.02] duration-200">
                                 <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{displayLabel}</span>
                                 <div className="mt-2 flex items-baseline gap-2">
                                     <span className="text-4xl font-extrabold text-[var(--navy)] dark:text-slate-100 tracking-tight" style={{ fontSize: 'clamp(36px, 2.5vw, 43px)' }}>
